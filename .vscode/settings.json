@@ -4,6 +4,7 @@
       "*.ejs": "html",
       "devicetree.h": "c",
       "kernel.h": "c",
-      "uart.h": "c"
+      "uart.h": "c",
+      "random": "c"
     }
 }

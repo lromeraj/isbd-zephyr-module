@@ -170,27 +170,27 @@ void main(void) {
 	uart_configure( uart_slave_device, &uart_config );
 
   struct isbd_config isbd_config = {
+    .verbose = false,
     .dev = uart_slave_device,
   };
 
   isbd_setup( &isbd_config );
 
-  isbd_err_t ret;
 
   char __buff[ 256 ];
 
-  ret = isbd_set_mo_txt_l(
-    "This is an example message. " 
-    "It has more than 64 bytes or I think so, "
-    "we should type a little bit more ..." );
+  isbd_fetch_imei( __buff );
+  printk( "IMEI     : %s\n", __buff );
 
-  printk( "Writing MO buffer ... %s\n", ret == 0 ? "OK" : "ERR" );
+  isbd_set_mo_txt(
+    "This is an example message. It has more than 64 bytes or I think so, we should type a little bit more abcdefghijklmnopqW" );
 
   isbd_mo_to_mt( __buff );
   printk( "MO -> MT : %s\n", __buff );
 
   isbd_get_mt_txt( __buff );
   printk( "MT       : %s\n", __buff );
+
 
   // isbd_fetch_revision( revision );
   // printk( "Revision  : %s\n", revision );
