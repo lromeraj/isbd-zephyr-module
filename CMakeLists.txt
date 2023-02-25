@@ -6,4 +6,7 @@ set(BOARD frdm_k64f)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(uart_echo_bot)
 
-target_sources(app PRIVATE src/main.c)
+target_sources(app PRIVATE 
+  src/main.c
+  src/at.c
+  src/isbd.c )

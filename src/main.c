@@ -13,26 +13,19 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+#include "at.h"
+#include "isbd.h"
+
 #define MSG_SIZE 32
 
 #define STACK_SIZE		2048
-#define PRIORITY		5
+#define PRIORITY		  5
 
 /* change this to any other UART peripheral if desired */
 #define UART_MASTER_DEVICE_NODE DT_NODELABEL(uart0)
 #define UART_SLAVE_DEVICE_NODE DT_NODELABEL(uart3)
 
-static char g_at_buf[256];
-
-K_SEM_DEFINE(g_at_sem_res, 0, 1);
-K_SEM_DEFINE(g_at_sem_rdy, 0, 1);
-
 void master_serial_entry( void*, void*, void* );
-void slave_serial_entry( void*, void*, void* );
-
-K_THREAD_DEFINE(slave_tid, STACK_SIZE,
-                slave_serial_entry, NULL, NULL, NULL,
-                PRIORITY, 0, 0);
 
 K_THREAD_DEFINE(master_tid, STACK_SIZE,
                 master_serial_entry, NULL, NULL, NULL,
@@ -40,7 +33,6 @@ K_THREAD_DEFINE(master_tid, STACK_SIZE,
 
 /* queue to store up to 10 messages (aligned to 4-byte boundary) */
 K_MSGQ_DEFINE(uart_master_msgq, MSG_SIZE, 10, 4);
-K_MSGQ_DEFINE(uart_slave_msgq, MSG_SIZE, 10, 4);
 
 static const struct device *const uart_master_device = DEVICE_DT_GET(UART_MASTER_DEVICE_NODE); 
 static const struct device *const uart_slave_device = DEVICE_DT_GET(UART_SLAVE_DEVICE_NODE);
@@ -120,13 +112,15 @@ void setup_uart( const struct device *uart_dev, struct serial_rx_buff *rx_buff, 
 		}
 		return;
 	}
-
-	uart_irq_rx_enable(uart_dev);
+	
+  uart_irq_rx_enable( uart_dev );
 
 }
 
 void master_serial_entry( void *p1, void *p2, void *p3 ) {
 
+  return;
+  
 	char tx_buf[MSG_SIZE];
 	struct uart_config config;
 
@@ -145,87 +139,14 @@ void master_serial_entry( void *p1, void *p2, void *p3 ) {
 		print_uart( uart_master_device, "Host -> 9602: " );
 		print_uart( uart_master_device, tx_buf );
 		print_uart( uart_master_device, "\r\n" );
-
 	}
 
 }
 
-void at_write_cmd( const char *cmd ) {
-	char buf[256];
-	sprintf( buf, "at%s\r\n", cmd );
-	print_uart( uart_slave_device, buf );
-}
-
-
-
-void at_write_ext_pcmd( const char *cmd, const char *params ) {
-	
-	char buf[256];
-
-	if ( params ) {
-		sprintf( buf, "+%s%s", cmd, params );		
-	} else {
-		sprintf( buf, "+%s", cmd );
-	}
-
-	at_write_cmd( buf );
-}
-
-void at_write_ext_cmd( const char *cmd ) {
-	at_write_ext_pcmd( cmd, NULL );
-}
-
-void at_write_ext_wcmd( const char *cmd, const char *params ) {
-	char buf[256];
-	sprintf( buf, "=%s", params );
-	at_write_ext_pcmd( cmd, buf );
-}
-
-void at_write_ext_ecmd( const char *cmd, uint8_t param ) {
-	char buf[4];
-	sprintf( buf, "%d", param );
-	at_write_ext_pcmd( cmd, buf );
-}
-
-
-const char * sbd_fetch_imei() {
-
-	at_write_ext_cmd( "cgsn" );
-
-	if ( k_sem_take(&g_at_sem_res, K_FOREVER) == 0 ) {
-		return g_at_buf;	
-	}
-	return NULL;
-}
-
-void slave_serial_entry( void *p1, void *p2, void *p3 ) {
-
-	char tx_buf[MSG_SIZE];
-	struct uart_config config;
-
-	uart_config_get( uart_slave_device, &config );
-	config.baudrate = 19200;
-	uart_configure( uart_slave_device, &config );
-
-	setup_uart( uart_slave_device, &slave_rx_buff, &uart_slave_msgq );
-
-	k_sem_give( &g_at_sem_rdy );
-
-	while (k_msgq_get(&uart_slave_msgq, &tx_buf, K_FOREVER) == 0) {
-		
-		print_uart( uart_master_device, "9602 -> Host: " );
-		print_uart( uart_master_device, tx_buf );
-		print_uart( uart_master_device, "\r\n");
-
-		if ( strcmp( tx_buf, "OK" ) == 0 ) {
-			k_sem_give( &g_at_sem_res );
-		} else {
-			strcpy( g_at_buf, tx_buf );
-		}
-
-	}
-
-
+void check_err( isbd_err_t err ) {
+  if ( err != 0 ) { 
+    printk( "Command failed: %d\n", err ); 
+  }
 }
 
 void main(void) {
@@ -240,20 +161,38 @@ void main(void) {
 		return;
 	}
 
-	print_uart( uart_master_device, "Hello! I'm your echo bot for Iridium 9602 module.\r\n\r\n" );
+	// print_uart( uart_master_device, "Hello! I'm your echo bot for Iridium 9602 module.\r\n\r\n" );
 
-	// initialization should not use a sempahore, use an internal initialiaztion flag instead
-	if ( k_sem_take( &g_at_sem_rdy, K_FOREVER ) == 0 ) {
-		printk("READY ...");
-		while (1) {
-			
-			// this is a blocking call
-			const char *imei = sbd_fetch_imei();
+  struct uart_config uart_config;
 
-			printk("Device IMEI: %s\n", imei );
-			k_msleep( 500 );
-		}
-	}
+	uart_config_get( uart_slave_device, &uart_config );
+	uart_config.baudrate = 19200;
+	uart_configure( uart_slave_device, &uart_config );
 
+  struct isbd_config isbd_config = {
+    .dev = uart_slave_device,
+  };
+
+  isbd_setup( &isbd_config );
+
+  isbd_err_t ret;
+
+  char __buff[ 256 ];
+
+  ret = isbd_set_mo_txt_l(
+    "This is an example message. " 
+    "It has more than 64 bytes or I think so, "
+    "we should type a little bit more ..." );
+
+  printk( "Writing MO buffer ... %s\n", ret == 0 ? "OK" : "ERR" );
+
+  isbd_mo_to_mt( __buff );
+  printk( "MO -> MT : %s\n", __buff );
+
+  isbd_get_mt_txt( __buff );
+  printk( "MT       : %s\n", __buff );
+
+  // isbd_fetch_revision( revision );
+  // printk( "Revision  : %s\n", revision );
 
 }

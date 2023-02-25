@@ -1,6 +1,9 @@
 {
     "cmake.configureOnOpen": true,
     "files.associations": {
-        "devicetree.h": "c"
+      "*.ejs": "html",
+      "devicetree.h": "c",
+      "kernel.h": "c",
+      "uart.h": "c"
     }
 }
