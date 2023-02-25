@@ -170,7 +170,7 @@ void main(void) {
 	uart_configure( uart_slave_device, &uart_config );
 
   struct isbd_config isbd_config = {
-    .verbose = false,
+    .verbose = true,
     .dev = uart_slave_device,
   };
 
@@ -182,6 +182,16 @@ void main(void) {
   isbd_fetch_imei( __buff );
   printk( "IMEI     : %s\n", __buff );
 
+  isbd_set_mo_bin( "hell", 4 );
+  // printk("YOP!\n");
+  
+  isbd_mo_to_mt( __buff );
+  printk( "MO -> MT : %s\n", __buff );
+
+  uint16_t len;
+  isbd_get_mt_bin( __buff, &len );
+  
+  /*
   isbd_set_mo_txt(
     "This is an example message. It has more than 64 bytes or I think so, we should type a little bit more abcdefghijklmnopqW" );
 
@@ -190,7 +200,7 @@ void main(void) {
 
   isbd_get_mt_txt( __buff );
   printk( "MT       : %s\n", __buff );
-
+ */
 
   // isbd_fetch_revision( revision );
   // printk( "Revision  : %s\n", revision );

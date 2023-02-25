@@ -6,7 +6,6 @@
 #include "at.h"
 #include "isbd.h"
 
-
 // AT command response lines
 #define AT_1_LINE_RESP    1
 #define AT_2_LINE_RESP    2
@@ -15,7 +14,7 @@
 // AT command constraints
 #define AT_SBDWT_MAX_LEN   120
 
-#define RX_MSG_SIZE     64
+#define RX_MSG_SIZE     2
 #define RX_MSGQ_LEN     8
 
 // TODO: think in reducing buffer sizes
@@ -80,62 +79,143 @@ void isbd_uart_write( uint8_t *__src_buf, uint16_t len ) {
   #endif
 }
 
-isbd_at_code_t _at_get_msg_code( struct uart_queue_msg *msg ) {
+isbd_at_code_t _at_get_msg_code( const char *__buff ) {
 
   if ( g_isbd.config.verbose ) {
-    if ( strncmp( msg->data, "OK", msg->len ) == 0 ) {
+
+    if ( strcmp( __buff, "OK" ) == 0 ) {
       return ISBD_AT_OK;
-    } else if ( strncmp( msg->data, "ERROR", msg->len ) == 0 ) {
+    } else if ( strcmp( __buff, "ERROR" ) == 0 ) {
       return ISBD_AT_ERR;
     }
+
   } else {
-    if ( strncmp( msg->data, "0", 1 ) == 0 ) {
+    
+    if ( strcmp( __buff, "0" ) == 0 ) {
       return ISBD_AT_OK;
-    } else if ( strncmp( msg->data, "4", msg->len ) == 0 ) {
+    } else if ( strcmp( __buff, "4" ) == 0 ) {
       return ISBD_AT_ERR;
-    } else if ( strncmp( msg->data, "126", msg->len ) == 0 ) {
+    } else if ( strcmp( __buff, "126" ) == 0 ) {
       return ISBD_AT_RING;
     }
+
   }
   
   // READY is the same for both modes
-  if ( strncmp( msg->data, "READY", msg->len ) == 0 ) {
+  if ( strcmp( __buff, "READY" ) == 0 ) {
     return ISBD_AT_RDY;
   }
 
   return ISBD_AT_UNK;
 }
 
-isbd_at_code_t _uart_pack_txt_resp( char *data, uint8_t lines, uint16_t timeout_ms ) {
+isbd_at_code_t _uart_pack_bin_resp( uint8_t *__msg, uint16_t *len, uint16_t *csum, uint16_t timeout_ms ) {
+  
+  uint16_t byte_i = 0;
+
+  struct uart_queue_msg msg;
+  uint8_t *__len = (uint8_t*)len;
+  
+  while ( k_msgq_get( &g_isbd.queue.rx_q, &msg, K_MSEC( timeout_ms ) ) == 0 ) {    
+    
+    for ( int i=0; i < msg.len; i++ ) {
+
+      uint8_t byte = msg.data[ i ];
+
+      printf( "byte = %d\n", byte );
+
+
+      if ( byte_i == 0 ) {
+        __len[ 0 ] = byte;
+      } else if ( byte_i == 1 ) {
+        __len[ 1 ] = byte;
+      }
+
+      
+      byte_i++;
+    } 
+
+    // ! If queue is full rx will be disabled,
+    // ! so we have to reenable rx interrupts
+    uart_irq_rx_enable( g_isbd.config.dev );
+
+  }
+
+}
+
+isbd_at_code_t _uart_pack_txt_resp( char *__line, uint8_t lines, uint16_t timeout_ms ) {
   
   uint8_t line_n = 1;
+  uint8_t buff_i = 0;
+
   struct uart_queue_msg msg;
 
+  // this little buff is used to parse AT codes
+  // line buffer will be used to store the most relevant string response
+  char __buff[ 128 ] = "";
+
   while ( k_msgq_get( &g_isbd.queue.rx_q, &msg, K_MSEC( timeout_ms ) ) == 0 ) {
-
-    // TODO: we should check error for the first message
     
-    printk( "line: %d/%d\n", line_n, lines );
+    // ! If queue is full rx will be disabled,
+    // ! so we have to reenable rx interrupts
+    uart_irq_rx_enable( g_isbd.config.dev );
+
     for ( int i=0; i < msg.len; i++ ) {
-      printk( "%c", msg.data[ i ] );
-    }
-    printk("\n");
 
-    if ( line_n == lines ) {
-      isbd_at_code_t code = _at_get_msg_code( &msg );
-      if ( code != ISBD_AT_UNK ) {
-        return code;
+      bool trail_char = false;
+      uint8_t byte = msg.data[ i ];
+
+      if ( byte == '\r' || byte == '\n' ) {
+        trail_char = true;
+        // printk("CHAR: %d\n", byte );
+      } else {
+        // printk("CHAR: %c\n", byte );
       }
-    } else if ( data && line_n == lines-1 ) {
-      bytecpy( data, msg.data, msg.len );
-      data += msg.len; 
-      *data = 0;
-    }
 
-    if ( msg.len < RX_MSG_SIZE ) {
-      line_n++;
-    }
+      if ( buff_i > 0 && trail_char ) {
+        
+        // printk("__buff: %s\n", __buff );
+        // printk("__line: %s\n", __line );
 
+        isbd_at_code_t code = _at_get_msg_code( __buff );
+
+        if ( code != ISBD_AT_UNK ) {
+          // printk("CODE: %d\n", code );
+          return code;
+        }
+
+        buff_i = 0;
+        __buff[ 0 ] = '\0';
+
+        // go to the next line
+        line_n++;
+
+        // printk( "LINE: %d %d\n", line_n, lines );
+
+      }
+      
+      if ( !trail_char ) {
+        
+        if ( line_n == lines-1 ) { // get the most relevant line
+          if ( __line ) {
+            __line[ buff_i ] = byte;
+            __line[ buff_i + 1 ] = '\0';
+          }
+        } else { // get smaller AT responses
+          // printk("__buff @ %c\n", byte );
+          __buff[ buff_i ] = byte;
+          __buff[ buff_i + 1 ] = '\0';          
+        }
+        // buffer index should be increased although
+        // the __line buffer is ignored
+        buff_i++;
+
+      }
+
+    }
+  
+    
+    
   }
 
   // timeout
@@ -209,7 +289,46 @@ isbd_at_code_t isbd_set_mo_txt( const char *txt ) {
 
   SEND_AT_CMD_EXT_SET( "sbdwt", __txt );
 
-  return _uart_pack_txt_resp( NULL, AT_1_LINE_RESP, 1000 );
+  return _uart_pack_txt_resp( NULL, AT_2_LINE_RESP, 1000 );
+}
+
+isbd_at_code_t isbd_set_mo_bin( uint8_t *__msg, uint16_t msg_len ) {
+
+  uint32_t sum = 0;
+  uint8_t __data[ msg_len + 2 ];
+
+  for ( int i=0; i < msg_len; i++ ) {
+    sum += __data[ i ] = __msg[ i ];
+  }
+
+  char __len[ 4 ];
+  sprintf( __len, "%d", msg_len );
+  SEND_AT_CMD_EXT_SET( "sbdwb", __len );
+
+  isbd_at_code_t code =  _uart_pack_txt_resp( NULL, AT_1_LINE_RESP, 1000 );
+
+  if ( code == ISBD_AT_RDY ) {
+
+    // ready to send binary data
+    uint8_t *_csum = (uint8_t*)&sum;
+
+    __data[ msg_len ] = _csum[ 1 ];
+    __data[ msg_len + 1 ] = _csum[ 0 ];
+  } else {
+    return code;
+  }
+
+  isbd_uart_write( __data, msg_len + 2 );
+
+  return _uart_pack_txt_resp( NULL, AT_2_LINE_RESP, 1000 );
+}
+
+isbd_at_code_t isbd_get_mt_bin( uint8_t *__msg, uint16_t *msg_len ) {
+
+  SEND_AT_CMD_EXT( "sbdrb" );
+  
+  uint16_t csum;
+  return _uart_pack_bin_resp( __msg, msg_len, &csum, 1000 );
 }
 
 isbd_at_code_t isbd_set_mo_txt_l( const char *txt ) {
@@ -240,12 +359,6 @@ isbd_at_code_t isbd_get_mt_txt( char *__mt_buff ) {
   return _uart_pack_txt_resp( __mt_buff, AT_3_LINE_RESP, 1000 );
 }
 
-isbd_at_code_t isbd_get_mt_bin( uint8_t *__mt_buff ) {
-  SEND_AT_CMD_EXT( "sbdrb" );
-  return ISBD_AT_UNK;
-}
-
-
 void _uart_tx_isr( const struct device *dev, void *user_data ) {
 
   uint8_t *tx_buff = g_isbd.buff.tx;
@@ -257,40 +370,61 @@ void _uart_tx_isr( const struct device *dev, void *user_data ) {
       dev, &tx_buff[ *tx_buff_idx ], *tx_buff_len - *tx_buff_idx );
 
   }
-
+  
   if ( *tx_buff_idx == *tx_buff_len ) {
   
-    *tx_buff_idx = 0;
-    *tx_buff_len = 0;
+    // ! This may cause _uart_tx_isr() to be unnecessary over-called
+    // ! This has been fixed by allowing interrupt to exit multiple times
+    // ! instead of blocking for one call
+    // while ( !uart_irq_tx_complete( dev ) );
 
-    // ! This may cause _uart_isr() to be unnecessary over-called
-    // ! Use UART_TX_POLLING instead
-    while ( !uart_irq_tx_complete( dev ) );
+    if ( uart_irq_tx_complete( dev ) ) {
 
-    // ! When uart_irq_tx_disable() is called
-    // ! the transmission is halted although 
-    // ! the fifo was filled successfully
-    // ! See: https://github.com/zephyrproject-rtos/zephyr/issues/10672
-    uart_irq_tx_disable( dev );
+      *tx_buff_idx = 0;
+      *tx_buff_len = 0;
+      
+      // ! When uart_irq_tx_disable() is called
+      // ! the transmission is halted although 
+      // ! the fifo was filled successfully
+      // ! See: https://github.com/zephyrproject-rtos/zephyr/issues/10672
+      uart_irq_tx_disable( dev );
+
+    }
 
   }
 
 }
 
 void _uart_rx_isr( const struct device *dev, void *user_data ) {
+  //printk("ISR!\n");
+  // if queue is full we can not fill more bytes  
+  if ( k_msgq_num_used_get( &g_isbd.queue.rx_q ) == RX_MSGQ_LEN ) {
+    uart_irq_rx_disable( g_isbd.config.dev );
+    return;
+  }
+
+  uint8_t byte; // TODO: this should be named byte
   
-  uint8_t c; // TODO: this should be named byte
+  uint8_t *rx_buff = g_isbd.buff.rx;
+  uint16_t *rx_buff_len = &g_isbd.buff.rx_len;
+  
+  *rx_buff_len = uart_fifo_read( dev, rx_buff, RX_BUFF_SIZE );
 
-  while ( uart_fifo_read( dev, &c, 1 ) == 1 ) {
+  if ( *rx_buff_len > 0 ) {
+    struct uart_queue_msg msg;
+    msg.len = *rx_buff_len;
+    bytecpy( msg.data, rx_buff, *rx_buff_len );
+    
+    k_msgq_put( &g_isbd.queue.rx_q, &msg, K_NO_WAIT );
+  }
 
-    bool add_char = true;
-    uint8_t *rx_buff = g_isbd.buff.rx;
-    uint16_t *rx_buff_len = &g_isbd.buff.rx_len;
+  /*
+  // TODO: collect every possible char
+  // TODO: if loop breaks send the message to the corresponding queue
+  while ( uart_fifo_read( dev, &byte, 1 ) == 1 ) {
 
     // TODO: for binary data we cannot use this characters as reference
-    if ( 
-      ( c == '\n' || c == '\r' )
-      || *rx_buff_len == RX_BUFF_SIZE ) {
+    if ( *rx_buff_len == RX_BUFF_SIZE ) {
       
       if ( *rx_buff_len > 0 ) {
         struct uart_queue_msg msg;
@@ -299,19 +433,23 @@ void _uart_rx_isr( const struct device *dev, void *user_data ) {
         k_msgq_put( &g_isbd.queue.rx_q, &msg, K_NO_WAIT );
       }
 
-      if ( *rx_buff_len < RX_BUFF_SIZE ) {
-        add_char = false;
-      }
-
       *rx_buff_len = 0;
+
     }
 
-    
-    if ( add_char ) {
-      rx_buff[ (*rx_buff_len)++ ] = c;
-    }
+    rx_buff[ (*rx_buff_len)++ ] = byte;
 
   }
+
+  if ( *rx_buff_len > 0 ) {
+    struct uart_queue_msg msg;
+    msg.len = *rx_buff_len;
+    bytecpy( msg.data, rx_buff, *rx_buff_len );
+    k_msgq_put( &g_isbd.queue.rx_q, &msg, K_NO_WAIT );
+  }
+
+  *rx_buff_len = 0;
+  */
 
 }
 

@@ -58,6 +58,24 @@
   isbd_at_code_t isbd_mo_to_mt( char *__out );
 
   /**
+   * @brief 
+   * 
+   * @param __msg 
+   * @param msg_len 
+   * @return isbd_at_code_t 
+   */
+  isbd_at_code_t isbd_get_mt_bin( uint8_t *__msg, uint16_t *msg_len );
+
+  /**
+   * @brief 
+   * 
+   * @param __msg 
+   * @param msg_len 
+   * @return isbd_at_code_t 
+   */
+  isbd_at_code_t isbd_set_mo_bin( uint8_t *__msg, uint16_t msg_len );
+
+  /**
    * @brief This command is used to transfer a text SBD message 
    * from the single mobile terminated buffer to the DTE
    * 
