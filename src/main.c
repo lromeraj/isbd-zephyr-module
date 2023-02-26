@@ -170,7 +170,7 @@ void main(void) {
 	uart_configure( uart_slave_device, &uart_config );
 
   struct isbd_config isbd_config = {
-    .verbose = true,
+    .verbose = false,
     .dev = uart_slave_device,
   };
 
@@ -181,7 +181,7 @@ void main(void) {
   isbd_fetch_imei( __buff );
   printk( "IMEI     : %s\n", __buff );
 
-  const char *msg = "koka";
+  const char *msg = "hola";
   code = isbd_set_mo_bin( msg, strlen( msg ) );
 
   if ( code < 0 ) {
@@ -192,18 +192,18 @@ void main(void) {
     printk( "AT command failed: %d\n", code );
   }
   
-  /*
+  
   isbd_mo_to_mt( __buff );
   printk( "MO -> MT : %s\n", __buff );
-
+  
   uint16_t len, csum;
   isbd_get_mt_bin( __buff, &len, &csum );
-
+  
   for ( int i=0; i < len; i++ ) {
     printk( "%c", __buff[ i ] );
   }
   printk( " @ len = %d, csum = %04X\n", len, csum );
-  */
+
 
   /*
   isbd_set_mo_txt(

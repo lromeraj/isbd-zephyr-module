@@ -130,13 +130,16 @@ uint16_t _uart_get_n_bytes(
 isbd_at_code_t _uart_pack_bin_resp( 
   uint8_t *__msg, uint16_t *msg_len, uint16_t *csum, uint16_t timeout_ms
 ) {
-  
-  if ( g_isbd.config.verbose ) {
-    // TODO: this our bug, we are leaving trailing chars when packing text
-    // ! If verbose mode is enabled a trailing \r char 
-    // ! is used so we have to skip it
-    _uart_get_n_bytes( NULL, 1, timeout_ms ); // \r
-  }
+  uint8_t byte;
+
+  // ! This was a bug caused by trailing chars
+  // ! This has been fixed purging que queue just before
+  // ! sending an AT command
+  // // If verbose mode is enabled a trailing \r char 
+  // // is used so we have to skip it
+  // if ( g_isbd.config.verbose ) {
+  //   _uart_get_n_bytes( &byte, 1, timeout_ms ); // \r
+  // }
 
   _uart_get_n_bytes( (uint8_t*)msg_len, 2, timeout_ms ); // message length
   *msg_len = ntohs( *msg_len );
@@ -159,31 +162,37 @@ isbd_at_code_t _uart_pack_txt_resp(
 
   // __str_resp buffer will be used to store the most relevant string response
   // this little __buff is used to parse AT codes
-  char __at_buff[128];
+  char *__buff;
+  char __at_buff[128] = "";
+  
+  if ( __str_resp && lines <= 2 ) {
+    __buff = __str_resp;
+  } else {
+    __buff = __at_buff;
+  }
 
-  printk( "_uart_pack_txt_resp()\n" );
-
+  // printk( "_uart_pack_txt_resp()\n" );
   uint8_t old_byte = 0;
 
-  while ( k_msgq_get( &g_isbd.queue.rx_q, &byte, K_MSEC( 1000 ) ) == 0 ) {
+  // TODO: timeout should be only for the first character
+  while ( k_msgq_get( &g_isbd.queue.rx_q, &byte, K_MSEC( timeout_ms ) ) == 0 ) {
     
     // ! If queue is full rx will be disabled,
     // ! so we have to reenable rx interrupts
     uart_irq_rx_enable( g_isbd.config.dev );
 
-    printk( "LINE: %d / %d\n", line_n, lines );
-    
-
+    // printk( "LINE: %d / %d\n", line_n, lines );
+  
     uint8_t trail_char = 0;
 
     if ( byte == '\r' || byte == '\n' ) {
       trail_char = byte;
-      printk( "CHAR: %d\n", byte );
+      // printk( "CHAR: %d\n", byte );
     } else {
-      printk( "CHAR: %c\n", byte );
+      // printk( "CHAR: %c\n", byte );
     }
 
-    if ( buff_i > 0 && byte == '\n' && old_byte == '\r' ) {
+    if ( buff_i > 0 && byte == '\r' ) {
 
       isbd_at_code_t code = _at_get_msg_code( __buff );
 
@@ -191,11 +200,21 @@ isbd_at_code_t _uart_pack_txt_resp(
         return code;
       }
 
+      line_n++;
+
+      if ( line_n > lines ) {
+        return ISBD_AT_UNK;
+      }
+
+      if ( line_n == lines-1 ) {
+        __buff = __str_resp;
+      } else {
+        __buff= __at_buff;
+      } 
+
       buff_i = 0;
       __buff[ 0 ] = '\0';
 
-      line_n++;
-          
     }
 
     if ( !trail_char ) {
@@ -217,6 +236,7 @@ isbd_at_code_t _uart_pack_txt_resp(
 static __AT_BUFF( __g_at_buf );
 
 #define SEND_AT_CMD( fn, ... ) \
+  k_msgq_purge( &g_isbd.queue.rx_q ); \
   isbd_uart_write( __g_at_buf, at_cmd##fn ( __g_at_buf, __VA_ARGS__ ) )
 
 #define SEND_AT_CMD_P( name, param ) \
@@ -314,7 +334,7 @@ int8_t isbd_set_mo_bin( const uint8_t *__msg, uint16_t msg_len ) {
       sum += __data[ i ] = __msg[ i ];
     }
 
-    uint16_t *csum = &__data[ msg_len ];
+    uint16_t *csum = (uint16_t*)&__data[ msg_len ];
     *csum = htons( sum & 0xFFFF );
     
     // write binary data
@@ -480,8 +500,8 @@ isbd_err_t _uart_setup() {
     sizeof(uint8_t),
     RX_MSGQ_LEN );
 
-  int ret = uart_irq_callback_user_data_set( 
-      g_isbd.config.dev, _uart_isr, NULL );
+  uart_irq_callback_user_data_set( 
+    g_isbd.config.dev, _uart_isr, NULL );
 
   uart_irq_rx_disable( g_isbd.config.dev );
   uart_irq_tx_disable( g_isbd.config.dev );
