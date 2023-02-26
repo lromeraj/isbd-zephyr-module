@@ -16,7 +16,7 @@ uint8_t at_cmd_p( char *at_buf, const char *cmd_name, uint8_t param );
 uint8_t at_cmd_ext( char *at_buf, const char *cmd_name );
 uint8_t at_cmd_ext_t( char *at_buf, const char *cmd_name );
 uint8_t at_cmd_ext_r( char *at_buf, const char *cmd_name );
-uint8_t at_cmd_ext_e( char *at_buf, const char *cmd_name, uint8_t param );
+uint8_t at_cmd_ext_p( char *at_buf, const char *cmd_name, uint8_t param );
 
 /**
  * @brief Builds an extended AT command to set a value

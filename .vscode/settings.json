@@ -6,6 +6,7 @@
       "kernel.h": "c",
       "uart.h": "c",
       "random": "c",
-      "byteswap.h": "c"
+      "byteswap.h": "c",
+      "typeinfo": "c"
     }
 }

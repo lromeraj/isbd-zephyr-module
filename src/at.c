@@ -39,15 +39,10 @@ uint8_t at_cmd_ext_s( char *at_buf, const char *cmd_name, const char *params ) {
   return sprintf( at_buf, AT_CMD_EXT_H__ "%s" AT_CMD_EXT_EQ_CHAR "%s" AT_EOL, cmd_name, params );
 }
 
-// TODO: rename this to at_cmd_ext_p
-uint8_t at_cmd_ext_e( char *at_buf, const char *cmd_name, uint8_t param ) {
-  if ( param == AT_NO_PARAM ) {
-    return sprintf( at_buf, AT_CMD_EXT_H__ "%s" AT_EOL, cmd_name );
-  } else {
-    return sprintf( at_buf, AT_CMD_EXT_H__ "%s%d" AT_EOL, cmd_name, param );
-  }
+uint8_t at_cmd_ext_p( char *at_buf, const char *cmd_name, uint8_t param ) {
+  return sprintf( at_buf, AT_CMD_EXT_H__ "%s%d" AT_EOL, cmd_name, param );
 }
 
-inline uint8_t at_cmd_ext( char *at_buf, const char *cmd_name ) {
-  return at_cmd_ext_e( at_buf, cmd_name, AT_NO_PARAM );
+uint8_t at_cmd_ext( char *at_buf, const char *cmd_name ) {
+  return sprintf( at_buf, AT_CMD_EXT_H__ "%s" AT_EOL, cmd_name );
 }
