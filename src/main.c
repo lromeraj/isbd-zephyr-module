@@ -174,23 +174,37 @@ void main(void) {
     .dev = uart_slave_device,
   };
 
-  isbd_setup( &isbd_config );
-
-
   char __buff[ 256 ];
+  isbd_at_code_t code;
+  isbd_setup( &isbd_config );
 
   isbd_fetch_imei( __buff );
   printk( "IMEI     : %s\n", __buff );
 
-  isbd_set_mo_bin( "hell", 4 );
-  // printk("YOP!\n");
+  const char *msg = "koka";
+  code = isbd_set_mo_bin( msg, strlen( msg ) );
+
+  if ( code < 0 ) {
+    printk( "AT command failed\n" );
+  } else if ( code == 0 ) {
+    printk( "AT command success\n" );
+  } else {
+    printk( "AT command failed: %d\n", code );
+  }
   
+  /*
   isbd_mo_to_mt( __buff );
   printk( "MO -> MT : %s\n", __buff );
 
-  uint16_t len;
-  isbd_get_mt_bin( __buff, &len );
-  
+  uint16_t len, csum;
+  isbd_get_mt_bin( __buff, &len, &csum );
+
+  for ( int i=0; i < len; i++ ) {
+    printk( "%c", __buff[ i ] );
+  }
+  printk( " @ len = %d, csum = %04X\n", len, csum );
+  */
+
   /*
   isbd_set_mo_txt(
     "This is an example message. It has more than 64 bytes or I think so, we should type a little bit more abcdefghijklmnopqW" );

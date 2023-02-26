@@ -28,8 +28,6 @@
   isbd_at_code_t isbd_fetch_imei( char *__imei );
   isbd_at_code_t isbd_fetch_revision( char *__revision );
 
-  // isbd_at_code_t isbd_enable_flow_control( bool enable );
-
   /**
    * @brief Transfer a text SBD message from the DTE 
    * to the single mobile originated buffer.
@@ -64,7 +62,7 @@
    * @param msg_len 
    * @return isbd_at_code_t 
    */
-  isbd_at_code_t isbd_get_mt_bin( uint8_t *__msg, uint16_t *msg_len );
+  isbd_at_code_t isbd_get_mt_bin( uint8_t *__msg, uint16_t *msg_len, uint16_t *csum );
 
   /**
    * @brief 
@@ -73,7 +71,7 @@
    * @param msg_len 
    * @return isbd_at_code_t 
    */
-  isbd_at_code_t isbd_set_mo_bin( uint8_t *__msg, uint16_t msg_len );
+  int8_t isbd_set_mo_bin( const uint8_t *__msg, uint16_t msg_len );
 
   /**
    * @brief This command is used to transfer a text SBD message 

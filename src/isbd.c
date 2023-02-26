@@ -1,6 +1,7 @@
 #include <errno.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
+#include <zephyr/net/net_ip.h>
 #include <zephyr/drivers/uart.h>
 
 #include "at.h"
@@ -14,12 +15,11 @@
 // AT command constraints
 #define AT_SBDWT_MAX_LEN   120
 
-#define RX_MSG_SIZE     2
-#define RX_MSGQ_LEN     8
+#define RX_MSGQ_LEN     128
 
 // TODO: think in reducing buffer sizes
 #define TX_BUFF_SIZE    512 
-#define RX_BUFF_SIZE    RX_MSG_SIZE
+#define RX_BUFF_SIZE    128
 
 #define ISBD_UART_MSGS_BUF( name ) \
   char *name[ RX_MSGQ_LEN ] = { NULL };
@@ -33,14 +33,9 @@ struct uart_buff {
   uint8_t tx[ TX_BUFF_SIZE ];
 };
 
-struct uart_queue_msg {
-  uint8_t len;
-  uint8_t data[ RX_MSG_SIZE ];
-};
-
 struct uart_queue {
   struct k_msgq rx_q;
-  uint8_t rx_buff[ RX_MSGQ_LEN * sizeof(struct uart_queue_msg) ];
+  uint8_t rx_buff[ RX_MSGQ_LEN * sizeof(uint8_t) ];
 };
 
 struct isbd {
@@ -53,6 +48,9 @@ static struct isbd g_isbd = {};
 
 /* ---------- Private methods ---------- */
 isbd_err_t _uart_setup();
+uint16_t _uart_get_n_bytes( uint8_t *bytes, uint16_t n_bytes, uint16_t timeout_ms );
+isbd_at_code_t _uart_pack_bin_resp( uint8_t *__msg, uint16_t *msg_len, uint16_t *csum, uint16_t timeout_ms );
+isbd_at_code_t _uart_pack_txt_resp( char *__str_resp, uint8_t lines, uint16_t timeout_ms );
 /* ------ End of private methods ------- */
 
 isbd_err_t isbd_setup( struct isbd_config *config ) {
@@ -60,6 +58,7 @@ isbd_err_t isbd_setup( struct isbd_config *config ) {
   return _uart_setup();
 }
 
+// TODO: rename to _uart_write
 void isbd_uart_write( uint8_t *__src_buf, uint16_t len ) {  
 
   #ifdef UART_TX_POLLING
@@ -109,113 +108,106 @@ isbd_at_code_t _at_get_msg_code( const char *__buff ) {
   return ISBD_AT_UNK;
 }
 
-isbd_at_code_t _uart_pack_bin_resp( uint8_t *__msg, uint16_t *len, uint16_t *csum, uint16_t timeout_ms ) {
-  
-  uint16_t byte_i = 0;
-
-  struct uart_queue_msg msg;
-  uint8_t *__len = (uint8_t*)len;
-  
-  while ( k_msgq_get( &g_isbd.queue.rx_q, &msg, K_MSEC( timeout_ms ) ) == 0 ) {    
-    
-    for ( int i=0; i < msg.len; i++ ) {
-
-      uint8_t byte = msg.data[ i ];
-
-      printf( "byte = %d\n", byte );
-
-
-      if ( byte_i == 0 ) {
-        __len[ 0 ] = byte;
-      } else if ( byte_i == 1 ) {
-        __len[ 1 ] = byte;
-      }
-
-      
-      byte_i++;
-    } 
-
-    // ! If queue is full rx will be disabled,
-    // ! so we have to reenable rx interrupts
+uint16_t _uart_get_n_bytes( 
+  uint8_t *bytes, uint16_t n_bytes, uint16_t timeout_ms 
+) {
+ 
+  uint8_t byte;
+ 
+  while ( n_bytes > 0 && k_msgq_get( &g_isbd.queue.rx_q, &byte, K_MSEC( timeout_ms ) ) == 0 ) {
     uart_irq_rx_enable( g_isbd.config.dev );
+    
+    if ( bytes ) {
+      *bytes++ = byte; 
+    }
 
+    n_bytes--;
   }
 
+  return n_bytes;
 }
 
-isbd_at_code_t _uart_pack_txt_resp( char *__line, uint8_t lines, uint16_t timeout_ms ) {
+isbd_at_code_t _uart_pack_bin_resp( 
+  uint8_t *__msg, uint16_t *msg_len, uint16_t *csum, uint16_t timeout_ms
+) {
   
+  if ( g_isbd.config.verbose ) {
+    // TODO: this our bug, we are leaving trailing chars when packing text
+    // ! If verbose mode is enabled a trailing \r char 
+    // ! is used so we have to skip it
+    _uart_get_n_bytes( NULL, 1, timeout_ms ); // \r
+  }
+
+  _uart_get_n_bytes( (uint8_t*)msg_len, 2, timeout_ms ); // message length
+  *msg_len = ntohs( *msg_len );
+  
+  _uart_get_n_bytes( __msg, *msg_len, timeout_ms );
+
+  _uart_get_n_bytes( (uint8_t*)csum, 2, timeout_ms );
+  *csum = ntohs( *csum );
+
+  return _uart_pack_txt_resp( NULL, AT_1_LINE_RESP, timeout_ms );
+}
+
+isbd_at_code_t _uart_pack_txt_resp( 
+  char *__str_resp, uint8_t lines, uint16_t timeout_ms 
+) {
+  
+  uint8_t byte;
   uint8_t line_n = 1;
   uint8_t buff_i = 0;
 
-  struct uart_queue_msg msg;
+  // __str_resp buffer will be used to store the most relevant string response
+  // this little __buff is used to parse AT codes
+  char __at_buff[128];
 
-  // this little buff is used to parse AT codes
-  // line buffer will be used to store the most relevant string response
-  char __buff[ 128 ] = "";
+  printk( "_uart_pack_txt_resp()\n" );
 
-  while ( k_msgq_get( &g_isbd.queue.rx_q, &msg, K_MSEC( timeout_ms ) ) == 0 ) {
+  uint8_t old_byte = 0;
+
+  while ( k_msgq_get( &g_isbd.queue.rx_q, &byte, K_MSEC( 1000 ) ) == 0 ) {
     
     // ! If queue is full rx will be disabled,
     // ! so we have to reenable rx interrupts
     uart_irq_rx_enable( g_isbd.config.dev );
 
-    for ( int i=0; i < msg.len; i++ ) {
+    printk( "LINE: %d / %d\n", line_n, lines );
+    
 
-      bool trail_char = false;
-      uint8_t byte = msg.data[ i ];
+    uint8_t trail_char = 0;
 
-      if ( byte == '\r' || byte == '\n' ) {
-        trail_char = true;
-        // printk("CHAR: %d\n", byte );
-      } else {
-        // printk("CHAR: %c\n", byte );
-      }
-
-      if ( buff_i > 0 && trail_char ) {
-        
-        // printk("__buff: %s\n", __buff );
-        // printk("__line: %s\n", __line );
-
-        isbd_at_code_t code = _at_get_msg_code( __buff );
-
-        if ( code != ISBD_AT_UNK ) {
-          // printk("CODE: %d\n", code );
-          return code;
-        }
-
-        buff_i = 0;
-        __buff[ 0 ] = '\0';
-
-        // go to the next line
-        line_n++;
-
-        // printk( "LINE: %d %d\n", line_n, lines );
-
-      }
-      
-      if ( !trail_char ) {
-        
-        if ( line_n == lines-1 ) { // get the most relevant line
-          if ( __line ) {
-            __line[ buff_i ] = byte;
-            __line[ buff_i + 1 ] = '\0';
-          }
-        } else { // get smaller AT responses
-          // printk("__buff @ %c\n", byte );
-          __buff[ buff_i ] = byte;
-          __buff[ buff_i + 1 ] = '\0';          
-        }
-        // buffer index should be increased although
-        // the __line buffer is ignored
-        buff_i++;
-
-      }
-
+    if ( byte == '\r' || byte == '\n' ) {
+      trail_char = byte;
+      printk( "CHAR: %d\n", byte );
+    } else {
+      printk( "CHAR: %c\n", byte );
     }
-  
-    
-    
+
+    if ( buff_i > 0 && byte == '\n' && old_byte == '\r' ) {
+
+      isbd_at_code_t code = _at_get_msg_code( __buff );
+
+      if ( code != ISBD_AT_UNK ) {
+        return code;
+      }
+
+      buff_i = 0;
+      __buff[ 0 ] = '\0';
+
+      line_n++;
+          
+    }
+
+    if ( !trail_char ) {
+
+      __buff[ buff_i ] = byte;
+      __buff[ buff_i + 1 ] = '\0';      
+
+      buff_i++;
+    }
+
+    old_byte = byte;
+
   }
 
   // timeout
@@ -242,37 +234,38 @@ isbd_at_code_t isbd_enable_flow_control( bool enable ) {
   uint8_t en_param = enable ? 3 : 0 ;
   
   SEND_AT_CMD_P( "&K", en_param );
-  code = _uart_pack_txt_resp( NULL, AT_1_LINE_RESP, 1000 );
+  code = _uart_pack_txt_resp( NULL, AT_1_LINE_RESP, 100 );
 
   SEND_AT_CMD_P( "&D", en_param );
-  code = _uart_pack_txt_resp( NULL, AT_1_LINE_RESP, 1000 );
+  code = _uart_pack_txt_resp( NULL, AT_1_LINE_RESP, 100 );
 
   return code;
 }
 
 isbd_at_code_t isbd_set_verbose( bool enable ) {
   SEND_AT_CMD_P( "V", enable );
-  return _uart_pack_txt_resp( NULL, AT_1_LINE_RESP, 1000 );
+  return _uart_pack_txt_resp( NULL, AT_1_LINE_RESP, 100 );
 }
 
 isbd_at_code_t isbd_fetch_imei( char *__imei ) {
   SEND_AT_CMD_EXT( "cgsn" );
-  return _uart_pack_txt_resp( __imei, AT_2_LINE_RESP, 1000 );
+  return _uart_pack_txt_resp( __imei, AT_2_LINE_RESP, 100 );
 }
 
 isbd_at_code_t isbd_fetch_revision( char *__revision ) {
   SEND_AT_CMD_EXT( "cgmr" );
-  return _uart_pack_txt_resp( __revision, AT_2_LINE_RESP, 1000 );
+  return _uart_pack_txt_resp( __revision, AT_2_LINE_RESP, 100 );
 }
 
 isbd_at_code_t isbd_fetch_rtc( char *__rtc ) {
   SEND_AT_CMD_EXT( "cclk" );
-  return _uart_pack_txt_resp( __rtc, AT_2_LINE_RESP, 1000 );
+  return _uart_pack_txt_resp( __rtc, AT_2_LINE_RESP, 100 );
 }
 
 
 isbd_at_code_t isbd_set_mo_txt( const char *txt ) {
 
+  // TODO: Review this
   // ! The length of text message is limited to 120 characters. 
   // ! This is due to the length limit on the AT command line interface. 
   char __txt[ AT_SBDWT_MAX_LEN + 1 ];
@@ -289,46 +282,57 @@ isbd_at_code_t isbd_set_mo_txt( const char *txt ) {
 
   SEND_AT_CMD_EXT_SET( "sbdwt", __txt );
 
-  return _uart_pack_txt_resp( NULL, AT_2_LINE_RESP, 1000 );
+  return _uart_pack_txt_resp( NULL, AT_2_LINE_RESP, 100 );
 }
 
-isbd_at_code_t isbd_set_mo_bin( uint8_t *__msg, uint16_t msg_len ) {
 
-  uint32_t sum = 0;
-  uint8_t __data[ msg_len + 2 ];
-
-  for ( int i=0; i < msg_len; i++ ) {
-    sum += __data[ i ] = __msg[ i ];
+isbd_at_code_t _uart_pack_txt_resp_code( int8_t *cmd_code, uint16_t timeout_ms ) {
+  char __cmd_code[3]; // two digits as much
+  isbd_at_code_t at_code = _uart_pack_txt_resp( __cmd_code, AT_1_LINE_RESP, timeout_ms );
+  if ( at_code == ISBD_AT_UNK ) {
+    *cmd_code = atoi( __cmd_code );
   }
+  return at_code;
+}
+
+int8_t isbd_set_mo_bin( const uint8_t *__msg, uint16_t msg_len ) {
+
+  uint8_t __data[ msg_len + 2 ];
 
   char __len[ 4 ];
   sprintf( __len, "%d", msg_len );
   SEND_AT_CMD_EXT_SET( "sbdwb", __len );
+  
+  // TODO: retrieve the command result code
+  int8_t cmd_code;
+  isbd_at_code_t at_code = _uart_pack_txt_resp_code( &cmd_code, 100 );
 
-  isbd_at_code_t code =  _uart_pack_txt_resp( NULL, AT_1_LINE_RESP, 1000 );
+  if ( at_code == ISBD_AT_RDY ) {
+    
+    uint32_t sum = 0;
+    for ( int i=0; i < msg_len; i++ ) {
+      sum += __data[ i ] = __msg[ i ];
+    }
 
-  if ( code == ISBD_AT_RDY ) {
-
-    // ready to send binary data
-    uint8_t *_csum = (uint8_t*)&sum;
-
-    __data[ msg_len ] = _csum[ 1 ];
-    __data[ msg_len + 1 ] = _csum[ 0 ];
-  } else {
-    return code;
+    uint16_t *csum = &__data[ msg_len ];
+    *csum = htons( sum & 0xFFFF );
+    
+    // write binary data
+    // MSG (N bytes) + CHECKSUM (2 bytes)
+    isbd_uart_write( __data, msg_len + 2 );
+    
+    _uart_pack_txt_resp_code( &cmd_code, 100 );
   }
-
-  isbd_uart_write( __data, msg_len + 2 );
-
-  return _uart_pack_txt_resp( NULL, AT_2_LINE_RESP, 1000 );
+  
+  // always fetch last AT command
+  at_code = _uart_pack_txt_resp( NULL, AT_1_LINE_RESP, 100 );
+  
+  return cmd_code;
 }
 
-isbd_at_code_t isbd_get_mt_bin( uint8_t *__msg, uint16_t *msg_len ) {
-
+isbd_at_code_t isbd_get_mt_bin( uint8_t *__msg, uint16_t *msg_len, uint16_t *csum ) {
   SEND_AT_CMD_EXT( "sbdrb" );
-  
-  uint16_t csum;
-  return _uart_pack_bin_resp( __msg, msg_len, &csum, 1000 );
+  return _uart_pack_bin_resp( __msg, msg_len, csum, 100 );
 }
 
 isbd_at_code_t isbd_set_mo_txt_l( const char *txt ) {
@@ -337,13 +341,13 @@ isbd_at_code_t isbd_set_mo_txt_l( const char *txt ) {
 
   // wait for READY\r\n
   isbd_at_code_t code = 
-    _uart_pack_txt_resp( NULL, AT_1_LINE_RESP, 1000 );
+    _uart_pack_txt_resp( NULL, AT_1_LINE_RESP, 100 );
 
   if ( code == ISBD_AT_RDY ) {
     // TODO: add \r char
     isbd_uart_write( (uint8_t*)txt, strlen( txt ) );
   
-    code = _uart_pack_txt_resp( NULL, AT_2_LINE_RESP, 1000 );
+    code = _uart_pack_txt_resp( NULL, AT_2_LINE_RESP, 100 );
   }
 
   return code;
@@ -356,7 +360,7 @@ isbd_at_code_t isbd_mo_to_mt( char *__out ) {
 
 isbd_at_code_t isbd_get_mt_txt( char *__mt_buff ) {
   SEND_AT_CMD_EXT( "sbdrt" );
-  return _uart_pack_txt_resp( __mt_buff, AT_3_LINE_RESP, 1000 );
+  return _uart_pack_txt_resp( __mt_buff, AT_3_LINE_RESP, 100 );
 }
 
 void _uart_tx_isr( const struct device *dev, void *user_data ) {
@@ -396,6 +400,7 @@ void _uart_tx_isr( const struct device *dev, void *user_data ) {
 }
 
 void _uart_rx_isr( const struct device *dev, void *user_data ) {
+  
   //printk("ISR!\n");
   // if queue is full we can not fill more bytes  
   if ( k_msgq_num_used_get( &g_isbd.queue.rx_q ) == RX_MSGQ_LEN ) {
@@ -403,20 +408,12 @@ void _uart_rx_isr( const struct device *dev, void *user_data ) {
     return;
   }
 
-  uint8_t byte; // TODO: this should be named byte
+  uint8_t byte; // TODO: this should be named byte  
   
-  uint8_t *rx_buff = g_isbd.buff.rx;
-  uint16_t *rx_buff_len = &g_isbd.buff.rx_len;
-  
-  *rx_buff_len = uart_fifo_read( dev, rx_buff, RX_BUFF_SIZE );
-
-  if ( *rx_buff_len > 0 ) {
-    struct uart_queue_msg msg;
-    msg.len = *rx_buff_len;
-    bytecpy( msg.data, rx_buff, *rx_buff_len );
-    
-    k_msgq_put( &g_isbd.queue.rx_q, &msg, K_NO_WAIT );
+  if ( uart_fifo_read( dev, &byte, 1 ) == 1 ) {
+    k_msgq_put( &g_isbd.queue.rx_q, &byte, K_NO_WAIT );
   }
+  
 
   /*
   // TODO: collect every possible char
@@ -480,7 +477,7 @@ isbd_err_t _uart_setup() {
   k_msgq_init( 
     &g_isbd.queue.rx_q,
     g_isbd.queue.rx_buff,
-    sizeof(struct uart_queue_msg), 
+    sizeof(uint8_t),
     RX_MSGQ_LEN );
 
   int ret = uart_irq_callback_user_data_set( 

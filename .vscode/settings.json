@@ -5,6 +5,7 @@
       "devicetree.h": "c",
       "kernel.h": "c",
       "uart.h": "c",
-      "random": "c"
+      "random": "c",
+      "byteswap.h": "c"
     }
 }
