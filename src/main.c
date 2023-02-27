@@ -149,6 +149,14 @@ void check_err( isbd_err_t err ) {
   }
 }
 
+#define CHECK_AT_CMD( code, f_name, ... ) \
+  code = f_name( __VA_ARGS__ ); \
+  if ( code == 0 ) { \
+    printk( #f_name "() OK\n" ); \
+  } else { \
+    printk( #f_name "() ERR: %hhd\n", code ); \
+  }
+
 void main(void) {
 
 	if (!device_is_ready(uart_master_device)) {
@@ -176,22 +184,24 @@ void main(void) {
 
   char __buff[ 256 ];
 
-  isbd_at_code_t code;
+  int8_t code;
   isbd_setup( &isbd_config );
 
-  isbd_fetch_imei( __buff, sizeof( __buff ) );
-  printk( "IMEI     : %s\n", __buff );
+  // isbd_fetch_imei( __buff, sizeof( __buff ) );
+
+  CHECK_AT_CMD( code, isbd_fetch_imei, __buff, sizeof( __buff ) );  
   
-  const char *msg = "Javichu";
-  code = isbd_set_mo_bin( msg, strlen( msg ) );
+  // printk( "IMEI     : %s\n", __buff );
+  
+  const char *msg = "hola";
+  CHECK_AT_CMD( code, isbd_set_mo_bin, msg, strlen( msg ) );
+
   // code = isbd_set_mo_bin( msg, strlen( msg ) );
 
   // code = isbd_clear_buffer( ISBD_CLEAR_MO_BUFF );
   // printk( "isbd_clear_buffer() : %d\n", code );
 
-  isbd_mo_to_mt( __buff, sizeof( __buff ) );
-  printk( "MO -> MT : %s\n", __buff );
-
+  /*
   uint16_t len, csum;
   isbd_get_mt_bin( __buff, &len, &csum );
   
@@ -200,14 +210,28 @@ void main(void) {
   }
 
   printk( " @ len = %d, csum = %04X\n", len, csum );
-
-  /*
-  printk( "Starting session ...\n" );
-
-  isbd_session_t session;
-  code = isbd_init_session( NULL );
-  return;
   */
+  
+  // printk( "Starting session ...\n" );
+
+  // isbd_session_t session;
+  // isbd_init_session( &session );
+
+  // printk( "MO Status   : %hhu,\n"
+  //         "MO MSN      : %hu,\n"
+  //         "MT Status   : %hhu,\n"
+  //         "MT MSN      : %hu,\n"
+  //         "MT Length   : %hu,\n"
+  //         "MT Queued   : %hu\n",
+  //   session.mo_sts,
+  //   session.mo_msn,
+  //   session.mt_sts,
+  //   session.mt_msn,
+  //   session.mt_len,
+  //   session.mt_queued );
+
+  return;
+
 
   // int8_t cmd_code = isbd_set_mo_txt( "hoooooo" );
   // printk( "SBDWT    : %d\n", cmd_code );

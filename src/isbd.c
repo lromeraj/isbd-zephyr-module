@@ -195,11 +195,12 @@ isbd_at_code_t _uart_pack_txt_resp(
   
     uint8_t trail_char = 0;
 
+
     if ( byte == '\r' || byte == '\n' ) {
       trail_char = byte;
-      printk( "CHAR: %d\n", byte );
+      // printk( "CHAR: %d\n", byte );
     } else {
-      printk( "CHAR: %c\n", byte );
+      // printk( "CHAR: %c %d/%d\n", byte, buff_i, buff_len );
     }
 
     if ( buff_i > 0 && trail_char ) {
@@ -305,18 +306,22 @@ int8_t isbd_fetch_rtc( char *__rtc, uint16_t rtc_len ) {
 int8_t isbd_init_session( isbd_session_t *session ) {
 
   char __buff[ 64 ];
+
   SEND_AT_CMD_EXT( "sbdix" );
 
-  // isbd_at_code_t at_code = 
-  //   _uart_pack_txt_resp( __buff, sizeof( __buff ), AT_2_LINE_RESP, 10000 );
+  isbd_at_code_t at_code = 
+    _uart_pack_txt_resp( __buff, sizeof( __buff ), AT_2_LINE_RESP, 10000 );
   
-  // sscanf( __buff, "+SBDIX:%hhd,%hd,%hhd,%hd,%hd,%hhd",
-  //   &session->mo_sts,
-  //   &session->mo_msn,
-  //   &session->mt_sts,
-  //   &session->mt_msn,
-  //   &session->mt_len,
-  //   &session->mt_queued );
+  printk( "__buff: %s\n", __buff );
+  
+  // TODO: implement optimized function instead of using sscanf
+  sscanf( __buff, "+SBDIX:%hhu,%hu,%hhu,%hu,%hu,%hhu",
+    &session->mo_sts,
+    &session->mo_msn,
+    &session->mt_sts,
+    &session->mt_msn,
+    &session->mt_len,
+    &session->mt_queued );
 
   return -1;
 }
@@ -416,14 +421,15 @@ int8_t isbd_set_mo_bin( const uint8_t *__msg, uint16_t msg_len ) {
     // MSG (N bytes) + CHECKSUM (2 bytes)
     _uart_write( __data, msg_len + 2 );
 
+    // retrieve the command result code
     _uart_pack_txt_resp_code( &cmd_code, 100 );
 
   }
 
   // always fetch last AT command
   at_code = _uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
-
-  return 0;
+  
+  return at_code == ISBD_AT_OK ? cmd_code : at_code;
 }
 
 int8_t isbd_get_mt_bin( uint8_t *__msg, uint16_t *msg_len, uint16_t *csum ) {
@@ -627,8 +633,8 @@ isbd_err_t _uart_setup() {
     isbd_set_verbose( false );
   }
 
-  // // ! Enable or disable flow control depending on uart configuration
-  // // ! this will avoid hangs during device control
+  // ! Enable or disable flow control depending on uart configuration
+  // ! this will avoid hangs during device control
   if ( config.flow_ctrl == UART_CFG_FLOW_CTRL_NONE ) {
     isbd_enable_flow_control( false );
   } else {
