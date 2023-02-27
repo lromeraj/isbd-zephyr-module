@@ -98,7 +98,7 @@ isbd_at_code_t _at_get_msg_code( const char *__buff ) {
     }
 
   } else {
-    
+
     if ( strcmp( __buff, "0" ) == 0 ) {
       return ISBD_AT_OK;
     } else if ( strcmp( __buff, "4" ) == 0 ) {
@@ -106,7 +106,7 @@ isbd_at_code_t _at_get_msg_code( const char *__buff ) {
     } else if ( strcmp( __buff, "126" ) == 0 ) {
       return ISBD_AT_RING;
     }
-
+    
   }
   
   // READY is the same for both modes
@@ -311,8 +311,6 @@ int8_t isbd_init_session( isbd_session_t *session ) {
 
   isbd_at_code_t at_code = 
     _uart_pack_txt_resp( __buff, sizeof( __buff ), AT_2_LINE_RESP, 10000 );
-  
-  printk( "__buff: %s\n", __buff );
   
   // TODO: implement optimized function instead of using sscanf
   sscanf( __buff, "+SBDIX:%hhu,%hu,%hhu,%hu,%hu,%hhu",

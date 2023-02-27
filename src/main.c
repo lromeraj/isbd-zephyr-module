@@ -149,12 +149,14 @@ void check_err( isbd_err_t err ) {
   }
 }
 
-#define CHECK_AT_CMD( code, f_name, ... ) \
+#define CHECK_AT_CMD( code, ok_block, f_name, ... ) \
   code = f_name( __VA_ARGS__ ); \
   if ( code == 0 ) { \
-    printk( #f_name "() OK\n" ); \
+    printk( "%-20s() OK; ", #f_name ); \
+    ok_block \
+    printk( "\n" ); \
   } else { \
-    printk( #f_name "() ERR: %hhd\n", code ); \
+    printk( "%-20s() ERR: %hhd\n", #f_name, code ); \
   }
 
 void main(void) {
@@ -189,13 +191,27 @@ void main(void) {
 
   // isbd_fetch_imei( __buff, sizeof( __buff ) );
 
-  CHECK_AT_CMD( code, isbd_fetch_imei, __buff, sizeof( __buff ) );  
+  CHECK_AT_CMD( code, {
+    printk( "IMEI : %s", __buff );
+  }, isbd_fetch_imei, __buff, sizeof( __buff ) );  
   
-  // printk( "IMEI     : %s\n", __buff );
-  
-  const char *msg = "hola";
-  CHECK_AT_CMD( code, isbd_set_mo_bin, msg, strlen( msg ) );
+  const char *msg = "ramoncito";
 
+  CHECK_AT_CMD( code, {}, isbd_set_mo_bin, msg, strlen( msg ) );
+  CHECK_AT_CMD( code, {
+    printk( "%s", __buff );
+  }, isbd_mo_to_mt, __buff, sizeof( __buff ) );
+
+  uint16_t len, csum;
+  CHECK_AT_CMD( code, {
+    printk("msg=");
+    for ( int i=0; i < len; i++ ) {
+      printk( "%c", __buff[ i ] );
+    }
+    printk( ", len=%d, csum=%04X", len, csum );
+  }, isbd_get_mt_bin, __buff, &len, &csum ); 
+  
+ 
   // code = isbd_set_mo_bin( msg, strlen( msg ) );
 
   // code = isbd_clear_buffer( ISBD_CLEAR_MO_BUFF );
@@ -212,25 +228,23 @@ void main(void) {
   printk( " @ len = %d, csum = %04X\n", len, csum );
   */
   
-  // printk( "Starting session ...\n" );
+  printk( "Starting session ...\n" );
 
-  // isbd_session_t session;
-  // isbd_init_session( &session );
+  isbd_session_t session;
+  isbd_init_session( &session );
 
-  // printk( "MO Status   : %hhu,\n"
-  //         "MO MSN      : %hu,\n"
-  //         "MT Status   : %hhu,\n"
-  //         "MT MSN      : %hu,\n"
-  //         "MT Length   : %hu,\n"
-  //         "MT Queued   : %hu\n",
-  //   session.mo_sts,
-  //   session.mo_msn,
-  //   session.mt_sts,
-  //   session.mt_msn,
-  //   session.mt_len,
-  //   session.mt_queued );
-
-  return;
+  printk( "MO Status   : %hhu,\n"
+          "MO MSN      : %hu,\n"
+          "MT Status   : %hhu,\n"
+          "MT MSN      : %hu,\n"
+          "MT Length   : %hu,\n"
+          "MT Queued   : %hu\n",
+    session.mo_sts,
+    session.mo_msn,
+    session.mt_sts,
+    session.mt_msn,
+    session.mt_len,
+    session.mt_queued );
 
 
   // int8_t cmd_code = isbd_set_mo_txt( "hoooooo" );
