@@ -27,33 +27,33 @@ The following table shows the current status of the library based on the differe
 - `Implemented`: command is implemented, but it was not tested.
 - `Tested`: command is implemented and working as expected.
 
-| AT | Command | Status |
-| -- | -- | -- | 
-| AT | -- | :heavy_check_mark: Tested |
-| A/ | Repeat Last Command | :clock1: Planned |
-| E | Echo | :heavy_check_mark: Tested |
-| I | Identification | :pencil2: WIP |
-| Q | Quiet Mode | :pencil2: WIP |
-| V | Verbose Mode | :heavy_check_mark: Tested |
-| Z | Soft Reset | :pencil2: WIP |
-| &Z | DTR Option | :pencil2: WIP |
-| &F | Restore Factory Settings | :x: |
-| &K | Flow Control | :heavy_check_mark: | :hammer_and_pick: Implemented |
-| &V | View Active and Stored Configuration | :x: |
-| &W | Store Active Configuration | :pencil2: |
-| &Y | Designate Default Reset Profile | :pencil2: |
-| %R | Display registers | :x: |
-| *F | Flush to EEPROM | :pencil2: |
-| *R | Radio Activity | :pencil2: | 
-| +CCLK | Real Time Clock | :hammer_and_pick: Implemented | 
-| +CGMI | Manufacturer Identification | :clock1: Planned | 
-| +CGMM | Model Identification | :clock1: Planned | 
-| +CGMR | Revision | :clock1: Planned | 
-| +CGSN | Serial Number | :heavy_check_mark: Tested | 
-| +CIER | Indicator Event Reporting | :clock1: Planned | 
-| +CRIS | Ring Indication Status | :clock1: Planned |
-| +CSQ | Signal Quality | :clock1: Planned |
-| +CULK | Unlock | :x: |
+| AT | Command | Status | Observations |
+| -- | -- | -- | -- |
+| AT | -- | :heavy_check_mark: Tested | |
+| A/ | Repeat Last Command | :clock1: Planned | |
+| E | Echo | :heavy_check_mark: Tested | |
+| I | Identification | :pencil2: WIP | |
+| Q | Quiet Mode | :pencil2: WIP | |
+| V | Verbose Mode | :heavy_check_mark: Tested | |
+| Z | Soft Reset | :pencil2: WIP | |
+| &Z | DTR Option | :pencil2: WIP | |
+| &F | Restore Factory Settings | :x: | |
+| &K | Flow Control | :heavy_check_mark: | :hammer_and_pick: Implemented | |
+| &V | View Active and Stored Configuration | :x: | |
+| &W | Store Active Configuration | :pencil2: | |
+| &Y | Designate Default Reset Profile | :pencil2: | |
+| %R | Display registers | :x: | |
+| *F | Flush to EEPROM | :pencil2: | |
+| *R | Radio Activity | :pencil2: |  |
+| +CCLK | Real Time Clock | :hammer_and_pick: Implemented |  |
+| +CGMI | Manufacturer Identification | :clock1: Planned |  |
+| +CGMM | Model Identification | :clock1: Planned |  |
+| +CGMR | Revision | :clock1: Planned |  |
+| +CGSN | Serial Number | :heavy_check_mark: Tested |  |
+| +CIER | Indicator Event Reporting | :clock1: Planned |  | 
+| +CRIS | Ring Indication Status | :clock1: Planned |  |
+| +CSQ | Signal Quality | :clock1: Planned |  |
+| +CULK | Unlock | :x: |  |
 
 
 > **NOTE**: by the moment tested means (at least) that it works on a *NXP FDRM K64F* board using the Iridium 9602 SBD Transceiver, however it should work with other boards and modems.
