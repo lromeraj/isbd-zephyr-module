@@ -24,7 +24,7 @@ The following table shows the current status of the library based on the differe
 
 | AT Command | Implemented | Tested |
 | -- | -- | -- |
-| AT | &check; | &#x2717; |
+| AT | :heavy_check_mark: | :heavy_check_mark: |
 
 
 > **NOTE**: by the moment tested means (at least) that it works on a *NXP FDRM K64F* board using the Iridium 9602 SBD Transceiver, however it should work with other boards and modems.
