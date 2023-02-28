@@ -27,8 +27,8 @@ The following table shows the current status of the library based on the differe
 - `Implemented`: command is implemented, but it was not tested.
 - `Tested`: command is implemented and working as expected.
 
-| AT | Command | Planned | Status |
-| -- | -- | -- | -- | 
+| AT | Command | Status |
+| -- | -- | -- | 
 | AT | -- | :heavy_check_mark: Tested |
 | A/ | Repeat Last Command | :clock1: Planned |
 | E | Echo | :heavy_check_mark: Tested |
