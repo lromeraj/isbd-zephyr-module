@@ -45,6 +45,7 @@ struct uart_queue {
 };
 
 struct isbd {
+  bool _echoed;
   struct uart_buff buff;
   struct uart_queue queue;   
   struct isbd_config config;
@@ -56,6 +57,7 @@ static struct isbd g_isbd = {};
 isbd_err_t _uart_setup();
 void _uart_write( uint8_t *__src_buf, uint16_t len );
 uint16_t _uart_get_n_bytes( uint8_t *bytes, uint16_t n_bytes, uint16_t timeout_ms );
+isbd_at_code_t _uart_check_echo();
 isbd_at_code_t _uart_pack_bin_resp( uint8_t *__msg, uint16_t *msg_len, uint16_t *csum, uint16_t timeout_ms );
 isbd_at_code_t _uart_skip_txt_resp( uint8_t lines, uint16_t timeout_ms );
 isbd_at_code_t _uart_pack_txt_resp( char *__str_resp, uint16_t str_resp_len, uint8_t lines, uint16_t timeout_ms );
@@ -67,7 +69,7 @@ isbd_err_t isbd_setup( struct isbd_config *config ) {
   return _uart_setup();
 }
 
-void _uart_write( uint8_t *__src_buf, uint16_t len ) {  
+void _uart_write( uint8_t *__src_buf, uint16_t len ) {
 
   #ifdef UART_TX_POLLING
     for (int i = 0; i < len; i++) {
@@ -124,25 +126,42 @@ uint16_t _uart_get_n_bytes(
   uint8_t byte;
  
   while ( n_bytes > 0 && k_msgq_get( &g_isbd.queue.rx_q, &byte, K_MSEC( timeout_ms ) ) == 0 ) {
-    uart_irq_rx_enable( g_isbd.config.dev );
     
+    // ! Interrupts can disable RX interrupts when queue starts
+    // ! filling up, which probably means instant packet loss
+    // ! so instead disabling RX the queue will skip (silently) those bytes
+    // uart_irq_rx_enable( g_isbd.config.dev );
+    // printk( "bin: %c\n", byte );
+
     if ( bytes ) {
       *bytes++ = byte; 
     }
-
     n_bytes--;
   }
 
+  // TODO: Change return logic
   return n_bytes;
+}
+
+inline uint16_t _uart_skip_n_bytes(
+  uint16_t n_bytes, uint16_t timeout_ms
+) {
+  return _uart_get_n_bytes( NULL, n_bytes, timeout_ms );
 }
 
 isbd_at_code_t _uart_pack_bin_resp( 
   uint8_t *__msg, uint16_t *msg_len, uint16_t *csum, uint16_t timeout_ms
 ) {
-  uint8_t byte;
 
+  uint8_t byte;
+  isbd_at_code_t code = _uart_check_echo();
+
+  if ( code != ISBD_AT_OK ) {
+    return code;
+  }
+  
   // ! This was a bug caused by trailing chars
-  // ! This has been fixed purging que queue just before
+  // ! This has been fixed purging the queue just before
   // ! sending an AT command
   // // If verbose mode is enabled a trailing \r char 
   // // is used so we have to skip it
@@ -158,13 +177,61 @@ isbd_at_code_t _uart_pack_bin_resp(
   _uart_get_n_bytes( (uint8_t*)csum, 2, timeout_ms );
   *csum = ntohs( *csum );
 
-  return _uart_pack_txt_resp( NULL, 0, AT_1_LINE_RESP, timeout_ms );
+  return _uart_skip_txt_resp( AT_1_LINE_RESP, timeout_ms );
+}
+
+isbd_at_code_t _uart_check_echo() {
+
+  if ( !g_isbd.config.echo || g_isbd._echoed ) {
+    return ISBD_AT_OK;
+  }
+
+  uint8_t byte;
+  uint16_t byte_i = 0;
+
+  // This flag is used to avoid rechecking echo for segmented responses
+  g_isbd._echoed = true;
+
+  while( k_msgq_get( &g_isbd.queue.rx_q, &byte, K_MSEC( 100 ) ) == 0 ) {
+
+    // TODO: Recheck this in a near future
+    // ! If echo mode is enabled the ISU appends a \n char 
+    // ! at the beginning of the AT command, but this only occurs
+    // ! for a specific subset of commands so the problem is probably
+    // ! not present in this library or maybe it's due to a misunderstanding
+    if ( byte_i == 0 && (byte == '\r' || byte == '\n') ) {
+      // printk( "TRAILING ... %d\n", byte );
+      continue;
+    }
+
+    if ( g_isbd.buff.tx[ byte_i ] != byte ) {
+      // printk("CHECK ERROR %d %d\n", byte, g_isbd.buff.tx[ byte_i ] );
+      // Echoed command do not matches previously transmitted command
+      return ISBD_AT_ERR;
+    }
+
+    byte_i++;
+    if ( byte_i == g_isbd.buff.tx_len ) {
+
+      // Echoed command matches
+      return ISBD_AT_OK;
+    }
+  }
+
+  // Echo timeout
+  return ISBD_AT_TIMEOUT;
 }
 
 isbd_at_code_t _uart_pack_txt_resp( 
   char *__str_resp, uint16_t str_resp_len, uint8_t lines, uint16_t timeout_ms 
 ) {
   
+  isbd_at_code_t at_code = _uart_check_echo();
+
+  if ( at_code != ISBD_AT_OK ) {
+    return at_code;
+  }
+
   uint8_t byte;
   uint8_t line_n = 1;
   uint8_t buff_i = 0;
@@ -189,7 +256,7 @@ isbd_at_code_t _uart_pack_txt_resp(
     
     // ! If queue is full rx will be disabled,
     // ! so we have to reenable rx interrupts
-    uart_irq_rx_enable( g_isbd.config.dev );
+    // uart_irq_rx_enable( g_isbd.config.dev );
 
     // printk( "LINE: %d / %d\n", line_n, lines );
   
@@ -204,11 +271,12 @@ isbd_at_code_t _uart_pack_txt_resp(
     }
 
     if ( buff_i > 0 && trail_char ) {
+      
+      // TODO: AT code should be checked only in the first and penultimate line
+      at_code = _at_get_msg_code( __buff );
 
-      isbd_at_code_t code = _at_get_msg_code( __buff );
-
-      if ( code != ISBD_AT_UNK ) {
-        return code;
+      if ( at_code != ISBD_AT_UNK ) {
+        return at_code;
       }
 
       line_n++;
@@ -254,6 +322,7 @@ inline isbd_at_code_t _uart_skip_txt_resp(
 static __AT_BUFF( __g_at_buf );
 
 #define SEND_AT_CMD( fn, ... ) \
+  g_isbd._echoed = false; \
   k_msgq_purge( &g_isbd.queue.rx_q ); \
   _uart_write( __g_at_buf, at_cmd##fn ( __g_at_buf, __VA_ARGS__ ) )
 
@@ -271,19 +340,30 @@ static __AT_BUFF( __g_at_buf );
 
 int8_t isbd_enable_flow_control( bool enable ) {
 
-  isbd_at_code_t code;
+  isbd_at_code_t at_code;
   uint8_t en_param = enable ? 3 : 0;
   
   SEND_AT_CMD_P( "&K", en_param );
-  code = _uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+  at_code = _uart_skip_txt_resp( AT_1_LINE_RESP, 1000 );
 
-  SEND_AT_CMD_P( "&D", en_param );
-  code = _uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
-  
-  return code;
+  if ( at_code != ISBD_AT_OK ) {
+    return at_code;
+  } else {
+    SEND_AT_CMD_P( "&D", en_param );
+    at_code = _uart_skip_txt_resp( AT_1_LINE_RESP, 1000 );
+  }
+
+  return at_code;
+}
+
+int8_t isbd_enable_echo( bool enable ) {
+  g_isbd.config.echo = enable;
+  SEND_AT_CMD_P( "E", enable );
+  return _uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
 }
 
 int8_t isbd_set_verbose( bool enable ) {
+  g_isbd.config.verbose = enable;
   SEND_AT_CMD_P( "V", enable );
   return _uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
 }
@@ -368,7 +448,7 @@ int8_t isbd_set_mo_txt( const char *txt ) {
 }
 
 isbd_at_code_t _uart_pack_txt_resp_code( int8_t *cmd_code, uint16_t timeout_ms ) {
-  
+
   // ! The size of this buff needs at least the size to store
   // ! AT response messages (not user string responses)
   char __cmd_code[ AT_MIN_BUFF_SIZE ];
@@ -491,6 +571,7 @@ void _uart_tx_isr( const struct device *dev, void *user_data ) {
   uint8_t *tx_buff = g_isbd.buff.tx;
   uint16_t *tx_buff_len = &g_isbd.buff.tx_len;
   uint16_t *tx_buff_idx = &g_isbd.buff.tx_idx;
+
   
   if ( *tx_buff_idx < *tx_buff_len ) {
     (*tx_buff_idx) += uart_fifo_fill( 
@@ -506,15 +587,14 @@ void _uart_tx_isr( const struct device *dev, void *user_data ) {
 
     if ( uart_irq_tx_complete( dev ) ) {
 
-      *tx_buff_idx = 0;
-      *tx_buff_len = 0;
+      // *tx_buff_idx = 0;
+      // *tx_buff_len = 0;
       
       // ! When uart_irq_tx_disable() is called
       // ! the transmission is halted although 
       // ! the fifo was filled successfully
       // ! See: https://github.com/zephyrproject-rtos/zephyr/issues/10672
       uart_irq_tx_disable( dev );
-
     }
 
   }
@@ -523,15 +603,16 @@ void _uart_tx_isr( const struct device *dev, void *user_data ) {
 
 void _uart_rx_isr( const struct device *dev, void *user_data ) {
   
-  //printk("ISR!\n");
+  /*
   // if queue is full we can not fill more bytes  
   if ( k_msgq_num_used_get( &g_isbd.queue.rx_q ) == RX_MSGQ_LEN ) {
     uart_irq_rx_disable( g_isbd.config.dev );
     return;
   }
+  */
 
-  uint8_t byte; // TODO: this should be named byte  
-  
+  uint8_t byte;  
+
   if ( uart_fifo_read( dev, &byte, 1 ) == 1 ) {
     k_msgq_put( &g_isbd.queue.rx_q, &byte, K_NO_WAIT );
   }
@@ -623,22 +704,29 @@ isbd_err_t _uart_setup() {
   struct uart_config config;  
   uart_config_get( g_isbd.config.dev, &config );
 
-  // TODO: test AT connection
+  // ! The response code of this commands
+  // ! are not checked due to the possibility of 
+  // ! an initial conflicting configuration
+  // ! If the result code is an error does not mean
+  // ! that the change has not been applied (only for this specific cases)
+  // ! The last flow control command applied will finally check if the configuration was
+  // ! correctly applied to the ISU
 
-  if ( g_isbd.config.verbose ) {
-    isbd_set_verbose( true );
-  } else {
-    isbd_set_verbose( false );
-  }
+  isbd_enable_echo( g_isbd.config.echo );
+  isbd_set_verbose( g_isbd.config.verbose );
+
+  isbd_at_code_t at_code;
 
   // ! Enable or disable flow control depending on uart configuration
-  // ! this will avoid hangs during device control
+  // ! this will avoid hangs during communication
+  // ! Remember that the ISU transits between different states
+  // ! depending on some circumstances, but for AT commands
+  // ! flow control is implicitly disabled
   if ( config.flow_ctrl == UART_CFG_FLOW_CTRL_NONE ) {
-    isbd_enable_flow_control( false );
+    at_code = isbd_enable_flow_control( false );
   } else {
-    isbd_enable_flow_control( true );
+    at_code = isbd_enable_flow_control( true );
   }
-  
 
-  return ISBD_OK;
+  return at_code == ISBD_AT_OK ? ISBD_OK : ISBD_ERR;
 }

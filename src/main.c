@@ -180,7 +180,8 @@ void main(void) {
 	uart_configure( uart_slave_device, &uart_config );
 
   struct isbd_config isbd_config = {
-    .verbose = true,
+    .echo = true,
+    .verbose = false,
     .dev = uart_slave_device,
   };
 
@@ -191,13 +192,16 @@ void main(void) {
 
   // isbd_fetch_imei( __buff, sizeof( __buff ) );
 
+  // CHECK_AT_CMD( code, {}, isbd_enable_echo, true );
+
   CHECK_AT_CMD( code, {
     printk( "IMEI : %s", __buff );
   }, isbd_fetch_imei, __buff, sizeof( __buff ) );  
   
-  const char *msg = "ramoncito";
+  const char *msg = "Hi!";
 
   CHECK_AT_CMD( code, {}, isbd_set_mo_bin, msg, strlen( msg ) );
+  
   CHECK_AT_CMD( code, {
     printk( "%s", __buff );
   }, isbd_mo_to_mt, __buff, sizeof( __buff ) );
@@ -228,6 +232,7 @@ void main(void) {
   printk( " @ len = %d, csum = %04X\n", len, csum );
   */
   
+  /*
   printk( "Starting session ...\n" );
 
   isbd_session_t session;
@@ -246,6 +251,7 @@ void main(void) {
     session.mt_len,
     session.mt_queued );
 
+    */
 
   // int8_t cmd_code = isbd_set_mo_txt( "hoooooo" );
   // printk( "SBDWT    : %d\n", cmd_code );

@@ -10,6 +10,7 @@
   } isbd_clear_buffer_t;
 
   struct isbd_config {
+    bool echo;
     bool verbose;
     struct device *dev;
   };
@@ -38,6 +39,21 @@
   isbd_err_t isbd_setup( struct isbd_config *config );
 
   isbd_err_t isbd_test_at();
+
+  /**
+   * @brief Echo command characters.
+   * 
+   * @note If enabled, this is used as an extra check to know 
+   * if the device has received correctly the AT command. 
+   * This is usually not necessary except in cases
+   * where connection is too noisy, and despite of this the AT command will be corrupted
+   * and the device will respond with an ERR anyway, so it's recommended to disable
+   * echo in order to reduce RX serial traffic.
+   * 
+   * @param enable 
+   * @return int8_t 
+   */
+  int8_t isbd_enable_echo( bool enable );
 
   /**
    * @brief Query the device for Iridium system time if available

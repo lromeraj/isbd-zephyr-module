@@ -7,6 +7,7 @@
       "uart.h": "c",
       "random": "c",
       "byteswap.h": "c",
-      "typeinfo": "c"
+      "typeinfo": "c",
+      "system_error": "c"
     }
 }
