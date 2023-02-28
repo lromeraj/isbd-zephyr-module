@@ -22,9 +22,32 @@ This a quite simple example but tries to show a basic concept for using this lib
 # AT Command Status Table
 The following table shows the current status of the library based on the different AT commands available in the Iridium 9602 SBD Transceiver:
 
-| AT Command | Implemented | Tested |
-| -- | -- | -- |
-| AT | :heavy_check_mark: | :heavy_check_mark: |
+- `Planned`: the command is not implemented yet, but it is planned to be implemented in a near future.
+- `WIP`: the command is not implemented yet, but it is being implemented.
+- `Implemented`: command is implemented, but it was not tested.
+- `Tested`: command is implemented and working as expected.
+
+| AT | Command | Planned | Status |
+| -- | -- | -- | -- | 
+| AT | -- | :heavy_check_mark: Tested |
+| A/ | Repeat Last Command | :clock1: Planned |
+| E | Echo | :heavy_check_mark: Tested |
+| I | Identification | :pencil2: WIP |
+| Q | Quiet Mode | :pencil2: WIP |
+| V | Verbose Mode | :heavy_check_mark: | WIP |
+| Z | Soft Reset | :heavy_check_mark: | WIP |
+| &Z | DTR Option | :heavy_check_mark: | WIP |
+| &F | Restore Factory Settings | :x: | -- |
+| &K | Flow Control | :heavy_check_mark: | Tested |
+| &V | View Active and Stored Configuration | :x: | -- |
+| &W | Store Active Configuration | :heavy_check_mark: | WIP |
+| &Y | Designate Default Reset Profile | :heavy_check_mark: | WIP |
+| %R | Display registers | :x: | -- |
+| *F | Flush to EEPROM | :heavy_check_mark: | WIP |
+| *R | Radio Activity | :heavy_check_mark: | WIP | 
+| +CCLK | Real Time Clock | :heavy_check_mark: | Implemented | 
+| +CCLK | Real Time Clock | :heavy_check_mark: | Implemented | 
+ 
 
 
 > **NOTE**: by the moment tested means (at least) that it works on a *NXP FDRM K64F* board using the Iridium 9602 SBD Transceiver, however it should work with other boards and modems.
