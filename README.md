@@ -15,9 +15,7 @@ Below, you can see an example of a "Send and forgive" concept:
            |                                | OK. Sending message ...
            |                 
 ```
-This a quite simple example but tries to show a basic concept for using this library. In general you should consider to check the status codes returned by the different functions, so in this case you could implement a function callback in order to receive resulting status codes, for example.
-
-
+This is a quite simple example but tries to show a basic concept for using this library. In general you should consider to check the status codes returned by the different functions, so in this case you could implement a function callback in order to receive resulting status codes, for example.
 
 # AT Command Status Table
 The following table shows the current status of the library based on the different AT commands available in the Iridium 9602 SBD Transceiver:
@@ -29,22 +27,22 @@ The following table shows the current status of the library based on the differe
 
 | AT | Command | Status | Observations |
 | -- | -- | -- | -- |
-| AT | -- | :heavy_check_mark: Tested | |
+| AT | -- | :heavy_check_mark: Tested | For internal use only |
 | A/ | Repeat Last Command | :clock1: Planned | |
-| E | Echo | :heavy_check_mark: Tested | |
+| E | Echo | :heavy_check_mark: Tested | For itnernal use only |
 | I | Identification | :pencil2: WIP | |
-| Q | Quiet Mode | :pencil2: WIP | |
-| V | Verbose Mode | :heavy_check_mark: Tested | |
-| Z | Soft Reset | :pencil2: WIP | |
-| &Z | DTR Option | :pencil2: WIP | |
+| Q | Quiet Mode | :pencil2: Implemented | For internal use only |
+| V | Verbose Mode | :heavy_check_mark: Tested | For internal use only |
+| Z | Soft Reset | :pencil2: WIP |  |
+| &D | DTR Option | :heavy_check_mark: Tested | For internal use only |
 | &F | Restore Factory Settings | :x: | |
-| &K | Flow Control | :heavy_check_mark: | :hammer_and_pick: Implemented | |
+| &K | Flow Control | :heavy_check_mark: | :heavy_check_mark: Tested | For internal use only |
 | &V | View Active and Stored Configuration | :x: | |
-| &W | Store Active Configuration | :pencil2: | |
-| &Y | Designate Default Reset Profile | :pencil2: | |
+| &W | Store Active Configuration | :pencil2: WIP | |
+| &Y | Designate Default Reset Profile | :pencil2: WIP | |
 | %R | Display registers | :x: | |
-| *F | Flush to EEPROM | :pencil2: | |
-| *R | Radio Activity | :pencil2: |  |
+| *F | Flush to EEPROM | :pencil2: WIP | |
+| *R | Radio Activity | :pencil2: WIP |  |
 | +CCLK | Real Time Clock | :hammer_and_pick: Implemented |  |
 | +CGMI | Manufacturer Identification | :clock1: Planned |  |
 | +CGMM | Model Identification | :clock1: Planned |  |
@@ -55,5 +53,11 @@ The following table shows the current status of the library based on the differe
 | +CSQ | Signal Quality | :clock1: Planned |  |
 | +CULK | Unlock | :x: |  |
 
+| Status | Icon | Preview |
+|--|--|--|
+| `Implemented` | `:hammer_and_pick:` | :hammer_and_pick: Implemented |
+| `Tested` | `:heavy_check_mark:` | :heavy_check_mark: Tested |
+| `Planned` | `:clock1:` | :clock1: Planned |
+| `WIP` | `:pencil2:` | :pencil2: WIP |
 
-> **NOTE**: by the moment tested means (at least) that it works on a *NXP FDRM K64F* board using the Iridium 9602 SBD Transceiver, however it should work with other boards and modems.
+> **NOTE**: by the moment tested means (at least) that it works on a *NXP FDRM K64F* board using the Iridium 9602 SBD Transceiver, however it should work with other combinations of boards and modems.
