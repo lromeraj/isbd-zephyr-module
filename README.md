@@ -49,7 +49,7 @@ The following table shows the current status of the library based on the differe
 | +CCLK | Real Time Clock | :hammer_and_pick: Implemented |  |
 | +CGMI | Manufacturer Identification | :clock1: Planned |  |
 | +CGMM | Model Identification | :clock1: Planned |  |
-| +CGMR | Revision | :clock1: Planned |  |
+| +CGMR | Revision | :pencil2: WIP |  |
 | +CGSN | Serial Number | :heavy_check_mark: Tested |  |
 | +CIER | Indicator Event Reporting | :clock1: Planned |  | 
 | +CRIS | Ring Indication Status | :clock1: Planned |  |
