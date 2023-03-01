@@ -20,7 +20,7 @@ This is a quite simple example but tries to show a basic concept for using this 
 # AT Command Status Table
 The following table shows the current status of the library based on the different AT commands available in the Iridium 9602 SBD Transceiver:
 
-| Status | Icon | Preview | Description |
+| Status | Icon |  <div style="width:100px">Previw</div> | Description |
 |--|--|-----|--|
 | Planned | `:clock1:` | :clock1: Planned |  The command is not implemented yet, but it is planned to be implemented in a near future |
 | WIP | `:pencil2:` | :pencil2: WIP | the command is not implemented yet, but it is being implemented | 
