@@ -149,14 +149,16 @@ void check_err( isbd_err_t err ) {
   }
 }
 
-#define CHECK_AT_CMD( code, ok_block, f_name, ... ) \
-  code = f_name( __VA_ARGS__ ); \
-  if ( code == 0 ) { \
+static int8_t __g_code;
+
+#define CHECK_AT_CMD(ok_block, f_name, ... ) \
+  __g_code = f_name( __VA_ARGS__ ); \
+  if ( __g_code == 0 ) { \
     printk( "%-20s() OK; ", #f_name ); \
     ok_block \
     printk( "\n" ); \
   } else { \
-    printk( "%-20s() ERR: %hhd\n", #f_name, code ); \
+    printk( "%-20s() ERR: %hhd\n", #f_name, __g_code ); \
   }
 
 void main(void) {
@@ -181,33 +183,36 @@ void main(void) {
 
   struct isbd_config isbd_config = {
     .echo = true,
-    .verbose = false,
+    .verbose = true,
     .dev = uart_slave_device,
   };
 
-  char __buff[ 256 ];
+  char __buff[ 512 ];
 
-  int8_t code;
   isbd_setup( &isbd_config );
 
   // isbd_fetch_imei( __buff, sizeof( __buff ) );
 
   // CHECK_AT_CMD( code, {}, isbd_enable_echo, true );
 
-  CHECK_AT_CMD( code, {
+  CHECK_AT_CMD({
+    printk( "Revision : %s", __buff );
+  }, isbd_get_revision, __buff, sizeof( __buff ) );  
+
+  CHECK_AT_CMD({
     printk( "IMEI : %s", __buff );
-  }, isbd_fetch_imei, __buff, sizeof( __buff ) );  
+  }, isbd_get_imei, __buff, sizeof( __buff ) );  
   
   const char *msg = "Hi!";
 
-  CHECK_AT_CMD( code, {}, isbd_set_mo_bin, msg, strlen( msg ) );
-  
-  CHECK_AT_CMD( code, {
+  CHECK_AT_CMD({}, isbd_set_mo_bin, msg, strlen( msg ) );
+
+  CHECK_AT_CMD({
     printk( "%s", __buff );
   }, isbd_mo_to_mt, __buff, sizeof( __buff ) );
 
   uint16_t len, csum;
-  CHECK_AT_CMD( code, {
+  CHECK_AT_CMD({
     printk("msg=");
     for ( int i=0; i < len; i++ ) {
       printk( "%c", __buff[ i ] );

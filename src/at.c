@@ -19,26 +19,31 @@ uint8_t at_cmd_p( char *at_buf, const char *cmd_name, uint8_t param ) {
   return sprintf( at_buf, AT_CMD_H__ "%s%hhu" AT_EOL, cmd_name, param );
 }
 
-uint8_t at_cmd( char *at_buf, const char *cmd_name ) {
+uint8_t at_cmd_e( char *at_buf, const char *cmd_name ) {
   return sprintf( at_buf, AT_CMD_H__ "%s" AT_EOL, cmd_name );
 }
 
+// test
 uint8_t at_cmd_ext_t( char *at_buf, const char *cmd_name ) {
   return sprintf( at_buf, AT_CMD_EXT_H__ "%s" __AT_CMD_EXT_TEST, cmd_name );
 }
 
+// read
 uint8_t at_cmd_ext_r( char *at_buf, const char *cmd_name ) {
   return sprintf( at_buf, AT_CMD_EXT_H__ "%s" __AT_CMD_EXT_READ, cmd_name );
 }
 
+// set
 uint8_t at_cmd_ext_s( char *at_buf, const char *cmd_name, const char *params ) {
   return sprintf( at_buf, AT_CMD_EXT_H__ "%s" AT_CMD_EXT_EQ_CHAR "%s" AT_EOL, cmd_name, params );
 }
 
+// param
 uint8_t at_cmd_ext_p( char *at_buf, const char *cmd_name, uint8_t param ) {
   return sprintf( at_buf, AT_CMD_EXT_H__ "%s%hhu" AT_EOL, cmd_name, param );
 }
 
-uint8_t at_cmd_ext( char *at_buf, const char *cmd_name ) {
+// execute
+uint8_t at_cmd_ext_e( char *at_buf, const char *cmd_name ) {
   return sprintf( at_buf, AT_CMD_EXT_H__ "%s" AT_EOL, cmd_name );
 }

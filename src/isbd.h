@@ -61,7 +61,7 @@
    * @param __rtc 
    * @return int8_t 
    */
-  int8_t isbd_fetch_rtc( char *__rtc , uint16_t rtc_len);
+  int8_t isbd_get_rtc( char *__rtc , uint16_t rtc_len);
 
   /**
    * @brief Query the device IMEI
@@ -69,7 +69,7 @@
    * @param __imei Resulting IMEI memory buffer
    * @return int8_t
    */          
-  int8_t isbd_fetch_imei( char *__imei, uint16_t imei_len );
+  int8_t isbd_get_imei( char *__imei, uint16_t imei_len );
 
   /**
    * @brief Query the device revision
@@ -77,7 +77,7 @@
    * @param __revision 
    * @return int8_t 
    */
-  int8_t isbd_fetch_revision( char *__rev, uint16_t rev_len );
+  int8_t isbd_get_revision( char *__rev, uint16_t rev_len );
 
   /**
    * @brief Transfer a SBD text message from the DTE 
