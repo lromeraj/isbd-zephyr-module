@@ -624,15 +624,16 @@ isbd_at_code_t _uart_pack_txt_resp(
 
   uint8_t byte;
   uint8_t line_n = 1;
-  uint8_t buff_i = 0;
+
+  uint16_t at_buff_i = 0;
+  uint16_t str_resp_i = 0;
 
   // __str_resp buffer will be used to store the most relevant string response
-  char *__buff;
-  uint16_t buff_len = 0;
 
   // this little __buff is used to parse AT responses
   char __at_buff[ AT_MIN_BUFF_SIZE ] = "";
   
+  /*
   if ( __str_resp && lines <= AT_2_LINE_RESP ) {
     __buff = __str_resp;
     buff_len = str_resp_len;
@@ -640,6 +641,7 @@ isbd_at_code_t _uart_pack_txt_resp(
     __buff = __at_buff;
     buff_len = sizeof( __at_buff );
   }
+  */
 
   // TODO: timeout should be only for the first character
   while ( k_msgq_get( &g_isbd.queue.rx_q, &byte, K_MSEC( timeout_ms ) ) == 0 ) {
@@ -659,10 +661,10 @@ isbd_at_code_t _uart_pack_txt_resp(
       //printk( "CHAR: %c %d/%d\n", byte, buff_i, buff_len );
     }
 
-    if ( buff_i > 0 && trail_char ) {
+    if ( at_buff_i > 0 && trail_char ) {
       
-      // TODO: AT code should be checked only in the first and penultimate line
-      at_code = _at_get_str_code( __buff );
+      // TODO: AT code should be checked only in the first and last line
+      at_code = _at_get_str_code( __at_buff );
 
       if ( at_code != ISBD_AT_UNK ) {
         return at_code;
@@ -674,27 +676,33 @@ isbd_at_code_t _uart_pack_txt_resp(
         return ISBD_AT_UNK;
       }
 
-      if ( __str_resp && (line_n == lines-1) ) {
-        __buff = __str_resp;
-        buff_len = str_resp_len;
-      } else {
-        __buff = __at_buff;
-        buff_len = sizeof( __at_buff );
-      } 
+      if ( __str_resp && lines > 1 && line_n > 1 && line_n < lines ) {
+        // add trailing char
+      }
 
-      buff_i = 0;
-      __buff[ 0 ] = '\0';
+      at_buff_i = 0;
+      __at_buff[ 0 ] = '\0';
 
     }
 
     if ( !trail_char ) {
       
-      if ( buff_i < buff_len - 1 ) {
-        __buff[ buff_i ] = byte;
-        __buff[ buff_i + 1 ] = '\0';
+      if ( __str_resp
+        && str_resp_i < str_resp_len - 1  
+        && line_n < lines ) {
+        __str_resp[ str_resp_i ] = byte;
+        __str_resp[ str_resp_i + 1 ] = '\0';
       }
 
-      buff_i++;
+      // at buff is only used for AT command responses
+      if ( at_buff_i < sizeof( __at_buff ) - 1 ) {
+        __at_buff[ at_buff_i ] = byte;
+        __at_buff[ at_buff_i + 1 ] = '\0';
+      }
+
+      at_buff_i++;
+      str_resp_i++;
+
     }
 
   }
