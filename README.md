@@ -49,12 +49,19 @@ The following table shows the current status of the library based on the differe
 | +CCLK | Real Time Clock | :hammer_and_pick: Implemented |  |
 | +CGMI | Manufacturer Identification | :clock1: Planned |  |
 | +CGMM | Model Identification | :clock1: Planned |  |
-| +CGMR | Revision | :pencil2: WIP |  |
+| +CGMR | Revision | :pencil2: WIP | Implemented |
 | +CGSN | Serial Number | :heavy_check_mark: Tested |  |
 | +CIER | Indicator Event Reporting | :clock1: Planned |  | 
 | +CRIS | Ring Indication Status | :clock1: Planned |  |
 | +CSQ | Signal Quality | :clock1: Planned |  |
 | +CULK | Unlock | :x: |  |
+| +GMI | Manufacturer identification | :x: |  |
+| +GMM | Model identification | :clock1: Planned |  |
+| +GMR | Revision | :clock1: Planned |  |
+| +GSN | Serial number | :clock1: Planned |  |
+| +IPR | Fixed DTE rate | :x: | Baudrate is something that should not be changed in production, in some circumstances an adaptive baudrate could be implemented in order to avoid electrical noise (for example), but for now, this is not planned to be implemented |
+| +GSN | Serial number | :clock1: Planned |  |
 
+> **NOTE**: some AT commands can give different responses depending on the suffix used, for example, the suffix `=?` is usually used to test a command to retrieve the different parameter values supported. Not all possible suffixes for all possible commands are implemented. The "read" variant `?` is implemented for almost every command that supports it.
 
 > **NOTE**: by the moment tested means (at least) that it works on a *NXP FDRM K64F* board using the Iridium 9602 SBD Transceiver, however it should work with other combinations of boards and modems.
