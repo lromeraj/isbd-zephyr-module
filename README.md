@@ -23,9 +23,9 @@ The following table shows the current status of the library based on the differe
 | Status | Icon | Preview | Description |
 |--|--|------------------------|--|
 | Planned | `:clock1:` | :clock1: Planned |  The command is not implemented yet, <br/> but it is planned to be implemented in a near future |
-| WIP | `:pencil2:` | :pencil2: WIP | the command is not implemented yet, but it is being implemented | 
+| WIP | `:pencil2:` | :pencil2: WIP | The command is not implemented yet, <br/> but it is being implemented | 
 | Implemented | `:hammer_and_pick:` | :hammer_and_pick: Implemented | Command is implemented, but it was not tested |
-| Tested | `:heavy_check_mark:` | :heavy_check_mark: Tested | command is implemented and working as expected |
+| Tested | `:heavy_check_mark:` | :heavy_check_mark: Tested | Command is implemented and working as expected |
 
 
 | AT | Command | Status | Observations |
