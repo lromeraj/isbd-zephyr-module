@@ -39,7 +39,7 @@ The following table shows the current status of the library based on the differe
 | Z | Soft Reset | :pencil2: WIP |  |
 | &D | DTR Option | :heavy_check_mark: Tested | For internal use only |
 | &F | Restore Factory Settings | :x: | |
-| &K | Flow Control | :heavy_check_mark: | :heavy_check_mark: Tested | For internal use only |
+| &K | Flow Control | :heavy_check_mark: Tested | For internal use only |
 | &V | View Active and Stored Configuration | :x: | |
 | &W | Store Active Configuration | :pencil2: WIP | |
 | &Y | Designate Default Reset Profile | :pencil2: WIP | |
