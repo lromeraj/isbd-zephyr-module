@@ -8,6 +8,7 @@
       "random": "c",
       "byteswap.h": "c",
       "typeinfo": "c",
-      "system_error": "c"
+      "system_error": "c",
+      "defs.h": "c"
     }
 }

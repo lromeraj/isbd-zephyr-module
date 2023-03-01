@@ -3,6 +3,9 @@
 
   #include <stdint.h>
 
+  #include "defs.h"
+  #include "uart.h"
+
   typedef enum isbd_clear_buffer {
     ISBD_CLEAR_MO_BUFF      = 0,
     ISBD_CLEAR_MT_BUFF      = 1,
@@ -10,24 +13,8 @@
   } isbd_clear_buffer_t;
 
   struct isbd_config {
-    bool echo;
-    bool verbose;
-    struct device *dev;
+    struct at_uart_config at_uart;
   };
-
-  typedef enum isbd_err {
-    ISBD_OK        = 0,
-    ISBD_ERR,
-  } isbd_err_t;
-
-  typedef enum isbd_at_code {
-    ISBD_AT_RING        = -1,
-    ISBD_AT_TIMEOUT     = -2,
-    ISBD_AT_RDY         = -3,
-    ISBD_AT_ERR         = -4,
-    ISBD_AT_UNK         = -5,
-    ISBD_AT_OK          = 0,
-  } isbd_at_code_t;
 
   typedef struct isbd_session {
     uint8_t mo_sts, mt_sts;

@@ -182,9 +182,11 @@ void main(void) {
 	uart_configure( uart_slave_device, &uart_config );
 
   struct isbd_config isbd_config = {
-    .echo = true,
-    .verbose = true,
-    .dev = uart_slave_device,
+    .at_uart = {
+      .echo = true,
+      .verbose = true,
+      .dev = uart_slave_device,
+    }
   };
 
   char __buff[ 512 ];
@@ -203,9 +205,11 @@ void main(void) {
     printk( "IMEI : %s", __buff );
   }, isbd_get_imei, __buff, sizeof( __buff ) );  
   
-  const char *msg = "Hi!";
+  const char *msg = "Javier";
 
-  CHECK_AT_CMD({}, isbd_set_mo_bin, msg, strlen( msg ) );
+  CHECK_AT_CMD({
+
+  }, isbd_set_mo_bin, msg, strlen( msg ) );
 
   CHECK_AT_CMD({
     printk( "%s", __buff );
