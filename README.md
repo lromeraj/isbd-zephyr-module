@@ -25,6 +25,14 @@ The following table shows the current status of the library based on the differe
 - `Implemented`: command is implemented, but it was not tested.
 - `Tested`: command is implemented and working as expected.
 
+| Status | Icon | Preview |
+|--|--|--|
+| `Implemented` | `:hammer_and_pick:` | :hammer_and_pick: Implemented |
+| `Tested` | `:heavy_check_mark:` | :heavy_check_mark: Tested |
+| `Planned` | `:clock1:` | :clock1: Planned |
+| `WIP` | `:pencil2:` | :pencil2: WIP |
+
+
 | AT | Command | Status | Observations |
 | -- | -- | -- | -- |
 | AT | -- | :heavy_check_mark: Tested | For internal use only |
@@ -53,11 +61,5 @@ The following table shows the current status of the library based on the differe
 | +CSQ | Signal Quality | :clock1: Planned |  |
 | +CULK | Unlock | :x: |  |
 
-| Status | Icon | Preview |
-|--|--|--|
-| `Implemented` | `:hammer_and_pick:` | :hammer_and_pick: Implemented |
-| `Tested` | `:heavy_check_mark:` | :heavy_check_mark: Tested |
-| `Planned` | `:clock1:` | :clock1: Planned |
-| `WIP` | `:pencil2:` | :pencil2: WIP |
 
 > **NOTE**: by the moment tested means (at least) that it works on a *NXP FDRM K64F* board using the Iridium 9602 SBD Transceiver, however it should work with other combinations of boards and modems.
