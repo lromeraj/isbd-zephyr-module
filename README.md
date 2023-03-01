@@ -1,5 +1,5 @@
 # Iridium SBD Library for Zephyr OS
-This library has been implemented in order to give support for the Iridium 9602 SBD Transceiver, but it should work too for modern transceivers like `9603`, nad also for modems which share similar AT commands.
+This library has been implemented in order to give support for the Iridium 9602 SBD Transceiver, but it should work too for modern transceivers like 9603, nad also for modems which share similar AT commands.
 
 At the moment this library has been implemented in order to work with blocking function calls, this is because the transceiver only processes one command at a time and implementing an asynchronous model out of the box may not be the best solution, but i am not saying that you should use this library to block all your main application processes, the idea for this library is to be used in a different thread in order to avoid blocking other important tasks of your application, as *Zephyr* and many other *RTOS* offer the possibility of "emulating" multitask processing on single core processor, this should be something trivial to implement, so what i recommend while using this library is:
 
@@ -30,7 +30,7 @@ The following table shows the current status of the library based on the differe
 
 | AT | Command | Status | Observations |
 | -- | -- | -- | -- |
-| AT | -- | :heavy_check_mark: Tested | For internal use only |
+| AT | AT Test Command | :heavy_check_mark: Tested | For internal use only |
 | A/ | Repeat Last Command | :clock1: Planned | |
 | E | Echo | :heavy_check_mark: Tested | For itnernal use only |
 | I | Identification | :pencil2: WIP | |
