@@ -20,17 +20,12 @@ This is a quite simple example but tries to show a basic concept for using this 
 # AT Command Status Table
 The following table shows the current status of the library based on the different AT commands available in the Iridium 9602 SBD Transceiver:
 
-- `Planned`: the command is not implemented yet, but it is planned to be implemented in a near future.
-- `WIP`: the command is not implemented yet, but it is being implemented.
-- `Implemented`: command is implemented, but it was not tested.
-- `Tested`: command is implemented and working as expected.
-
-| Status | Icon | Preview |
+| Status | Icon | Preview | Description |
 |--|--|--|
-| `Implemented` | `:hammer_and_pick:` | :hammer_and_pick: Implemented |
-| `Tested` | `:heavy_check_mark:` | :heavy_check_mark: Tested |
-| `Planned` | `:clock1:` | :clock1: Planned |
-| `WIP` | `:pencil2:` | :pencil2: WIP |
+| `Planned` | `:clock1:` | :clock1: Planned |  The command is not implemented yet, but it is planned to be implemented in a near future |
+| `WIP` | `:pencil2:` | :pencil2: WIP | the command is not implemented yet, but it is being implemented | 
+| `Implemented` | `:hammer_and_pick:` | :hammer_and_pick: Implemented | Command is implemented, but it was not tested |
+| `Tested` | `:heavy_check_mark:` | :heavy_check_mark: Tested | command is implemented and working as expected |
 
 
 | AT | Command | Status | Observations |
