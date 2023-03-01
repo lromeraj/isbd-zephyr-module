@@ -28,7 +28,7 @@ The following table shows the current status of the library based on the differe
 | Tested | `:heavy_check_mark:` | :heavy_check_mark: Tested | Command is implemented and working as expected |
 
 
-| AT | Command | Status &nbsp &nbsp &nbsp | Observations |
+| AT | Command | Status &nbsp; &nbsp; &nbsp; | Observations |
 | -- | -- | -- | -- |
 | AT | AT Test Command | :heavy_check_mark: Tested | For internal use only |
 | A/ | Repeat Last Command | :clock1: Planned | |
