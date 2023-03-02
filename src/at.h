@@ -8,7 +8,7 @@
 #define AT_NO_PARAM     ((uint8_t)(-1))
 
 #define __AT_BUFF( name ) \
-  unsigned char name[256] = ""
+  char name[256]
 
 /**
  * @brief Used to build AT exec commands. Use this when you need

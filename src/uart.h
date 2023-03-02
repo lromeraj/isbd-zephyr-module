@@ -13,11 +13,12 @@
   #define AT_3_LINE_RESP    3
 
   #define SEND_AT_CMD( fn, ... ) \
-  do { \
-    __AT_BUFF( G_at_buff ); \
-    at_uart_code_t G_at_code = at_uart_write_cmd( G_at_buff, at_cmd##fn ( G_at_buff, __VA_ARGS__ ) ); \
-    if ( G_at_code != ISBD_AT_OK ) { return G_at_code; } \
-  } while ( 0 );
+    do { \
+      __AT_BUFF( __M_at_buff ); \
+      at_uart_code_t __M_at_code = at_uart_write_cmd( \
+        __M_at_buff, at_cmd##fn ( __M_at_buff, __VA_ARGS__ ) ); \
+      if ( __M_at_code != ISBD_AT_OK ) { return __M_at_code; } \
+    } while ( 0 );
 
 // exec
 #define SEND_AT_CMD_E( name ) \

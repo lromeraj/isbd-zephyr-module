@@ -27,14 +27,10 @@ isbd_err_t isbd_setup( struct isbd_config *isbd_config ) {
  
   g_isbd.config = *isbd_config;
 
-
   at_uart_code_t at_code = at_uart_setup( &isbd_config->at_uart );
-
-
 
   struct uart_config config;
   uart_config_get( isbd_config->at_uart.dev, &config );
-
 
   // ! Enable or disable flow control depending on uart configuration
   // ! this will avoid hangs during communication
@@ -47,7 +43,6 @@ isbd_err_t isbd_setup( struct isbd_config *isbd_config ) {
   } else {
     at_code = _isbd_using_three_wire_connection( false );
   }
-
   
   return at_code == ISBD_AT_OK ? ISBD_OK : ISBD_ERR;
 }

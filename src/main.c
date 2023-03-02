@@ -191,10 +191,8 @@ void main(void) {
     }
   };
 
-  char __buff[ 512 ];
-  
+  char __buff[ 256 ];
   isbd_setup( &isbd_config );
-
 
   // isbd_fetch_imei( __buff, sizeof( __buff ) );
 
@@ -208,11 +206,9 @@ void main(void) {
     printk( "IMEI : %s", __buff );
   }, isbd_get_imei, __buff, sizeof( __buff ) );  
   
-  const char *msg = "Javier";
+  const char *msg = "hello";
 
-  CHECK_AT_CMD({
-
-  }, isbd_set_mo_bin, msg, strlen( msg ) );
+  CHECK_AT_CMD({}, isbd_set_mo_bin, msg, strlen( msg ) );
 
   CHECK_AT_CMD({
     printk( "%s", __buff );
@@ -225,8 +221,7 @@ void main(void) {
       printk( "%c", __buff[ i ] );
     }
     printk( ", len=%d, csum=%04X", len, csum );
-  }, isbd_get_mt_bin, __buff, &len, &csum ); 
-  
+  }, isbd_get_mt_bin, __buff, &len, &csum );
  
   // code = isbd_set_mo_bin( msg, strlen( msg ) );
 

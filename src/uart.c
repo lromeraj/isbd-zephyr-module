@@ -230,18 +230,20 @@ uint16_t at_uart_write( uint8_t *__src_buf, uint16_t len ) {
     return 0;
   }
 
+
+
   g_uart.buff.tx_idx = 0; // reset transmission buffer index
   g_uart.buff.tx_len = len; // update transmission buffer length
   
   bytecpy( g_uart.buff.tx, __src_buf, len ); // copy at buffer to transmission
 
   uart_irq_tx_enable( g_uart.config.dev );
+  // printk( "%d\n", len );
 
   return len;
 }
 
 at_uart_code_t at_uart_write_cmd( uint8_t *__src_buf, uint16_t len ) {
-    
   g_uart._echoed = false;
   k_msgq_purge( &g_uart.queue.rx_q );
 
@@ -337,6 +339,10 @@ void _uart_isr( const struct device *dev, void *user_data ) {
     _uart_rx_isr( dev, user_data );
   }
 
+  if ( uart_irq_tx_ready( dev ) ) {
+    _uart_tx_isr( dev, user_data );
+  }
+
 }
 
 at_uart_code_t at_uart_setup( struct at_uart_config *at_uart_config ) {
@@ -371,13 +377,8 @@ at_uart_code_t at_uart_setup( struct at_uart_config *at_uart_config ) {
 	}
   */
 
-
-
  	uart_irq_rx_enable( g_uart.config.dev );
   uart_irq_tx_disable( g_uart.config.dev );
-
-
-  
 
   // ! Disable quiet mode in order
   // ! to parse command results
