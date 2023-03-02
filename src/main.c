@@ -163,6 +163,8 @@ static int8_t __g_code;
 
 void main(void) {
 
+
+
 	if (!device_is_ready(uart_master_device)) {
 		printk("UART master device not found!");
 		return;
@@ -190,8 +192,9 @@ void main(void) {
   };
 
   char __buff[ 512 ];
-
+  
   isbd_setup( &isbd_config );
+
 
   // isbd_fetch_imei( __buff, sizeof( __buff ) );
 

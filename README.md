@@ -15,9 +15,9 @@ Below, you can see an example of a "Send and forgive" concept:
            |                                | OK. Sending message ...
            |                 
 ```
-This is a quite simple example but tries to show a basic concept for using this library. In general you should consider to check the status codes returned by the different functions, so in this case you could implement a function callback in order to receive resulting status codes, for example.
+This is a quite simple example but tries to show a basic concept while using this library. In general you should consider to check the status codes returned by the different functions, so in this case you could implement a callback in order to receive resulting status codes.
 
-# AT Command Status Table
+# AT Command Status Tables
 The following table shows the current status of the library based on the different AT commands available in the Iridium 9602 SBD Transceiver:
 
 | Status | Icon | Preview | Description |
@@ -28,6 +28,7 @@ The following table shows the current status of the library based on the differe
 | Tested | `:heavy_check_mark:` | :heavy_check_mark: Tested | Command is implemented and working as expected |
 
 
+## Standard AT commands
 | AT | Command | Status | Observations |
 | -- | -- | -- | -- |
 | AT | AT Test Command | :heavy_check_mark: Tested | For internal use only |
@@ -46,6 +47,10 @@ The following table shows the current status of the library based on the differe
 | %R | Display registers | :x: | |
 | *F | Flush to EEPROM | :pencil2: WIP | |
 | *R | Radio Activity | :pencil2: WIP |  |
+
+## Propietary AT commands
+| AT | Command | Status | Observations |
+| -- | -- | -- | -- |
 | +CCLK | Real Time Clock | :hammer_and_pick: Implemented |  |
 | +CGMI | Manufacturer Identification | :clock1: Planned |  |
 | +CGMM | Model Identification | :clock1: Planned |  |

@@ -35,6 +35,13 @@ struct at_uart {
 
 static struct at_uart g_uart;
 
+// ------------- Private AT basic command methods ---------------
+int8_t _at_uart_set_quiet( bool enable );
+int8_t _at_uart_set_verbose( bool enable );
+int8_t _at_uart_enable_echo( bool enable );
+int8_t _at_uart_enable_flow_control( bool enable );
+// --------- End of private AT basic command methods ------------
+
 uint16_t at_uart_get_n_bytes( 
   uint8_t *bytes, uint16_t n_bytes, uint16_t timeout_ms 
 ) {
@@ -91,7 +98,7 @@ at_uart_code_t at_uart_check_echo() {
     }
 
     if ( g_uart.buff.tx[ byte_i ] != byte ) {
-      // printk("CHECK ERROR %d %d\n", byte, g_isbd.buff.tx[ byte_i ] );
+      printk("CHECK ERROR %d %d\n", byte, g_uart.buff.tx[ byte_i ] );
       // Echoed command do not matches previously transmitted command
       return ISBD_AT_ERR;
     }
@@ -134,7 +141,6 @@ at_uart_code_t at_uart_pack_txt_resp(
     // uart_irq_rx_enable( g_isbd.config.dev );
 
     // printk( "LINE: %d / %d\n", line_n, lines );
-  
     uint8_t trail_char = 0;
 
     if ( byte == '\r' || byte == '\n' ) {
@@ -207,7 +213,7 @@ at_uart_code_t at_uart_pack_txt_resp_code( int8_t *cmd_code, uint16_t timeout_ms
     *cmd_code = atoi( __cmd_code );
     return ISBD_AT_OK;
   }
-  
+
   return at_code;
 }
 
@@ -235,7 +241,7 @@ uint16_t at_uart_write( uint8_t *__src_buf, uint16_t len ) {
 }
 
 at_uart_code_t at_uart_write_cmd( uint8_t *__src_buf, uint16_t len ) {
-  
+    
   g_uart._echoed = false;
   k_msgq_purge( &g_uart.queue.rx_q );
 
@@ -315,7 +321,7 @@ void _uart_tx_isr( const struct device *dev, void *user_data ) {
 }
 
 void _uart_rx_isr( const struct device *dev, void *user_data ) {
-  uint8_t byte;  
+  uint8_t byte; 
   if ( uart_fifo_read( dev, &byte, 1 ) == 1 ) {
     k_msgq_put( &g_uart.queue.rx_q, &byte, K_NO_WAIT );
   }
@@ -331,21 +337,17 @@ void _uart_isr( const struct device *dev, void *user_data ) {
     _uart_rx_isr( dev, user_data );
   }
 
-  #ifndef UART_TX_POLLLING
-    if ( uart_irq_tx_ready( dev ) ) {
-      _uart_tx_isr( dev, user_data );
-    }
-  #endif
-
 }
 
-isbd_err_t at_uart_setup( struct at_uart_config *config ) {
+at_uart_code_t at_uart_setup( struct at_uart_config *at_uart_config ) {
 
   g_uart.buff.rx_len = 0;
   g_uart.buff.tx_len = 0;
 
   // update whole configuration
-  g_uart.config = *config;
+  g_uart.config = *at_uart_config;
+
+
 
   // initialize message queue
   k_msgq_init( 
@@ -369,8 +371,58 @@ isbd_err_t at_uart_setup( struct at_uart_config *config ) {
 	}
   */
 
+
+
  	uart_irq_rx_enable( g_uart.config.dev );
   uart_irq_tx_disable( g_uart.config.dev );
 
-  return ISBD_OK; 
+
+  
+
+  // ! Disable quiet mode in order
+  // ! to parse command results
+  _at_uart_set_quiet( false );
+
+  // ! The response code of this commands
+  // ! are not checked due to the possibility of 
+  // ! an initial conflicting configuration
+  // ! If the result code is an error does not mean
+  // ! that the change has not been applied (only for this specific cases)
+  // ! The last AT test command will finally check if the configuration was
+  // ! correctly applied to the ISU
+  _at_uart_enable_echo( g_uart.config.echo );
+  _at_uart_set_verbose( g_uart.config.verbose );
+
+  return ISBD_AT_OK; 
 }
+
+// ------ Non propietary AT basic commands implementation ------
+
+int8_t at_uart_set_flow_control( uint8_t option ) {
+  SEND_AT_CMD_P( "&K", option );
+  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+}
+
+int8_t at_uart_set_dtr( uint8_t option ) {
+  SEND_AT_CMD_P( "&D", option );
+  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+}
+
+int8_t _at_uart_set_quiet( bool enable ) {
+  SEND_AT_CMD_P( "Q", enable );
+  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+}
+
+int8_t _at_uart_enable_echo( bool enable ) {
+  g_uart.config.echo = enable;
+  SEND_AT_CMD_P( "E", enable );
+  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+}
+
+int8_t _at_uart_set_verbose( bool enable ) {
+  g_uart.config.verbose = enable;
+  SEND_AT_CMD_P( "V", enable );
+  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+}
+
+// ---- End of propietary AT basic commands implementation -----

@@ -1,7 +1,7 @@
 #include "at.h"
 
 #define AT_STR              "at"
-#define AT_EOL              "\r\n"
+#define AT_EOL              "\r"
 
 // Basic commands chars
 #define AT_CMD_H__          AT_STR
