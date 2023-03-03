@@ -2,7 +2,7 @@
   
   #define ISBD_DEFS_H_
 
-  #define RX_MSGQ_LEN     128
+  #define RX_MSGQ_LEN     256
 
   // TODO: think in reducing buffer sizes
   #define TX_BUFF_SIZE    512 

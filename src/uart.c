@@ -1,23 +1,21 @@
-#include "uart.h"
 
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
 
+#include "uart.h"
+#include "utils.h"
+
 // minumum buffer size required to prase at least
 // AT string codes
 #define AT_MIN_BUFF_SIZE  32
 
-// TODO: rename this module to at_uart.h
-// TODO: functions should be prefixed witrh at_uart_*
-// TODO: this will increase consistency
-
 struct at_uart_buff {
-  uint16_t rx_len;
+  size_t rx_len;
   uint8_t rx[ RX_BUFF_SIZE ];
   
-  uint16_t tx_len;
-  uint16_t tx_idx;
+  size_t tx_len;
+  size_t tx_idx;
   uint8_t tx[ TX_BUFF_SIZE ];
 };
 
@@ -38,6 +36,20 @@ static struct at_uart g_uart;
 // ------------- Private AT basic command methods ---------------
 int8_t _at_uart_set_quiet( bool enable );
 int8_t _at_uart_set_verbose( bool enable );
+
+/**
+ * @brief Echo command characters.
+ * 
+ * @note If enabled, this is used as an extra check to know 
+ * if the device has received correctly the AT command. 
+ * This is usually not necessary except in cases
+ * where connection is too noisy, and despite of this the AT command will be corrupted
+ * and the device will respond with an ERR anyway, so it's recommended to disable
+ * echo in order to reduce RX serial traffic.
+ * 
+ * @param enable 
+ * @return int8_t 
+ */
 int8_t _at_uart_enable_echo( bool enable );
 int8_t _at_uart_enable_flow_control( bool enable );
 // --------- End of private AT basic command methods ------------
@@ -47,11 +59,15 @@ uint16_t at_uart_get_n_bytes(
 ) {
  
   uint8_t byte;
- 
-  while ( n_bytes > 0 
-    && k_msgq_get( &g_uart.queue.rx_q, &byte, K_MSEC( timeout_ms ) ) == 0 ) {
+
+  // this conversion takes a little due to arithmetic division
+  // so we temporary store the value instead of recomputing for each loop
+  k_timeout_t k_timeout = K_MSEC( timeout_ms );
+
+  while ( n_bytes > 0
+    && k_msgq_get( &g_uart.queue.rx_q, &byte, k_timeout ) == 0 ) {
     
-    // ! Interrupts can disable RX interrupts when queue starts
+    // ! Interrupts can disable RX when queue starts
     // ! filling up, which probably means instant packet loss
     // ! so instead disabling RX the queue will skip (silently) those bytes
     // uart_irq_rx_enable( g_isbd.config.dev );
@@ -76,7 +92,7 @@ inline uint16_t at_uart_skip_n_bytes(
 at_uart_code_t at_uart_check_echo() {
 
   if ( !g_uart.config.echo || g_uart._echoed ) {
-    return ISBD_AT_OK;
+    return AT_UART_OK;
   }
 
   uint8_t byte;
@@ -85,39 +101,35 @@ at_uart_code_t at_uart_check_echo() {
   // This flag is used to avoid rechecking echo for segmented responses
   g_uart._echoed = true;
 
-  while( k_msgq_get( &g_uart.queue.rx_q, &byte, K_MSEC( 100 ) ) == 0 ) {
+  k_timeout_t k_timeout = K_MSEC( 100 );
+  at_uart_code_t at_code = AT_UART_OK;
 
-    // TODO: Recheck this in a near future
-    // ! If echo mode is enabled the ISU appends a \n char 
-    // ! at the beginning of the AT command, but this only occurs
-    // ! for a specific subset of commands so the problem is probably
-    // ! not present in this library or maybe it's due to a misunderstanding
-    if ( byte_i == 0 && (byte == '\r' || byte == '\n') ) {
-      // printk( "TRAILING ... %d\n", byte );
-      continue;
-    }
+  while( k_msgq_get( &g_uart.queue.rx_q, &byte, k_timeout ) == 0 ) {
+    
+    if ( byte_i == 0 && byte == '\n' ) continue;
 
+    // ! When a mismatch is detected we have to drop all remaining chars
     if ( g_uart.buff.tx[ byte_i ] != byte ) {
-      printk("CHECK ERROR %d %d\n", byte, g_uart.buff.tx[ byte_i ] );
+            
+      at_code = AT_UART_ERR;
+      // printk( "dropping %d ...\n", byte );
       // Echoed command do not matches previously transmitted command
-      return ISBD_AT_ERR;
+      // return AT_UART_ERR;
     }
 
     byte_i++;
 
-    if ( byte_i == g_uart.buff.tx_len ) {
-
-      // Echoed command matches
-      return ISBD_AT_OK;
+    if ( byte == '\r' ) {
+      // Whole command was echoed back successfully
+      return at_code;
     }
   }
 
-  // Echo timeout
-  return ISBD_AT_TIMEOUT;
+  return AT_UART_TIMEOUT;
 }
 
 at_uart_code_t at_uart_pack_txt_resp(
-  char *__str_resp, uint16_t str_resp_len, uint8_t lines, uint16_t timeout_ms 
+  char *__str_resp, size_t str_resp_len, uint8_t lines, uint16_t timeout_ms 
 ) {
   
   uint8_t byte;
@@ -155,32 +167,35 @@ at_uart_code_t at_uart_pack_txt_resp(
       // TODO: AT code should be checked only in the first and last line
       at_code = at_uart_get_str_code( __at_buff );
 
-      if ( at_code != ISBD_AT_UNK ) {
+      if ( at_code != AT_UART_UNK ) {
         return at_code;
       }
 
       line_n++;
 
       if ( line_n > lines ) {
-        return ISBD_AT_UNK;
+        return AT_UART_UNK;
       }
 
+      /*
       if ( __str_resp && lines > 1 && line_n > 1 && line_n < lines ) {
         // add trailing char
       }
+      */
 
       at_buff_i = 0;
       __at_buff[ 0 ] = '\0';
-
     }
 
     if ( !trail_char ) {
       
       if ( __str_resp
-        
-        && str_resp_i < str_resp_len - 1  
+        && str_resp_i < str_resp_len - 1
         && ( lines == AT_1_LINE_RESP || line_n < lines) ) {
+        
         __str_resp[ str_resp_i ] = byte;
+
+        // TODO: put this char only when buffer is terminated
         __str_resp[ str_resp_i + 1 ] = '\0';
       }
 
@@ -197,7 +212,7 @@ at_uart_code_t at_uart_pack_txt_resp(
 
   }
 
-  return ISBD_AT_TIMEOUT;
+  return AT_UART_TIMEOUT;
 }
 
 at_uart_code_t at_uart_pack_txt_resp_code( int8_t *cmd_code, uint16_t timeout_ms ) {
@@ -209,9 +224,9 @@ at_uart_code_t at_uart_pack_txt_resp_code( int8_t *cmd_code, uint16_t timeout_ms
   at_uart_code_t at_code =
     at_uart_pack_txt_resp( __cmd_code, sizeof( __cmd_code ), AT_1_LINE_RESP, timeout_ms );
   
-  if ( at_code == ISBD_AT_UNK ) {
+  if ( at_code == AT_UART_UNK ) {
     *cmd_code = atoi( __cmd_code );
-    return ISBD_AT_OK;
+    return AT_UART_OK;
   }
 
   return at_code;
@@ -223,18 +238,16 @@ inline at_uart_code_t at_uart_skip_txt_resp(
   return at_uart_pack_txt_resp( NULL, 0, lines, timeout_ms );
 }
 
-// TODO: implement a queue for TX buffer
-uint16_t at_uart_write( uint8_t *__src_buf, uint16_t len ) {
+// TODO: We could use a queue for transmission bytes
+uint16_t at_uart_write( uint8_t *__src_buf, size_t len ) {
 
   if ( len > TX_BUFF_SIZE ) {
     return 0;
   }
 
-
-
   g_uart.buff.tx_idx = 0; // reset transmission buffer index
   g_uart.buff.tx_len = len; // update transmission buffer length
-  
+
   bytecpy( g_uart.buff.tx, __src_buf, len ); // copy at buffer to transmission
 
   uart_irq_tx_enable( g_uart.config.dev );
@@ -243,63 +256,55 @@ uint16_t at_uart_write( uint8_t *__src_buf, uint16_t len ) {
   return len;
 }
 
-at_uart_code_t at_uart_write_cmd( uint8_t *__src_buf, uint16_t len ) {
+at_uart_code_t at_uart_write_cmd( char *__src_buf, size_t len ) {
+
   g_uart._echoed = false;
   k_msgq_purge( &g_uart.queue.rx_q );
-
   at_uart_write( __src_buf, len );
 
   return at_uart_check_echo();
+
 }
 
 at_uart_code_t at_uart_get_str_code( const char *__buff ) {
 
   if ( g_uart.config.verbose ) {
+    
     // ordered by occurrence frequency
     if ( strcmp( __buff, "OK" ) == 0 ) {
-      return ISBD_AT_OK;
+      return AT_UART_OK;
     } else if ( strcmp( __buff, "ERROR" ) == 0 ) {
-      return ISBD_AT_ERR;
-    } else if ( strcmp( __buff, "SBDRING" ) == 0 ) {
-      return ISBD_AT_RING;
+      return AT_UART_ERR;
     }
+
   } else {
     if ( strcmp( __buff, "0" ) == 0 ) {
-      return ISBD_AT_OK;
+      return AT_UART_OK;
     } else if ( strcmp( __buff, "4" ) == 0 ) {
-      return ISBD_AT_ERR;
-    } else if ( strcmp( __buff, "126" ) == 0 ) {
-      return ISBD_AT_RING;
+      return AT_UART_ERR;
     }
   }
   
   // READY is the same for both modes
   if ( strcmp( __buff, "READY" ) == 0 ) {
-    return ISBD_AT_RDY;
+    return AT_UART_RDY;
   }
 
-  return ISBD_AT_UNK;
+  return AT_UART_UNK;
 }
-
-/*
-isbd_err_t at_uart_clear_rx() {
-  // k_msgq_purge( &g_uart.queue.rx_q );
-}
-*/
-
 
 void _uart_tx_isr( const struct device *dev, void *user_data ) {
 
   uint8_t *tx_buff = g_uart.buff.tx;
-  uint16_t *tx_buff_len = &g_uart.buff.tx_len;
-  uint16_t *tx_buff_idx = &g_uart.buff.tx_idx;
+  size_t *tx_buff_len = &g_uart.buff.tx_len;
+  size_t *tx_buff_idx = &g_uart.buff.tx_idx;
   
   if ( *tx_buff_idx < *tx_buff_len ) {
-    (*tx_buff_idx) += uart_fifo_fill( 
+    
+    (*tx_buff_idx) += uart_fifo_fill(
       dev, &tx_buff[ *tx_buff_idx ], *tx_buff_len - *tx_buff_idx );
-  }
-  
-  if ( *tx_buff_idx == *tx_buff_len ) {
+
+  } else {
   
     // ! This may cause _uart_tx_isr() to be unnecessary over-called
     // ! This has been fixed by allowing interrupt to exit multiple times
@@ -323,8 +328,13 @@ void _uart_tx_isr( const struct device *dev, void *user_data ) {
 }
 
 void _uart_rx_isr( const struct device *dev, void *user_data ) {
-  uint8_t byte; 
+  uint8_t byte;
   if ( uart_fifo_read( dev, &byte, 1 ) == 1 ) {
+    if ( byte == '\r' || byte == '\n' ) {
+      // printk( "RXB: %d\n", byte );
+    } else {
+      // printk( "RXB: %c\n", byte );
+    }
     k_msgq_put( &g_uart.queue.rx_q, &byte, K_NO_WAIT );
   }
 }
@@ -352,8 +362,6 @@ at_uart_code_t at_uart_setup( struct at_uart_config *at_uart_config ) {
 
   // update whole configuration
   g_uart.config = *at_uart_config;
-
-
 
   // initialize message queue
   k_msgq_init( 
@@ -394,35 +402,65 @@ at_uart_code_t at_uart_setup( struct at_uart_config *at_uart_config ) {
   _at_uart_enable_echo( g_uart.config.echo );
   _at_uart_set_verbose( g_uart.config.verbose );
 
-  return ISBD_AT_OK; 
+  return AT_UART_OK; 
+}
+
+const char *at_uart_err_to_name( at_uart_code_t code ) {
+  
+  if ( code == AT_UART_OK ) {
+    return "AT_UART_OK";
+  } else if ( code == AT_UART_ERR ) {
+    return "AT_UART_ERROR";
+  } else if ( code == AT_UART_RDY ) {
+    return "AT_UART_READY";
+  } else if ( code == AT_UART_TIMEOUT ) {
+    return "AT_UART_TIMEOUT";
+  }
+
+  return "AT_UART_UNKNOWN";
 }
 
 // ------ Non propietary AT basic commands implementation ------
 
 int8_t at_uart_set_flow_control( uint8_t option ) {
-  SEND_AT_CMD_P( "&K", option );
+  SEND_AT_CMD_P( "&k", option );
   return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
 }
 
 int8_t at_uart_set_dtr( uint8_t option ) {
-  SEND_AT_CMD_P( "&D", option );
+  SEND_AT_CMD_P( "&d", option );
+  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+}
+
+int8_t at_uart_store_active_config( uint8_t profile ) {
+  SEND_AT_CMD_P( "&w", profile );
+  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+}
+
+int8_t at_uart_set_reset_profile( uint8_t profile ) {
+  SEND_AT_CMD_P( "&y", profile );
+  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+}
+
+int8_t at_uart_flush_to_eeprom() {
+  SEND_AT_CMD_E( "*f" );
   return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
 }
 
 int8_t _at_uart_set_quiet( bool enable ) {
-  SEND_AT_CMD_P( "Q", enable );
+  SEND_AT_CMD_P( "q", enable );
   return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
 }
 
 int8_t _at_uart_enable_echo( bool enable ) {
   g_uart.config.echo = enable;
-  SEND_AT_CMD_P( "E", enable );
+  SEND_AT_CMD_P( "e", enable );
   return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
 }
 
 int8_t _at_uart_set_verbose( bool enable ) {
   g_uart.config.verbose = enable;
-  SEND_AT_CMD_P( "V", enable );
+  SEND_AT_CMD_P( "v", enable );
   return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
 }
 

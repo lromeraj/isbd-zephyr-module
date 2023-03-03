@@ -149,21 +149,20 @@ void check_err( isbd_err_t err ) {
   }
 }
 
-static int8_t __g_code;
-
 #define CHECK_AT_CMD(ok_block, f_name, ... ) \
-  __g_code = f_name( __VA_ARGS__ ); \
-  if ( __g_code == 0 ) { \
-    printk( "%-20s() OK; ", #f_name ); \
+do { \
+  printk( "%-20s() ", #f_name ); \
+  uint8_t M_g_code = f_name( __VA_ARGS__ ); \
+  if ( M_g_code == 0 ) { \
+    printk( "OK; " ); \
     ok_block \
     printk( "\n" ); \
   } else { \
-    printk( "%-20s() ERR: %hhd\n", #f_name, __g_code ); \
-  }
+    printk( "ERR: %s\n", at_uart_err_to_name( M_g_code ) ); \
+  } \
+} while(0)
 
 void main(void) {
-
-
 
 	if (!device_is_ready(uart_master_device)) {
 		printk("UART master device not found!");
@@ -192,10 +191,13 @@ void main(void) {
   };
 
   char __buff[ 256 ];
-  isbd_setup( &isbd_config );
+  if ( isbd_setup( &isbd_config ) == ISBD_OK ) {
+    printk( "Modem OK\n" );
+  } else {
+    printk( "Could not talk to modem, probably busy ...\n" );
+  }
 
   // isbd_fetch_imei( __buff, sizeof( __buff ) );
-
   // CHECK_AT_CMD( code, {}, isbd_enable_echo, true );
 
   CHECK_AT_CMD({
@@ -205,23 +207,26 @@ void main(void) {
   CHECK_AT_CMD({
     printk( "IMEI : %s", __buff );
   }, isbd_get_imei, __buff, sizeof( __buff ) );  
-  
+
   const char *msg = "hello";
 
-  CHECK_AT_CMD({}, isbd_set_mo_bin, msg, strlen( msg ) );
+  CHECK_AT_CMD({}, isbd_set_mo, msg, strlen( msg ) );
 
   CHECK_AT_CMD({
     printk( "%s", __buff );
   }, isbd_mo_to_mt, __buff, sizeof( __buff ) );
 
-  uint16_t len, csum;
+
+  uint16_t csum;
+  size_t len = sizeof( __buff );
+
   CHECK_AT_CMD({
     printk("msg=");
     for ( int i=0; i < len; i++ ) {
       printk( "%c", __buff[ i ] );
     }
     printk( ", len=%d, csum=%04X", len, csum );
-  }, isbd_get_mt_bin, __buff, &len, &csum );
+  }, isbd_get_mt, __buff, &len, &csum );
  
   // code = isbd_set_mo_bin( msg, strlen( msg ) );
 
@@ -239,18 +244,16 @@ void main(void) {
   printk( " @ len = %d, csum = %04X\n", len, csum );
   */
   
-  /*
-  printk( "Starting session ...\n" );
 
   isbd_session_t session;
-  isbd_init_session( &session );
 
-  printk( "MO Status   : %hhu,\n"
-          "MO MSN      : %hu,\n"
-          "MT Status   : %hhu,\n"
-          "MT MSN      : %hu,\n"
-          "MT Length   : %hu,\n"
-          "MT Queued   : %hu\n",
+  CHECK_AT_CMD({
+    printk( "mo_sts=%hhu, "
+          "mo_msn=%hu, "
+          "mt_sts=%hhu, "
+          "mt_msn=%hu, "
+          "mt_length=%hu, "
+          "mt_queued=%hu",
     session.mo_sts,
     session.mo_msn,
     session.mt_sts,
@@ -258,7 +261,9 @@ void main(void) {
     session.mt_len,
     session.mt_queued );
 
-    */
+  }, isbd_init_session, &session );
+
+
 
   // int8_t cmd_code = isbd_set_mo_txt( "hoooooo" );
   // printk( "SBDWT    : %d\n", cmd_code );

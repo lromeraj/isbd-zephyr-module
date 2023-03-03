@@ -9,6 +9,7 @@
       "byteswap.h": "c",
       "typeinfo": "c",
       "system_error": "c",
-      "defs.h": "c"
+      "defs.h": "c",
+      "at.h": "c"
     }
 }

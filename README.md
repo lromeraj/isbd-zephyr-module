@@ -6,7 +6,7 @@ At the moment this library has been implemented in order to work with blocking f
 1. Create an independent thread where you'll invoke the blocking functions of this library.
 2. Create a queue in order to synchronize your main application logic with the library thread.
 
-Below, you can see an example of a "Send and forgive" concept:
+Below, you can see an example of a "send and forgive" concept:
 ``` txt
       Main thread                 ISBD library thread 
            |                                | <------------ IDLE
@@ -17,23 +17,22 @@ Below, you can see an example of a "Send and forgive" concept:
 ```
 This is a quite simple example but tries to show a basic concept while using this library. In general you should consider to check the status codes returned by the different functions, so in this case you could implement a callback in order to receive resulting status codes.
 
-# AT Command Status Tables
+# AT command status tables
 The following table shows the current status of the library based on the different AT commands available in the Iridium 9602 SBD Transceiver:
 
 | Status | Icon | Preview | Description |
 |--|--|----|----|
 | Planned | `:clock1:` | :clock1: Planned |  The command is not implemented yet, <br/> but it is planned to be implemented in a near future |
 | WIP | `:pencil2:` | :pencil2: WIP | The command is not implemented yet, <br/> but it is being implemented | 
-| Implemented | `:hammer_and_pick:` | :hammer_and_pick: Implemented | Command is implemented, but it was not tested |
+| Implemented | `:hammer_and_pick:` | :hammer_and_pick: Implemented | Command is implemented, but it was not tested yet |
 | Tested | `:heavy_check_mark:` | :heavy_check_mark: Tested | Command is implemented and working as expected |
 
-
-## Standard AT commands
+## Standard AT basic commands
 | AT | Command | Status | Observations |
 | -- | -- | -- | -- |
 | AT | AT Test Command | :heavy_check_mark: Tested | For internal use only |
 | A/ | Repeat Last Command | :clock1: Planned | |
-| E | Echo | :heavy_check_mark: Tested | For itnernal use only |
+| E | Echo | :heavy_check_mark: Tested | For internal use only |
 | I | Identification | :pencil2: WIP | |
 | Q | Quiet Mode | :pencil2: Implemented | For internal use only |
 | V | Verbose Mode | :heavy_check_mark: Tested | For internal use only |
@@ -48,7 +47,7 @@ The following table shows the current status of the library based on the differe
 | *F | Flush to EEPROM | :pencil2: WIP | |
 | *R | Radio Activity | :pencil2: WIP |  |
 
-## Propietary AT commands
+## Proprietary AT extended commands
 | AT | Command | Status | Observations |
 | -- | -- | -- | -- |
 | +CCLK | Real Time Clock | :hammer_and_pick: Implemented |  |

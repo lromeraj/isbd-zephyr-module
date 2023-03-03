@@ -5,14 +5,15 @@
 #include <string.h>
 #include <stdint.h>
 
-#define AT_NO_PARAM     ((uint8_t)(-1))
+#define AT_MAX_CMD_LEN    255
+#define AT_MAX_CMD_SIZE   (AT_MAX_CMD_LEN + 1)
 
-#define __AT_BUFF( name ) \
-  char name[256]
+#define AT_DEFINE_CMD_BUFF( name ) \
+  char name[ AT_MAX_CMD_SIZE ];
 
 /**
  * @brief Used to build AT exec commands. Use this when you need
- * to execute a command without params and extra suffixes
+ * to execute a command without any extra params or suffixes
  * 
  * @param at_buf Output buffer, should have at least 141 bytes of space. Use __AT_BUFF macro whenever possible.
  * @param cmd_name AT command name
