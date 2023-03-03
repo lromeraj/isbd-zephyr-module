@@ -19,7 +19,7 @@
  * @brief Long timeout is used for commands which take longer
  * than 1 seconds, for example: AT+SBDI, AT+SBDIX, AT+CSQ, ...
  */
-#define LONG_TIMEOUT_RESPONSE       (30 * 1000) // ms
+#define LONG_TIMEOUT_RESPONSE       (60 * 1000) // ms
 
 struct isbd {
   struct isbd_config config;
@@ -277,6 +277,21 @@ at_uart_code_t _isbd_pack_bin_resp(
   *csum = ntohs( *csum );
 
   return at_uart_skip_txt_resp( AT_1_LINE_RESP, timeout_ms );
+}
+
+int8_t isbd_get_sig_q( uint8_t *signal ) {
+
+  char __buff[ 16 ];
+  SEND_AT_CMD_E( "+csq" );
+  
+  at_uart_code_t at_code = at_uart_pack_txt_resp(
+    __buff, sizeof( __buff ), AT_2_LINE_RESP, LONG_TIMEOUT_RESPONSE );
+
+  if ( at_code == AT_UART_OK ) {
+    sscanf( __buff, "+CSQ:%hhd", signal ); 
+  }
+
+  return at_code;
 }
 
 int8_t _isbd_using_three_wire_connection( bool using ) {

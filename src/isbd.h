@@ -123,4 +123,13 @@
    */
   int8_t isbd_clear_buffer( isbd_clear_buffer_t buffer );
 
+  /**
+   * @brief Execution command returns the received signal strength indication <rssi> from the 9602. Response is in
+the form:
+   * 
+   * @param signal 
+   * @return int8_t 
+   */
+  int8_t isbd_get_sig_q( uint8_t *signal );
+
 #endif
