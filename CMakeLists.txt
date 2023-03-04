@@ -8,6 +8,7 @@ project(uart_echo_bot)
 
 target_sources(app PRIVATE 
   src/main.c
+  src/utils.c
   src/at.c
   src/uart.c
   src/isbd.c )

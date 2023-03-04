@@ -1,6 +1,8 @@
-#define DEBUG_BYTE( byte ) \
-  if ( byte == '\r' || byte == '\n' ) { \
-    printk( "%d", byte ); \
-  } else { \
-    printk( "%c", byte ); \
-  }
+#ifndef UTILS_H_
+
+  #define UTILS_H_
+    #include <stdbool.h>
+
+  bool streq( const char *__src, const char *__ref );
+
+#endif
