@@ -50,7 +50,7 @@ The following table shows the current status of the library based on the differe
 | *R | Radio Activity | :clock1: Planned |  |
 
 ## Proprietary AT extended commands
-| AT | Command | Status | <div style="max-width:50px !important">property</div> |
+| AT | Command | Status | Observations |
 | -- | -- | -- | -- |
 | +CCLK | Real Time Clock | :heavy_check_mark: Tested |  |
 | +CGMI | Manufacturer Identification | :clock1: Planned |  |
