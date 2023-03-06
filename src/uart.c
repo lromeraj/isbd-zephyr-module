@@ -12,6 +12,12 @@
 // Default AT short response timeout
 #define AT_RESP_SHORT_TIMEOUT     1000 // ms
 
+#define RX_MSGQ_LEN     256
+
+// TODO: think in reducing buffer sizes
+#define TX_BUFF_SIZE    512 
+#define RX_BUFF_SIZE    128
+
 struct at_uart_buff {
   size_t rx_len;
   uint8_t rx[ RX_BUFF_SIZE ];
@@ -261,6 +267,7 @@ uint16_t at_uart_write( uint8_t *__src_buf, size_t len ) {
 at_uart_code_t at_uart_write_cmd( char *__src_buf, size_t len ) {
 
   g_uart._echoed = false;
+
   k_msgq_purge( &g_uart.queue.rx_q );
   at_uart_write( __src_buf, len );
 
@@ -332,11 +339,6 @@ void _uart_tx_isr( const struct device *dev, void *user_data ) {
 void _uart_rx_isr( const struct device *dev, void *user_data ) {
   uint8_t byte;
   if ( uart_fifo_read( dev, &byte, 1 ) == 1 ) {
-    if ( byte == '\r' || byte == '\n' ) {
-      // printk( "RXB: %d\n", byte );
-    } else {
-      // printk( "RXB: %c\n", byte );
-    }
     k_msgq_put( &g_uart.queue.rx_q, &byte, K_NO_WAIT );
   }
 }
@@ -422,7 +424,7 @@ const char *at_uart_err_to_name( at_uart_code_t code ) {
   return "AT_UART_UNKNOWN";
 }
 
-// ------ Non propietary AT basic commands implementation ------
+// ------ Non proprietary AT basic commands implementation ------
 
 int8_t at_uart_set_flow_control( uint8_t option ) {
   SEND_AT_CMD_P_OR_RET( "&k", option );
@@ -474,4 +476,4 @@ static int8_t _at_uart_set_verbose( bool enable ) {
     AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
 }
 
-// ---- End of propietary AT basic commands implementation -----
+// ---- End of proprietary AT basic commands implementation -----

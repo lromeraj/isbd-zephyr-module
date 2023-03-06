@@ -6,7 +6,6 @@
   #include <stdbool.h>
 
   #include "at.h"
-  #include "defs.h"
 
   // Expected AT command response lines
   #define AT_1_LINE_RESP    1

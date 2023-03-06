@@ -3,8 +3,12 @@
 
   #include <stdint.h>
 
-  #include "defs.h"
   #include "uart.h"
+
+  typedef enum isbd_err {
+    ISBD_OK        = 0,
+    ISBD_ERR,
+  } isbd_err_t;
 
   typedef enum isbd_clear_buffer {
     ISBD_CLEAR_MO_BUFF      = 0,
@@ -16,12 +20,12 @@
     struct at_uart_config at_uart;
   };
 
-  typedef struct isbd_session {
+  typedef struct isbd_session_ext {
     uint8_t mo_sts, mt_sts;
     uint16_t mo_msn, mt_msn;
     uint16_t mt_len;
     uint8_t mt_queued;
-  } isbd_session_t;
+  } isbd_session_ext_t;
 
   isbd_err_t isbd_setup( struct isbd_config *config );
 
@@ -113,7 +117,7 @@
    * @param session 
    * @return int8_t 
    */
-  int8_t isbd_init_session( isbd_session_t *session );
+  int8_t isbd_init_session( isbd_session_ext_t *session );
 
   /**
    * @brief 

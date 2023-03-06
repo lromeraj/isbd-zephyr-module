@@ -79,7 +79,7 @@ int8_t isbd_get_rtc( char *rtc_buf, size_t rtc_buf_len ) {
     rtc_buf, rtc_buf_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 }
 
-int8_t isbd_init_session( isbd_session_t *session ) {
+int8_t isbd_init_session( isbd_session_ext_t *session ) {
 
   char buff[ 64 ];
   

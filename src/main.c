@@ -172,7 +172,7 @@ void main(void) {
   printk( " @ len = %d, csum = %04X\n", len, csum );
   */
   
-  isbd_session_t session;
+  isbd_session_ext_t session;
 
 
   TEST_AT_CMD({ // success
