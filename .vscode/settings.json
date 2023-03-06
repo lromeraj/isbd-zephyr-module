@@ -10,6 +10,7 @@
       "typeinfo": "c",
       "system_error": "c",
       "defs.h": "c",
-      "at.h": "c"
+      "at.h": "c",
+      "type_traits": "c"
     }
 }

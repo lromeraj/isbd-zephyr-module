@@ -43,11 +43,11 @@ do { \
   if ( M_g_code == 0 ) { \
     printk( "OK; " ); \
     ok_block \
-    printk( "\n" ); \
   } else { \
-    printk( "ERR: %s\n", at_uart_err_to_name( M_g_code ) ); \
+    printk( "ERR: %s", at_uart_err_to_name( M_g_code ) ); \
     err_block \
   } \
+  printk( "\n" ); \
 } while(0)
 
 void main(void) {
