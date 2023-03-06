@@ -31,7 +31,7 @@ The following table shows the current status of the library based on the differe
 
 ## Standard AT basic commands
 | AT | Command | Status | Observations |
-| -- | -- | -- | -- |
+| -- | -- | --- | -- |
 | AT | AT Test Command | :heavy_check_mark: Tested | For internal use only |
 | A/ | Repeat Last Command | :clock1: Planned | |
 | E | Echo | :heavy_check_mark: Tested | For internal use only |
