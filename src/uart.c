@@ -5,9 +5,12 @@
 #include "uart.h"
 #include "utils.h"
 
-// minumum buffer size required to prase at least
-// AT string codes
-#define AT_MIN_BUFF_SIZE  32
+// Minumum buffer size required to parse 
+// at least AT string codes
+#define AT_MIN_BUFF_SIZE          32
+
+// Default AT short response timeout
+#define AT_RESP_SHORT_TIMEOUT     1000 // ms
 
 struct at_uart_buff {
   size_t rx_len;
@@ -33,8 +36,9 @@ struct at_uart {
 static struct at_uart g_uart;
 
 // ------------- Private AT basic command methods ---------------
-int8_t _at_uart_set_quiet( bool enable );
-int8_t _at_uart_set_verbose( bool enable );
+static int8_t _at_uart_set_quiet( bool enable );
+static int8_t _at_uart_enable_echo( bool enable );
+static int8_t _at_uart_set_verbose( bool enable );
 
 /**
  * @brief Echo command characters.
@@ -68,12 +72,12 @@ uint16_t at_uart_get_n_bytes(
     
     // ! Interrupts can disable RX when queue starts
     // ! filling up, which probably means instant packet loss
-    // ! so instead disabling RX the queue will skip (silently) those bytes
+    // ! so instead of disabling RX, the queue will skip (silently) those bytes
     // uart_irq_rx_enable( g_isbd.config.dev );
     // printk( "bin: %c\n", byte );
 
     if ( bytes ) {
-      *bytes++ = byte; 
+      *bytes++ = byte;
     }
     n_bytes--;
   }
@@ -108,6 +112,8 @@ at_uart_code_t at_uart_check_echo() {
     if ( byte_i == 0 && byte == '\n' ) continue;
 
     // ! When a mismatch is detected we have to drop all remaining chars
+    // ! In case of electrical noise, the trailing char may be different
+    // ! and not detected, in that case a timeout error will be returned
     if ( g_uart.buff.tx[ byte_i ] != byte ) {
             
       at_code = AT_UART_ERR;
@@ -217,12 +223,14 @@ at_uart_code_t at_uart_pack_txt_resp(
 at_uart_code_t at_uart_pack_txt_resp_code( int8_t *cmd_code, uint16_t timeout_ms ) {
 
   // ! The size of this buff needs at least the size to store
-  // ! command response codes which usually are between 0 and 9
+  // ! an AT command response code which usually are between 0 and 9
   char __cmd_code[ AT_MIN_BUFF_SIZE ] = "";
 
   at_uart_code_t at_code =
     at_uart_pack_txt_resp( __cmd_code, sizeof( __cmd_code ), AT_1_LINE_RESP, timeout_ms );
   
+  // ! We should considere conflicts when verbose mode is disabled,
+  // ! in which case returned AT interface codes are also numbers 
   if ( at_code == AT_UART_UNK ) {
     *cmd_code = atoi( __cmd_code );
     return AT_UART_OK;
@@ -422,45 +430,53 @@ const char *at_uart_err_to_name( at_uart_code_t code ) {
 // ------ Non propietary AT basic commands implementation ------
 
 int8_t at_uart_set_flow_control( uint8_t option ) {
-  SEND_AT_CMD_P( "&k", option );
-  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+  SEND_AT_CMD_P_OR_RET( "&k", option );
+  return at_uart_skip_txt_resp( 
+    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
 }
 
 int8_t at_uart_set_dtr( uint8_t option ) {
-  SEND_AT_CMD_P( "&d", option );
-  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+  SEND_AT_CMD_P_OR_RET( "&d", option );
+  return at_uart_skip_txt_resp( 
+    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
 }
 
 int8_t at_uart_store_active_config( uint8_t profile ) {
-  SEND_AT_CMD_P( "&w", profile );
-  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+  SEND_AT_CMD_P_OR_RET( "&w", profile );
+  return at_uart_skip_txt_resp( 
+    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
 }
 
 int8_t at_uart_set_reset_profile( uint8_t profile ) {
-  SEND_AT_CMD_P( "&y", profile );
-  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+  SEND_AT_CMD_P_OR_RET( "&y", profile );
+  return at_uart_skip_txt_resp( 
+    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
 }
 
 int8_t at_uart_flush_to_eeprom() {
-  SEND_AT_CMD_E( "*f" );
-  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+  SEND_AT_CMD_E_OR_RET( "*f" );
+  return at_uart_skip_txt_resp( 
+    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
 }
 
-int8_t _at_uart_set_quiet( bool enable ) {
-  SEND_AT_CMD_P( "q", enable );
-  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+static int8_t _at_uart_set_quiet( bool enable ) {
+  SEND_AT_CMD_P_OR_RET( "q", enable );
+  return at_uart_skip_txt_resp( 
+    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
 }
 
-int8_t _at_uart_enable_echo( bool enable ) {
+static int8_t _at_uart_enable_echo( bool enable ) {
   g_uart.config.echo = enable;
-  SEND_AT_CMD_P( "e", enable );
-  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+  SEND_AT_CMD_P_OR_RET( "e", enable );
+  return at_uart_skip_txt_resp( 
+    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
 }
 
-int8_t _at_uart_set_verbose( bool enable ) {
+static int8_t _at_uart_set_verbose( bool enable ) {
   g_uart.config.verbose = enable;
-  SEND_AT_CMD_P( "v", enable );
-  return at_uart_skip_txt_resp( AT_1_LINE_RESP, 100 );
+  SEND_AT_CMD_P_OR_RET( "v", enable );
+  return at_uart_skip_txt_resp( 
+    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
 }
 
 // ---- End of propietary AT basic commands implementation -----

@@ -13,33 +13,58 @@
   #define AT_2_LINE_RESP    2
   #define AT_3_LINE_RESP    3
 
-  #define SEND_AT_CMD( fn, ... ) \
+  /**
+   * @brief Used to send a command and return automatically in case
+   * of failure
+   * 
+   * @note This macro defines a temporary buffer to store the AT
+   * command string, finally result code is used in order to return
+   * automatically or not
+   */
+  #define SEND_AT_CMD_OR_RET( fn, ... ) \
     do { \
-      AT_DEFINE_CMD_BUFF( __M_at_buff ); \
-      at_uart_code_t M_at_code = at_uart_write_cmd( \
-        __M_at_buff, at_cmd##fn ( __M_at_buff, __VA_ARGS__ ) ); \
-      if ( M_at_code != AT_UART_OK ) { return M_at_code; } \
+      AT_DEFINE_CMD_BUFF( _M_at_buff ); \
+      at_uart_code_t _M_at_code = at_uart_write_cmd( \
+        _M_at_buff, at_cmd##fn ( _M_at_buff, __VA_ARGS__ ) ); \
+      if ( _M_at_code != AT_UART_OK ) { return _M_at_code; } \
     } while ( 0 );
 
-  // exec
-  #define SEND_AT_CMD_E( name ) \
-    SEND_AT_CMD( _e, name )
+  /**
+   * @brief Exec AT command, returns in case of failure
+   * @param name AT command name
+   */
+  #define SEND_AT_CMD_E_OR_RET( name ) \
+    SEND_AT_CMD_OR_RET( _e, name )
 
-  // equivalent to exec but using extra param
-  #define SEND_AT_CMD_P( name, param ) \
-    SEND_AT_CMD( _p, name, param )
+  /**
+   * @brief Exec AT command with parameter in place, returns in case of failure
+   * @param name AT command name
+   * @param param Unsigned byte param, this number will be concatenated to the AT command name
+   */
+  #define SEND_AT_CMD_P_OR_RET( name, param ) \
+    SEND_AT_CMD_OR_RET( _p, name, param )
 
-  // test
-  #define SEND_AT_CMD_T( name ) \
-    SEND_AT_CMD( _t, name )
+  /**
+   * @brief Test AT command, returns in case of failure
+   * @param name AT command name
+   */
+  #define SEND_AT_CMD_T_OR_RET( name ) \
+    SEND_AT_CMD_OR_RET( _t, name )
 
-  // read
-  #define SEND_AT_CMD_R( name, param ) \
-    SEND_AT_CMD( _r, name, param )
+  /**
+   * @brief Read AT command, returns in case of failure
+   * @param name AT command name
+   */
+  #define SEND_AT_CMD_R_OR_RET( name ) \
+    SEND_AT_CMD_OR_RET( _r, name )
 
-  // set
-  #define SEND_AT_CMD_S( name, params ) \
-    SEND_AT_CMD( _s, name, params )
+  /**
+   * @brief Set AT command, returns in case of failure
+   * @param name AT command name
+   * @param params A string which contains command parameters
+   */
+  #define SEND_AT_CMD_S_OR_RET( name, params ) \
+    SEND_AT_CMD_OR_RET( _s, name, params )
 
   typedef enum at_uart_code {
     AT_UART_TIMEOUT     = -2,
@@ -57,14 +82,14 @@
 
   at_uart_code_t at_uart_setup( struct at_uart_config *at_uart_config );
 
-  at_uart_code_t at_uart_get_str_code( const char *__buff );
-  at_uart_code_t at_uart_write_cmd( char *__src_buf, size_t len );
+  at_uart_code_t at_uart_get_str_code( const char *str_buf );
+  at_uart_code_t at_uart_write_cmd( char *cmd, size_t cmd_len );
   
-  uint16_t at_uart_write( uint8_t *__src_buf, size_t len );
+  uint16_t at_uart_write( uint8_t *buf, size_t buf_len );
   uint16_t at_uart_get_n_bytes( uint8_t *bytes, uint16_t n_bytes, uint16_t timeout_ms );
   
   at_uart_code_t at_uart_check_echo();
-  at_uart_code_t at_uart_pack_txt_resp( char *__str_resp, size_t str_resp_len, uint8_t lines, uint16_t timeout_ms );
+  at_uart_code_t at_uart_pack_txt_resp( char *str_resp, size_t str_resp_len, uint8_t lines, uint16_t timeout_ms );
   at_uart_code_t at_uart_pack_txt_resp_code( int8_t *cmd_code, uint16_t timeout_ms );
   at_uart_code_t at_uart_skip_txt_resp( uint8_t lines, uint16_t timeout_ms );
 

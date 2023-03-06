@@ -27,10 +27,10 @@ struct isbd {
 
 static struct isbd g_isbd = {  };
 
-at_uart_code_t _isbd_pack_bin_resp( 
-  uint8_t *__msg, size_t *msg_len, uint16_t *csum, uint16_t timeout_ms 
+static at_uart_code_t _isbd_pack_bin_resp( 
+  uint8_t *msg_buf, size_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms 
 );
-int8_t _isbd_using_three_wire_connection( bool using );
+static int8_t _isbd_using_three_wire_connection( bool using );
 
 isbd_err_t isbd_setup( struct isbd_config *isbd_config ) {
  
@@ -58,37 +58,39 @@ isbd_err_t isbd_setup( struct isbd_config *isbd_config ) {
   return at_code == AT_UART_OK ? ISBD_OK : ISBD_ERR;
 }
 
-int8_t isbd_get_imei( char *__imei, size_t imei_len ) {
-  SEND_AT_CMD_E( "+cgsn" );
+int8_t isbd_get_imei( char *imei_buf, size_t imei_buf_len ) {
+  SEND_AT_CMD_E_OR_RET( "+cgsn" );
   return at_uart_pack_txt_resp(
-    __imei, imei_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
+    imei_buf, imei_buf_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 }
 
-int8_t isbd_get_revision( char *__revision, size_t revision_len ) {
-  SEND_AT_CMD_E( "+cgmr" );
+int8_t isbd_get_revision( char *rev_buf, size_t rev_buf_len ) {
+  SEND_AT_CMD_E_OR_RET( "+cgmr" );
   return at_uart_pack_txt_resp( 
     // TODO: Measure exact lines from AT+CGMR
-    __revision, revision_len, 10, SHORT_TIMEOUT_RESPONSE );
+    rev_buf, rev_buf_len, 10, SHORT_TIMEOUT_RESPONSE );
 }
 
-int8_t isbd_get_rtc( char *__rtc, size_t rtc_len ) {
-  SEND_AT_CMD_E( "+cclk" );
+// TODO: parse the output of this command in order to return
+// TODO: a more human friendly time struct
+int8_t isbd_get_rtc( char *rtc_buf, size_t rtc_buf_len ) {
+  SEND_AT_CMD_E_OR_RET( "+cclk" );
   return at_uart_pack_txt_resp( 
-    __rtc, rtc_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
+    rtc_buf, rtc_buf_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 }
 
 int8_t isbd_init_session( isbd_session_t *session ) {
 
-  char __buff[ 64 ];
+  char buff[ 64 ];
   
   at_uart_code_t at_code;
-  SEND_AT_CMD_E( "+sbdix" );
+  SEND_AT_CMD_E_OR_RET( "+sbdix" );
 
   at_code = at_uart_pack_txt_resp(
-    __buff, sizeof( __buff ), AT_2_LINE_RESP, LONG_TIMEOUT_RESPONSE );
+    buff, sizeof( buff ), AT_2_LINE_RESP, LONG_TIMEOUT_RESPONSE );
   
   // TODO: implement optimized function instead of using sscanf
-  sscanf( __buff, "+SBDIX:%hhu,%hu,%hhu,%hu,%hu,%hhu",
+  sscanf( buff, "+SBDIX:%hhu,%hu,%hhu,%hu,%hu,%hhu",
     &session->mo_sts,
     &session->mo_msn,
     &session->mt_sts,
@@ -104,7 +106,7 @@ int8_t isbd_clear_buffer( isbd_clear_buffer_t buffer ) {
 
   int8_t cmd_code;
   at_uart_code_t at_code;
-  SEND_AT_CMD_P( "+sbdd", buffer );
+  SEND_AT_CMD_P_OR_RET( "+sbdd", buffer );
 
   // retrieve command response code
   // this is not AT command interface result code
@@ -142,20 +144,22 @@ int8_t isbd_set_mo_txt( const char *txt ) {
   }
   */
 
-  SEND_AT_CMD_S( "+sbdwt", txt );
+  SEND_AT_CMD_S_OR_RET( "+sbdwt", txt );
   return at_uart_skip_txt_resp( 
     AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 }
 
-int8_t isbd_set_mo( const uint8_t *__msg, size_t msg_len ) {
+int8_t isbd_set_mo( const uint8_t *msg, size_t msg_len ) {
 
   // TODO: __data buffer is not mandatory and should be
   // TODO: removed in future modifications
-  uint8_t __data[ msg_len + 2 ];
+  uint8_t tx_buf_size = msg_len + 2;
+  uint8_t tx_buf[ tx_buf_size ];
 
-  unsigned char __len[ 8 ];
-  snprintf( __len, sizeof( __len ), "%d", msg_len );
-  SEND_AT_CMD_S( "+sbdwb", __len );
+  unsigned char msg_len_buf[ 8 ];
+  snprintf( msg_len_buf, sizeof( msg_len_buf ), "%d", msg_len );
+
+  SEND_AT_CMD_S_OR_RET( "+sbdwb", msg_len_buf );
 
   int8_t cmd_code;
   at_uart_code_t at_code;
@@ -165,6 +169,8 @@ int8_t isbd_set_mo( const uint8_t *__msg, size_t msg_len ) {
   // but if the length is not correct or some other validity check
   // fails, the resulting value will be a code corresponding to 
   // the command context and not to the AT command interface itself
+  // So if the returned code from this function is not AT_UART_OK, cmd_code
+  // will NOT be updated
   at_code = 
     at_uart_pack_txt_resp_code( &cmd_code, SHORT_TIMEOUT_RESPONSE );
 
@@ -173,32 +179,31 @@ int8_t isbd_set_mo( const uint8_t *__msg, size_t msg_len ) {
     // compute message checksum
     uint32_t sum = 0;
     for ( int i=0; i < msg_len; i++ ) {
-      sum += __data[ i ] = __msg[ i ];
+      sum += tx_buf[ i ] = msg[ i ];
     }
 
-    uint16_t *csum = (uint16_t*)&__data[ msg_len ];
+    uint16_t *csum = (uint16_t*)&tx_buf[ msg_len ];
     *csum = htons( sum & 0xFFFF );
 
     // finally write binary data to the ISU
     // MSG (N bytes) + CHECKSUM (2 bytes)
-    at_uart_write( __data, msg_len + 2 );
+    at_uart_write( tx_buf, tx_buf_size );
 
     // retrieve the command result code
     at_uart_pack_txt_resp_code( 
       &cmd_code, SHORT_TIMEOUT_RESPONSE ); 
-
   }
 
-  // always fetch last AT command
-  at_code = at_uart_skip_txt_resp( 
+  // always fetch last AT command result
+  at_code = at_uart_skip_txt_resp(
     AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   return at_code == AT_UART_OK ? cmd_code : at_code;
 }
 
 int8_t isbd_get_mt( uint8_t *__msg, size_t *msg_len, uint16_t *csum ) {
-  SEND_AT_CMD_E( "+sbdrb" );
-  return _isbd_pack_bin_resp( 
+  SEND_AT_CMD_E_OR_RET( "+sbdrb" );
+  return _isbd_pack_bin_resp(
     __msg, msg_len, csum, SHORT_TIMEOUT_RESPONSE );
 }
 
@@ -228,20 +233,18 @@ int8_t isbd_set_mo_txt_l( char *__txt ) {
 */
 
 int8_t isbd_mo_to_mt( char *__out, size_t out_len ) {
-  SEND_AT_CMD_E( "+sbdtc" );
+  SEND_AT_CMD_E_OR_RET( "+sbdtc" );
   return at_uart_pack_txt_resp(
     __out, out_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 }
 
 int8_t isbd_get_mt_txt( char *__mt_buff, size_t mt_buff_len ) {
   
-  SEND_AT_CMD_E( "+sbdrt" );
-
-  if ( g_isbd.config.at_uart.verbose ) {
-    
+  SEND_AT_CMD_E_OR_RET( "+sbdrt" );
+  
+  if ( g_isbd.config.at_uart.verbose ) {  
     return at_uart_pack_txt_resp( 
       __mt_buff, mt_buff_len, AT_3_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
-
   } else {
     
     uint16_t len;
@@ -263,15 +266,13 @@ int8_t isbd_get_mt_txt( char *__mt_buff, size_t mt_buff_len ) {
 
 at_uart_code_t _isbd_pack_bin_resp(
   // TODO: timeout could be implicitly specified
-  uint8_t *__msg, size_t *msg_len, uint16_t *csum, uint16_t timeout_ms
+  uint8_t *msg_buf, size_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms
 ) {
 
-  uint8_t byte;  
-  
-  at_uart_get_n_bytes( (uint8_t*)msg_len, 2, timeout_ms ); // message length
-  *msg_len = ntohs( *msg_len );
+  at_uart_get_n_bytes( (uint8_t*)msg_buf_len, 2, timeout_ms ); // message length
+  *msg_buf_len = ntohs( *msg_buf_len );
 
-  at_uart_get_n_bytes( __msg, *msg_len, timeout_ms );
+  at_uart_get_n_bytes( msg_buf, *msg_buf_len, timeout_ms );
 
   at_uart_get_n_bytes( (uint8_t*)csum, 2, timeout_ms );
   *csum = ntohs( *csum );
@@ -279,22 +280,22 @@ at_uart_code_t _isbd_pack_bin_resp(
   return at_uart_skip_txt_resp( AT_1_LINE_RESP, timeout_ms );
 }
 
-int8_t isbd_get_sig_q( uint8_t *signal ) {
+int8_t isbd_get_sig_q( uint8_t *signal_q ) {
 
-  char __buff[ 16 ];
-  SEND_AT_CMD_E( "+csq" );
+  char buf[ 16 ];
+  SEND_AT_CMD_E_OR_RET( "+csq" );
   
   at_uart_code_t at_code = at_uart_pack_txt_resp(
-    __buff, sizeof( __buff ), AT_2_LINE_RESP, LONG_TIMEOUT_RESPONSE );
+    buf, sizeof( buf ), AT_2_LINE_RESP, LONG_TIMEOUT_RESPONSE );
 
   if ( at_code == AT_UART_OK ) {
-    sscanf( __buff, "+CSQ:%hhd", signal ); 
+    sscanf( buf, "+CSQ:%hhd", signal_q ); 
   }
 
   return at_code;
 }
 
-int8_t _isbd_using_three_wire_connection( bool using ) {
+static int8_t _isbd_using_three_wire_connection( bool using ) {
   
   at_uart_code_t at_code;
   uint8_t en_param = using ? 0 : 3;
