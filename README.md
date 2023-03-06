@@ -38,16 +38,16 @@ The following table shows the current status of the library based on the differe
 | I | Identification | :pencil2: WIP | |
 | Q | Quiet Mode | :heavy_check_mark: Tested | For internal use only |
 | V | Verbose Mode | :heavy_check_mark: Tested | For internal use only |
-| Z | Soft Reset | :pencil2: WIP |  |
+| Z | Soft Reset | :clock1: Planned |  |
 | &D | DTR Option | :heavy_check_mark: Tested |  |
 | &F | Restore Factory Settings | :x: | |
 | &K | Flow Control | :heavy_check_mark: Tested |  |
 | &V | View Active and Stored Configuration | :x: | |
-| &W | Store Active Configuration | :pencil2: WIP | |
-| &Y | Designate Default Reset Profile | :pencil2: WIP | |
+| &W | Store Active Configuration | :hammer_and_pick: Implemented | |
+| &Y | Designate Default Reset Profile | :hammer_and_pick: Implemented | |
 | %R | Display registers | :x: | |
-| *F | Flush to EEPROM | :pencil2: WIP | |
-| *R | Radio Activity | :pencil2: WIP |  |
+| *F | Flush to EEPROM | :hammer_and_pick: Implemented | |
+| *R | Radio Activity | :clock1: Planned |  |
 
 ## Proprietary AT extended commands
 | AT | Command | Status | Observations |
