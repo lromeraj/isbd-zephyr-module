@@ -1,3 +1,12 @@
+<style>
+  .purple {
+    color:inherit;
+  }
+  .purple:hover {
+    color:rgb(107,79,187);
+  }
+</style>
+
 # Iridium SBD Library for Zephyr OS (Sync variant)
 
 This library has been implemented in order to give support for the *Iridium 9602 SBD Transceiver*, but it should work too for modern transceivers like *9603*, nad also for modems which share similar AT commands.
@@ -50,14 +59,6 @@ The following table shows the current status of the library based on the differe
 | *F | Flush to EEPROM | :hammer_and_pick: Implemented | |
 | *R | Radio Activity | :clock1: Planned |  |
 
-
-<style>
-
-  table {
-    background-color: red !important;
-  }
-  
-</style>
 
 ## Proprietary AT extended commands
 | AT | Command | Status | Observations |
