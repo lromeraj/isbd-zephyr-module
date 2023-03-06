@@ -65,6 +65,7 @@
   #define SEND_AT_CMD_S_OR_RET( name, params ) \
     SEND_AT_CMD_OR_RET( _s, name, params )
 
+  
   typedef enum at_uart_code {
     AT_UART_TIMEOUT     = -2,
     AT_UART_RDY         = -3,
@@ -79,11 +80,46 @@
     struct device *dev;
   };
 
+
+  /**
+   * @brief Setup AT UART module
+   * 
+   * @param at_uart_config 
+   * @return at_uart_code_t 
+   */
   at_uart_code_t at_uart_setup( struct at_uart_config *at_uart_config );
 
+  /**
+   * @brief Tries to retrieve AT command result code from the given string
+   * 
+   * @param str_buf String buffer to check
+   * @return at_uart_code_t 
+   */
   at_uart_code_t at_uart_get_str_code( const char *str_buf );
+
+  /**
+   * @brief Writes the given AT command directly to serial port
+   * 
+   * @note This function should be used while sending AT commands. 
+   * In order to simplify AT command build process
+   * you can use macros like: SEND_AT_CMD_<TYPE>_OR_RET.
+   * 
+   * @param cmd AT command string buffer
+   * @param cmd_len AT command string length (skipping null terminated char).
+   * This is used in order to avoid recomputing string length, useful when using
+   *  SEND_AT_CMD_<TYPE>_OR_RET like macros
+   * 
+   * @return at_uart_code_t 
+   */
   at_uart_code_t at_uart_write_cmd( char *cmd, size_t cmd_len );
   
+  /**
+   * @brief Writes the given buffer directly to serial port
+   * 
+   * @param buf Buffer to be written
+   * @param buf_len Buffer length
+   * @return uint16_t 
+   */
   uint16_t at_uart_write( uint8_t *buf, size_t buf_len );
   uint16_t at_uart_get_n_bytes( uint8_t *bytes, uint16_t n_bytes, uint16_t timeout_ms );
   
@@ -92,6 +128,13 @@
   at_uart_code_t at_uart_pack_txt_resp_code( int8_t *cmd_code, uint16_t timeout_ms );
   at_uart_code_t at_uart_skip_txt_resp( uint8_t lines, uint16_t timeout_ms );
 
+  /**
+   * @brief Retrieves the corresponding string from
+   * the given error code
+   * 
+   * @param code Error code to be named
+   * @return const char* A null terminated error string
+   */
   const char *at_uart_err_to_name( at_uart_code_t code );
 
   int8_t at_uart_set_dtr( uint8_t option );

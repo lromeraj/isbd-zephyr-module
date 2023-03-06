@@ -10,7 +10,8 @@
 #define AT_MIN_BUFF_SIZE          32
 
 // Default AT short response timeout
-#define AT_RESP_SHORT_TIMEOUT     1000 // ms
+#define AT_SHORT_TIMEOUT          1000 // ms
+
 
 #define RX_MSGQ_LEN     256
 
@@ -34,33 +35,62 @@ struct at_uart_queue {
 
 struct at_uart {
   bool _echoed;
+  unsigned char eol; // end of line char
   struct at_uart_buff buff;
   struct at_uart_queue queue;
   struct at_uart_config config;
 };
 
+// TODO: Make this module "instanceable"
+// TODO: https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/3
 static struct at_uart g_uart;
 
 // ------------- Private AT basic command methods ---------------
+/**
+ * @brief Enables or disables AT quiet mode. If enabled there will not be
+ * AT command responses. 
+ * 
+ * @note In most scenarios quiet mode should be disabled for parsing AT command
+ * responses. This has been implemented for internal use only.
+ * 
+ * @param enable Enable or disable quiet mode
+ * @return int8_t 
+ */
 static int8_t _at_uart_set_quiet( bool enable );
+
+/**
+ * @brief Enables or disables AT command echo. If echo is enabled, 
+ * commands will be echoed back to the master device.
+ * 
+ * @param enable Enable or disable AT command echo
+ * @return int8_t 
+ */
 static int8_t _at_uart_enable_echo( bool enable );
+
+/**
+ * @brief Enables or disables verbose mode. When enabled the
+ * AT command responses will be a word like string, otherwise
+ * an ASCII unsigned integer will be received.
+ * 
+ * @param enable 
+ * @return int8_t 
+ */
 static int8_t _at_uart_set_verbose( bool enable );
 
 /**
  * @brief Echo command characters.
  * 
  * @note If enabled, this is used as an extra check to know 
- * if the device has received correctly the AT command. 
+ * if the device receives correctly AT commands. 
  * This is usually not necessary except in cases
  * where connection is too noisy, and despite of this the AT command will be corrupted
- * and the device will respond with an ERR anyway, so it's recommended to disable
+ * and the device will respond with an ERROR anyway, so it's recommended to disable
  * echo in order to reduce RX serial traffic.
  * 
  * @param enable 
  * @return int8_t 
  */
 int8_t _at_uart_enable_echo( bool enable );
-int8_t _at_uart_enable_flow_control( bool enable );
 // --------- End of private AT basic command methods ------------
 
 uint16_t at_uart_get_n_bytes( 
@@ -110,8 +140,8 @@ at_uart_code_t at_uart_check_echo() {
   // This flag is used to avoid rechecking echo for segmented responses
   g_uart._echoed = true;
 
-  k_timeout_t k_timeout = K_MSEC( 100 );
   at_uart_code_t at_code = AT_UART_OK;
+  k_timeout_t k_timeout = K_MSEC( AT_SHORT_TIMEOUT );
 
   while( k_msgq_get( &g_uart.queue.rx_q, &byte, k_timeout ) == 0 ) {
     
@@ -149,7 +179,6 @@ at_uart_code_t at_uart_pack_txt_resp(
 
   at_uart_code_t at_code;
   k_timeout_t k_timeout = K_MSEC( timeout_ms );
-  // __str_resp buffer will be used to store the most relevant string response
 
   // this little buffer is used to parse AT status codes like ERROR, OK, READY ...
   char at_buf[ AT_MIN_BUFF_SIZE ] = "";
@@ -171,7 +200,7 @@ at_uart_code_t at_uart_pack_txt_resp(
       // printk( "CHAR: %c\n", byte );
     }
 
-    if ( at_buf_i > 0 && trail_char ) {
+    if ( at_buf_i > 0 && trail_char == g_uart.eol ) {
       
       // TODO: AT code should be checked only in the first and last line
       at_code = at_uart_get_str_code( at_buf );
@@ -188,6 +217,7 @@ at_uart_code_t at_uart_pack_txt_resp(
 
       at_buf_i = 0;
       at_buf[ 0 ] = '\0';
+
     }
 
     if ( !trail_char ) {
@@ -247,7 +277,7 @@ inline at_uart_code_t at_uart_skip_txt_resp(
 }
 
 // TODO: We could use a queue for transmission bytes
-uint16_t at_uart_write( uint8_t *__src_buf, size_t len ) {
+uint16_t at_uart_write( uint8_t *src_buf, size_t len ) {
 
   if ( len > TX_BUFF_SIZE ) {
     return 0;
@@ -256,7 +286,7 @@ uint16_t at_uart_write( uint8_t *__src_buf, size_t len ) {
   g_uart.buff.tx_idx = 0; // reset transmission buffer index
   g_uart.buff.tx_len = len; // update transmission buffer length
 
-  bytecpy( g_uart.buff.tx, __src_buf, len ); // copy at buffer to transmission
+  bytecpy( g_uart.buff.tx, src_buf, len ); // copy at buffer to transmission
 
   uart_irq_tx_enable( g_uart.config.dev );
   // printk( "%d\n", len );
@@ -264,38 +294,57 @@ uint16_t at_uart_write( uint8_t *__src_buf, size_t len ) {
   return len;
 }
 
-at_uart_code_t at_uart_write_cmd( char *__src_buf, size_t len ) {
+at_uart_code_t at_uart_write_cmd( char *src_buf, size_t len ) {
 
   g_uart._echoed = false;
 
+  // if device tries to send async data before sending a command,
+  // we have to skip those bytes (or save for later use)
+  // this should not be necessary if flow control is enabled
+  if ( k_msgq_num_used_get( &g_uart.queue.rx_q ) > 0 ) {
+
+    // printk("Skipping line ...\n" );
+    at_uart_skip_txt_resp( AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
+
+    // uint8_t byte;
+    // k_timeout_t k_timeout = K_MSEC( AT_SHORT_TIMEOUT );
+    /*
+    while ( k_msgq_get( &g_uart.queue.rx_q, &byte, k_timeout ) == 0 ) {
+      if ( byte == '\n' )
+    }
+    */
+  }
+
   k_msgq_purge( &g_uart.queue.rx_q );
-  at_uart_write( __src_buf, len );
+
+  // also fully purge queue
+  at_uart_write( src_buf, len );
 
   return at_uart_check_echo();
 
 }
 
-at_uart_code_t at_uart_get_str_code( const char *__buff ) {
+at_uart_code_t at_uart_get_str_code( const char *buf ) {
 
   if ( g_uart.config.verbose ) {
     
     // ordered by occurrence frequency
-    if ( streq( __buff, "OK" ) ) {
+    if ( streq( buf, "OK" ) ) {
       return AT_UART_OK;
-    } else if ( streq( __buff, "ERROR" ) ) {
+    } else if ( streq( buf, "ERROR" ) ) {
       return AT_UART_ERR;
     }
 
   } else {
-    if ( streq( __buff, "0" ) ) {
+    if ( streq( buf, "0" ) ) {
       return AT_UART_OK;
-    } else if ( streq( __buff, "4" ) ) {
+    } else if ( streq( buf, "4" ) ) {
       return AT_UART_ERR;
     }
   }
   
   // READY is the same for both modes
-  if ( streq( __buff, "READY" ) ) {
+  if ( streq( buf, "READY" ) ) {
     return AT_UART_RDY;
   }
 
@@ -367,6 +416,11 @@ at_uart_code_t at_uart_setup( struct at_uart_config *at_uart_config ) {
   // update whole configuration
   g_uart.config = *at_uart_config;
 
+  if ( g_uart.config.verbose ) {
+    g_uart.eol = '\n';
+  } else {
+    g_uart.eol = '\r';
+  }
   // initialize message queue
   k_msgq_init( 
     &g_uart.queue.rx_q,
@@ -429,51 +483,51 @@ const char *at_uart_err_to_name( at_uart_code_t code ) {
 int8_t at_uart_set_flow_control( uint8_t option ) {
   SEND_AT_CMD_P_OR_RET( "&k", option );
   return at_uart_skip_txt_resp( 
-    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
+    AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
 int8_t at_uart_set_dtr( uint8_t option ) {
   SEND_AT_CMD_P_OR_RET( "&d", option );
   return at_uart_skip_txt_resp( 
-    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
+    AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
 int8_t at_uart_store_active_config( uint8_t profile ) {
   SEND_AT_CMD_P_OR_RET( "&w", profile );
   return at_uart_skip_txt_resp( 
-    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
+    AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
 int8_t at_uart_set_reset_profile( uint8_t profile ) {
   SEND_AT_CMD_P_OR_RET( "&y", profile );
   return at_uart_skip_txt_resp( 
-    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
+    AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
 int8_t at_uart_flush_to_eeprom() {
   SEND_AT_CMD_E_OR_RET( "*f" );
   return at_uart_skip_txt_resp( 
-    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
+    AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
 static int8_t _at_uart_set_quiet( bool enable ) {
   SEND_AT_CMD_P_OR_RET( "q", enable );
   return at_uart_skip_txt_resp( 
-    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
+    AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
 static int8_t _at_uart_enable_echo( bool enable ) {
   g_uart.config.echo = enable;
   SEND_AT_CMD_P_OR_RET( "e", enable );
   return at_uart_skip_txt_resp( 
-    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
+    AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
 static int8_t _at_uart_set_verbose( bool enable ) {
   g_uart.config.verbose = enable;
   SEND_AT_CMD_P_OR_RET( "v", enable );
   return at_uart_skip_txt_resp( 
-    AT_1_LINE_RESP, AT_RESP_SHORT_TIMEOUT );
+    AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
 // ---- End of proprietary AT basic commands implementation -----

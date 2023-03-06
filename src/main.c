@@ -43,11 +43,11 @@ do { \
   if ( M_g_code == 0 ) { \
     printk( "OK; " ); \
     ok_block \
-    printk( "\n" ); \
   } else { \
-    printk( "ERR: %s\n", at_uart_err_to_name( M_g_code ) ); \
+    printk( "ERR: %s; ", at_uart_err_to_name( M_g_code ) ); \
     err_block \
   } \
+  printk( "\n" ); \
 } while(0)
 
 
@@ -105,7 +105,7 @@ void main(void) {
     }
   };
 
-  char __buff[ 256 ];
+  char buf[ 256 ];
 
   if ( isbd_setup( &isbd_config ) == ISBD_OK ) {
     printk( "Modem OK\n" );
@@ -121,59 +121,36 @@ void main(void) {
   // CHECK_AT_CMD( code, {}, isbd_enable_echo, true );
 
   TEST_AT_CMD({
-    printk( "Revision : %s", __buff );
-  }, {}, isbd_get_revision, __buff, sizeof( __buff ) );  
+    printk( "Revision : %s", buf );
+  }, {}, isbd_get_revision, buf, sizeof( buf ) );  
 
   TEST_AT_CMD({
-    printk( "IMEI : %s", __buff );
-  }, {}, isbd_get_imei, __buff, sizeof( __buff ) );  
+    printk( "IMEI : %s", buf );
+  }, {}, isbd_get_imei, buf, sizeof( buf ) );  
 
   const char *msg = "hello";
 
   TEST_AT_CMD({}, {}, isbd_set_mo, msg, strlen( msg ) );
 
   TEST_AT_CMD({
-    printk( "%s", __buff );
-  }, {}, isbd_mo_to_mt, __buff, sizeof( __buff ) );
-
-  
+    printk( "%s", buf );
+  }, {}, isbd_mo_to_mt, buf, sizeof( buf ) );
 
   uint16_t csum;
-  size_t len = sizeof( __buff );
+  size_t len = sizeof( buf );
 
+  
   TEST_AT_CMD({
     printk("msg=");
     for ( int i=0; i < len; i++ ) {
-      printk( "%c", __buff[ i ] );
+      printk( "%c", buf[ i ] );
     }
     printk( ", len=%d, csum=%04X", len, csum );
-  }, {}, isbd_get_mt, __buff, &len, &csum );
+  }, {}, isbd_get_mt, buf, &len, &csum );
+  
 
   /*
-  uint8_t signal;
-  TEST_AT_CMD({
-    printk( "signal_quality=%d", signal );
-  }, isbd_get_sig_q, &signal );
-  */
-
-  // code = isbd_set_mo_bin( msg, strlen( msg ) );
-
-  // code = isbd_clear_buffer( ISBD_CLEAR_MO_BUFF );
-  // printk( "isbd_clear_buffer() : %d\n", code );
-
-  /*
-  uint16_t len, csum;
-  isbd_get_mt_bin( __buff, &len, &csum );
-  
-  for ( int i=0; i < len; i++ ) {
-    printk( "%c", __buff[ i ] );
-  }
-
-  printk( " @ len = %d, csum = %04X\n", len, csum );
-  */
-  
   isbd_session_ext_t session;
-
 
   TEST_AT_CMD({ // success
 
@@ -201,6 +178,52 @@ void main(void) {
   }, isbd_init_session, &session );
 
   gpio_pin_configure_dt( &blue_led, GPIO_OUTPUT_INACTIVE );
+  */ 
+
+  evt_report_t evt_report = {
+    .mode = 1,
+    .service = 1,
+    .signal = 1,
+  };
+
+  TEST_AT_CMD( {}, {}, isbd_set_evt_report, &evt_report );
+
+  while (1) {
+
+    // TODO: this logic should be moved to isbd module, 
+    // TODO: this is only for testing purposes
+    if ( AT_UART_UNK == at_uart_pack_txt_resp( buf, sizeof( buf ), AT_1_LINE_RESP, 10000 ) ) {
+      printk("RECEIVED: %s\n", buf );
+    } else {
+      printk("SKIPPED\n");
+    }
+
+  }
+
+  /*
+  uint8_t signal;
+  TEST_AT_CMD({
+    printk( "signal_quality=%d", signal );
+  }, isbd_get_sig_q, &signal );
+  */
+
+  // code = isbd_set_mo_bin( msg, strlen( msg ) );
+
+  // code = isbd_clear_buffer( ISBD_CLEAR_MO_BUFF );
+  // printk( "isbd_clear_buffer() : %d\n", code );
+
+  /*
+  uint16_t len, csum;
+  isbd_get_mt_bin( __buff, &len, &csum );
+  
+  for ( int i=0; i < len; i++ ) {
+    printk( "%c", __buff[ i ] );
+  }
+
+  printk( " @ len = %d, csum = %04X\n", len, csum );
+  */
+  
+
 
   // int8_t cmd_code = isbd_set_mo_txt( "hoooooo" );
   // printk( "SBDWT    : %d\n", cmd_code );

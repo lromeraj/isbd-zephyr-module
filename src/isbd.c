@@ -295,6 +295,30 @@ int8_t isbd_get_sig_q( uint8_t *signal_q ) {
   return at_code;
 }
 
+int8_t isbd_set_evt_report( evt_report_t *evt_report ) {
+
+  char buf[16];
+
+  snprintf( buf, sizeof( buf ), "%hhd,%hhd,%hhd", 
+    evt_report->mode, evt_report->signal, evt_report->service );
+
+  SEND_AT_CMD_S_OR_RET( "+cier", buf );
+
+  // ! This command has a peculiarity,
+  // ! after command is successfully executed, it returns an OK response,
+  // ! but just after that it transmits the first indicator event with the current
+  at_uart_code_t at_code = at_uart_skip_txt_resp( AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );  
+
+  uint8_t lines_to_skip = 
+    evt_report->mode * ( evt_report->service + evt_report->signal );
+
+  if ( lines_to_skip > 0 ) {
+    at_uart_skip_txt_resp( lines_to_skip, SHORT_TIMEOUT_RESPONSE );
+  }
+
+  return at_code;
+}
+
 static int8_t _isbd_using_three_wire_connection( bool using ) {
   
   at_uart_code_t at_code;
