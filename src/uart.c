@@ -114,18 +114,16 @@ at_uart_code_t at_uart_check_echo() {
     // ! When a mismatch is detected we have to drop all remaining chars
     // ! In case of electrical noise, the trailing char may be different
     // ! and not detected, in that case a timeout error will be returned
+    // ! In case of extreme electrical noise (long/unconnected wires) 
+    // ! this loop could get stuck until \r char is randomly found
     if ( g_uart.buff.tx[ byte_i ] != byte ) {
-            
-      at_code = AT_UART_ERR;
-      // printk( "dropping %d ...\n", byte );
       // Echoed command do not matches previously transmitted command
-      // return AT_UART_ERR;
+      at_code = AT_UART_ERR;
     }
 
     byte_i++;
 
     if ( byte == '\r' ) {
-      // Whole command was echoed back successfully
       return at_code;
     }
   }
@@ -134,21 +132,21 @@ at_uart_code_t at_uart_check_echo() {
 }
 
 at_uart_code_t at_uart_pack_txt_resp(
-  char *__str_resp, size_t str_resp_len, uint8_t lines, uint16_t timeout_ms 
+  char *buf, size_t buf_len, uint8_t lines, uint16_t timeout_ms 
 ) {
   
   uint8_t byte;
   uint8_t line_n = 1;
 
-  uint16_t at_buff_i = 0;
-  uint16_t str_resp_i = 0;
+  uint16_t buf_i = 0;
+  uint16_t at_buf_i = 0;
 
   at_uart_code_t at_code;
   k_timeout_t k_timeout = K_MSEC( timeout_ms );
   // __str_resp buffer will be used to store the most relevant string response
 
-  // this little __buff is used to parse AT responses
-  char __at_buff[ AT_MIN_BUFF_SIZE ] = "";
+  // this little buffer is used to parse AT status codes like ERROR, OK, READY ...
+  char at_buf[ AT_MIN_BUFF_SIZE ] = "";
 
   // TODO: timeout should be only for the first character
   while ( k_msgq_get( &g_uart.queue.rx_q, &byte, k_timeout ) == 0 ) {
@@ -167,10 +165,10 @@ at_uart_code_t at_uart_pack_txt_resp(
       // printk( "CHAR: %c\n", byte );
     }
 
-    if ( at_buff_i > 0 && trail_char ) {
+    if ( at_buf_i > 0 && trail_char ) {
       
       // TODO: AT code should be checked only in the first and last line
-      at_code = at_uart_get_str_code( __at_buff );
+      at_code = at_uart_get_str_code( at_buf );
 
       if ( at_code != AT_UART_UNK ) {
         return at_code;
@@ -182,36 +180,33 @@ at_uart_code_t at_uart_pack_txt_resp(
         return AT_UART_UNK;
       }
 
-      /*
-      if ( __str_resp && lines > 1 && line_n > 1 && line_n < lines ) {
-        // add trailing char
-      }
-      */
-
-      at_buff_i = 0;
-      __at_buff[ 0 ] = '\0';
+      at_buf_i = 0;
+      at_buf[ 0 ] = '\0';
     }
 
     if ( !trail_char ) {
       
-      if ( __str_resp
-        && str_resp_i < str_resp_len - 1
+      if ( buf
+        && buf_i < buf_len - 1
         && ( lines == AT_1_LINE_RESP || line_n < lines) ) {
         
-        __str_resp[ str_resp_i ] = byte;
+        // TODO: We should append trailing chars to source buf 
+        // TODO: if response string has multiple lines
 
-        // TODO: put this char only when buffer is terminated
-        __str_resp[ str_resp_i + 1 ] = '\0';
+        buf[ buf_i ] = byte;
+
+        // TODO: Put this char only when buffer is terminated
+        buf[ buf_i + 1 ] = '\0';
       }
 
       // at buff is only used for AT command responses
-      if ( at_buff_i < sizeof( __at_buff ) - 1 ) {
-        __at_buff[ at_buff_i ] = byte;
-        __at_buff[ at_buff_i + 1 ] = '\0';
+      if ( at_buf_i < sizeof( at_buf ) - 1 ) {
+        at_buf[ at_buf_i ] = byte;
+        at_buf[ at_buf_i + 1 ] = '\0';
       }
 
-      at_buff_i++;
-      str_resp_i++;
+      at_buf_i++;
+      buf_i++;
 
     }
 
@@ -224,22 +219,22 @@ at_uart_code_t at_uart_pack_txt_resp_code( int8_t *cmd_code, uint16_t timeout_ms
 
   // ! The size of this buff needs at least the size to store
   // ! an AT command response code which usually are between 0 and 9
-  char __cmd_code[ AT_MIN_BUFF_SIZE ] = "";
+  char cmd_code_buf[ AT_MIN_BUFF_SIZE ] = "";
 
   at_uart_code_t at_code =
-    at_uart_pack_txt_resp( __cmd_code, sizeof( __cmd_code ), AT_1_LINE_RESP, timeout_ms );
+    at_uart_pack_txt_resp( cmd_code_buf, sizeof( cmd_code_buf ), AT_1_LINE_RESP, timeout_ms );
   
   // ! We should considere conflicts when verbose mode is disabled,
   // ! in which case returned AT interface codes are also numbers 
   if ( at_code == AT_UART_UNK ) {
-    *cmd_code = atoi( __cmd_code );
+    *cmd_code = atoi( cmd_code_buf );
     return AT_UART_OK;
   }
 
   return at_code;
 }
 
-inline at_uart_code_t at_uart_skip_txt_resp( 
+inline at_uart_code_t at_uart_skip_txt_resp(
   uint8_t lines, uint16_t timeout_ms 
 ) {
   return at_uart_pack_txt_resp( NULL, 0, lines, timeout_ms );

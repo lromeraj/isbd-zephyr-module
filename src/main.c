@@ -64,6 +64,11 @@ void set_warning_led() {
   gpio_pin_configure_dt( &green_led, GPIO_OUTPUT_ACTIVE );
 }
 
+void set_success_led() {
+  clear_leds();
+  gpio_pin_configure_dt( &green_led, GPIO_OUTPUT_ACTIVE );
+}
+
 void set_info_led() {
   clear_leds();
   gpio_pin_configure_dt( &blue_led, GPIO_OUTPUT_ACTIVE );
