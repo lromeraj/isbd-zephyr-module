@@ -36,12 +36,12 @@ The following table shows the current status of the library based on the differe
 | A/ | Repeat Last Command | :clock1: Planned | |
 | E | Echo | :heavy_check_mark: Tested | For internal use only |
 | I | Identification | :pencil2: WIP | |
-| Q | Quiet Mode | :pencil2: Implemented | For internal use only |
+| Q | Quiet Mode | :heavy_check_mark: Tested | For internal use only |
 | V | Verbose Mode | :heavy_check_mark: Tested | For internal use only |
 | Z | Soft Reset | :pencil2: WIP |  |
-| &D | DTR Option | :heavy_check_mark: Tested | For internal use only |
+| &D | DTR Option | :heavy_check_mark: Tested |  |
 | &F | Restore Factory Settings | :x: | |
-| &K | Flow Control | :heavy_check_mark: Tested | For internal use only |
+| &K | Flow Control | :heavy_check_mark: Tested |  |
 | &V | View Active and Stored Configuration | :x: | |
 | &W | Store Active Configuration | :pencil2: WIP | |
 | &Y | Designate Default Reset Profile | :pencil2: WIP | |
