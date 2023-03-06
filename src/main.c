@@ -29,12 +29,14 @@ static const struct device *const uart_slave_device = DEVICE_DT_GET(UART_SLAVE_D
 
 /* The devicetree node identifier for the "led0" alias. */
 #define LED0_NODE DT_ALIAS(led0)
+#define LED1_NODE DT_ALIAS(led1)
 #define LED2_NODE DT_ALIAS(led2)
 
 static const struct gpio_dt_spec red_led = GPIO_DT_SPEC_GET( LED2_NODE, gpios );
+static const struct gpio_dt_spec blue_led = GPIO_DT_SPEC_GET( LED1_NODE, gpios );
 static const struct gpio_dt_spec green_led = GPIO_DT_SPEC_GET( LED0_NODE, gpios );
 
-#define TEST_AT_CMD(ok_block, f_name, ... ) \
+#define TEST_AT_CMD(ok_block, err_block, f_name, ... ) \
 do { \
   printk( "%-20s() ", #f_name ); \
   uint8_t M_g_code = f_name( __VA_ARGS__ ); \
@@ -44,6 +46,7 @@ do { \
     printk( "\n" ); \
   } else { \
     printk( "ERR: %s\n", at_uart_err_to_name( M_g_code ) ); \
+    err_block \
   } \
 } while(0)
 
@@ -54,6 +57,8 @@ void main(void) {
     return;
   }
   */
+
+  gpio_pin_configure_dt( &blue_led, GPIO_OUTPUT_ACTIVE );
 
 	if (!device_is_ready(uart_slave_device)) {
 		printk("UART slave device not found!");
@@ -88,19 +93,19 @@ void main(void) {
 
   TEST_AT_CMD({
     printk( "Revision : %s", __buff );
-  }, isbd_get_revision, __buff, sizeof( __buff ) );  
+  }, {}, isbd_get_revision, __buff, sizeof( __buff ) );  
 
   TEST_AT_CMD({
     printk( "IMEI : %s", __buff );
-  }, isbd_get_imei, __buff, sizeof( __buff ) );  
+  }, {}, isbd_get_imei, __buff, sizeof( __buff ) );  
 
   const char *msg = "hello";
 
-  TEST_AT_CMD({}, isbd_set_mo, msg, strlen( msg ) );
+  TEST_AT_CMD({}, {}, isbd_set_mo, msg, strlen( msg ) );
 
   TEST_AT_CMD({
     printk( "%s", __buff );
-  }, isbd_mo_to_mt, __buff, sizeof( __buff ) );
+  }, {}, isbd_mo_to_mt, __buff, sizeof( __buff ) );
 
   
 
@@ -113,12 +118,14 @@ void main(void) {
       printk( "%c", __buff[ i ] );
     }
     printk( ", len=%d, csum=%04X", len, csum );
-  }, isbd_get_mt, __buff, &len, &csum );
-  
+  }, {}, isbd_get_mt, __buff, &len, &csum );
+
+  /*
   uint8_t signal;
   TEST_AT_CMD({
     printk( "signal_quality=%d", signal );
   }, isbd_get_sig_q, &signal );
+  */
 
   // code = isbd_set_mo_bin( msg, strlen( msg ) );
 
@@ -138,7 +145,8 @@ void main(void) {
   
   isbd_session_t session;
 
-  TEST_AT_CMD({
+
+  TEST_AT_CMD({ // success
 
     printk( "mo_sts=%hhu, "
           "mo_msn=%hu, "
@@ -159,8 +167,11 @@ void main(void) {
       gpio_pin_configure_dt( &red_led, GPIO_OUTPUT_ACTIVE );
     }
 
+  }, { // AT command failed
+    gpio_pin_configure_dt( &red_led, GPIO_OUTPUT_ACTIVE );
   }, isbd_init_session, &session );
 
+  gpio_pin_configure_dt( &blue_led, GPIO_OUTPUT_INACTIVE );
 
   // int8_t cmd_code = isbd_set_mo_txt( "hoooooo" );
   // printk( "SBDWT    : %d\n", cmd_code );

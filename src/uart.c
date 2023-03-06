@@ -1,4 +1,3 @@
-
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
@@ -139,14 +138,14 @@ at_uart_code_t at_uart_pack_txt_resp(
   uint16_t str_resp_i = 0;
 
   at_uart_code_t at_code;
-  
+  k_timeout_t k_timeout = K_MSEC( timeout_ms );
   // __str_resp buffer will be used to store the most relevant string response
 
   // this little __buff is used to parse AT responses
   char __at_buff[ AT_MIN_BUFF_SIZE ] = "";
 
   // TODO: timeout should be only for the first character
-  while ( k_msgq_get( &g_uart.queue.rx_q, &byte, K_MSEC( timeout_ms ) ) == 0 ) {
+  while ( k_msgq_get( &g_uart.queue.rx_q, &byte, k_timeout ) == 0 ) {
     
     // ! If queue is full rx will be disabled,
     // ! so we have to reenable rx interrupts
@@ -271,22 +270,22 @@ at_uart_code_t at_uart_get_str_code( const char *__buff ) {
   if ( g_uart.config.verbose ) {
     
     // ordered by occurrence frequency
-    if ( strcmp( __buff, "OK" ) == 0 ) {
+    if ( streq( __buff, "OK" ) ) {
       return AT_UART_OK;
-    } else if ( strcmp( __buff, "ERROR" ) == 0 ) {
+    } else if ( streq( __buff, "ERROR" ) ) {
       return AT_UART_ERR;
     }
 
   } else {
-    if ( strcmp( __buff, "0" ) == 0 ) {
+    if ( streq( __buff, "0" ) ) {
       return AT_UART_OK;
-    } else if ( strcmp( __buff, "4" ) == 0 ) {
+    } else if ( streq( __buff, "4" ) ) {
       return AT_UART_ERR;
     }
   }
   
   // READY is the same for both modes
-  if ( strcmp( __buff, "READY" ) == 0 ) {
+  if ( streq( __buff, "READY" ) ) {
     return AT_UART_RDY;
   }
 
