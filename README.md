@@ -1,13 +1,3 @@
-<details>
-  <summary markdown="span">This is the summary text, click me to expand</summary>
-
-  This is the detailed text.
-
-  We can still use markdown, but we need to take the additional step of using the `parse_block_html` option as described in the [Mix HTML + Markdown Markup section](#mix-html--markdown-markup).
-
-  You can learn more about expected usage of this approach in the [GitLab UI docs](https://gitlab-org.gitlab.io/gitlab-ui/?path=/story/base-collapse--default) though the solution we use above is specific to usage in markdown.
-</details>
-
 # Iridium SBD Library for Zephyr OS (Sync variant)
 
 This library has been implemented in order to give support for the *Iridium 9602 SBD Transceiver*, but it should work too for modern transceivers like *9603*, nad also for modems which share similar AT commands.
