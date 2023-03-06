@@ -43,12 +43,31 @@ do { \
   if ( M_g_code == 0 ) { \
     printk( "OK; " ); \
     ok_block \
+    printk( "\n" ); \
   } else { \
-    printk( "ERR: %s", at_uart_err_to_name( M_g_code ) ); \
+    printk( "ERR: %s\n", at_uart_err_to_name( M_g_code ) ); \
     err_block \
   } \
-  printk( "\n" ); \
 } while(0)
+
+
+void clear_leds() {
+  gpio_pin_configure_dt( &blue_led, GPIO_OUTPUT_INACTIVE );
+  gpio_pin_configure_dt( &red_led, GPIO_OUTPUT_INACTIVE );
+  gpio_pin_configure_dt( &green_led, GPIO_OUTPUT_INACTIVE );
+}
+
+void set_warning_led() {
+  clear_leds();
+
+  gpio_pin_configure_dt( &red_led, GPIO_OUTPUT_ACTIVE );
+  gpio_pin_configure_dt( &green_led, GPIO_OUTPUT_ACTIVE );
+}
+
+void set_info_led() {
+  clear_leds();
+  gpio_pin_configure_dt( &blue_led, GPIO_OUTPUT_ACTIVE );
+}
 
 void main(void) {
 
@@ -82,11 +101,16 @@ void main(void) {
   };
 
   char __buff[ 256 ];
+
   if ( isbd_setup( &isbd_config ) == ISBD_OK ) {
     printk( "Modem OK\n" );
   } else {
     printk( "Could not talk to modem, probably busy ...\n" );
+    set_warning_led();
+    return;
   }
+
+  set_info_led();
 
   // isbd_fetch_imei( __buff, sizeof( __buff ) );
   // CHECK_AT_CMD( code, {}, isbd_enable_echo, true );
