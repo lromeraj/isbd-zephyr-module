@@ -96,4 +96,4 @@ The following table shows the current status of the library based on the differe
 
 # Prototipo de pruebas utilizado
 
-[ISBD 9602 Test Prototype](./img/isbd_portable_prototype.jpg)
+![ISBD 9602 Test Prototype](./img/isbd_portable_prototype.jpg)
