@@ -93,3 +93,7 @@ The following table shows the current status of the library based on the differe
 > **NOTE**: some AT commands can give different responses depending on the suffix used, for example, the suffix `=?` is usually used to test a command to retrieve the different parameter values supported. Not all possible suffixes for all possible commands are implemented. The "read" variant `?` is implemented for almost every command that supports it.
 
 > **NOTE**: by the moment tested means (at least) that it works on a *NXP FDRM K64F* board using the *Iridium 9602 SBD Transceiver*, however it should work with other combinations of boards and modems.
+
+# Prototipo de pruebas utilizado
+
+[ISBD 9602 Test Prototype](./img/isbd_portable_prototype.jpg)
