@@ -30,6 +30,7 @@ static struct isbd g_isbd = {  };
 static at_uart_code_t _isbd_pack_bin_resp( 
   uint8_t *msg_buf, size_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms 
 );
+
 static int8_t _isbd_using_three_wire_connection( bool using );
 
 isbd_err_t isbd_setup( struct isbd_config *isbd_config ) {
@@ -81,16 +82,16 @@ int8_t isbd_get_rtc( char *rtc_buf, size_t rtc_buf_len ) {
 
 int8_t isbd_init_session( isbd_session_ext_t *session ) {
 
-  char buff[ 64 ];
+  char buf[ 64 ];
   
   at_uart_code_t at_code;
   SEND_AT_CMD_E_OR_RET( "+sbdix" );
 
   at_code = at_uart_pack_txt_resp(
-    buff, sizeof( buff ), AT_2_LINE_RESP, LONG_TIMEOUT_RESPONSE );
+    buf, sizeof( buf ), AT_2_LINE_RESP, LONG_TIMEOUT_RESPONSE );
   
   // TODO: implement optimized function instead of using sscanf
-  sscanf( buff, "+SBDIX:%hhu,%hu,%hhu,%hu,%hu,%hhu",
+  sscanf( buf, "+SBDIX:%hhu,%hu,%hhu,%hu,%hu,%hhu",
     &session->mo_sts,
     &session->mo_msn,
     &session->mt_sts,
@@ -306,12 +307,14 @@ int8_t isbd_set_evt_report( evt_report_t *evt_report ) {
 
   // ! This command has a peculiarity,
   // ! after command is successfully executed, it returns an OK response,
-  // ! but just after that it transmits the first indicator event with the current
+  // ! but just after that it transmits the first indicator event
+  // ! so we skip those lines
   at_uart_code_t at_code = at_uart_skip_txt_resp( AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );  
 
   uint8_t lines_to_skip = 
     evt_report->mode * ( evt_report->service + evt_report->signal );
 
+  // TODO: we could return the resulting values instead of ignoring them ...
   if ( lines_to_skip > 0 ) {
     at_uart_skip_txt_resp( lines_to_skip, SHORT_TIMEOUT_RESPONSE );
   }

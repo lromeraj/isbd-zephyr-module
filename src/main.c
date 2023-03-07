@@ -138,7 +138,6 @@ void main(void) {
 
   uint16_t csum;
   size_t len = sizeof( buf );
-
   
   TEST_AT_CMD({
     printk("msg=");
@@ -147,7 +146,6 @@ void main(void) {
     }
     printk( ", len=%d, csum=%04X", len, csum );
   }, {}, isbd_get_mt, buf, &len, &csum );
-  
 
   /*
   isbd_session_ext_t session;
@@ -192,10 +190,10 @@ void main(void) {
 
     // TODO: this logic should be moved to isbd module, 
     // TODO: this is only for testing purposes
+    // Remember that this blocking call will be interrupted if any command
+    // is externally executed
     if ( AT_UART_UNK == at_uart_pack_txt_resp( buf, sizeof( buf ), AT_1_LINE_RESP, 10000 ) ) {
       printk("RECEIVED: %s\n", buf );
-    } else {
-      printk("SKIPPED\n");
     }
 
   }
