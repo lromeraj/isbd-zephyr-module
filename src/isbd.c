@@ -72,8 +72,6 @@ int8_t isbd_get_revision( char *rev_buf, size_t rev_buf_len ) {
     rev_buf, rev_buf_len, 10, SHORT_TIMEOUT_RESPONSE );
 }
 
-// TODO: parse the output of this command in order to return
-// TODO: a more human friendly time struct
 int8_t isbd_get_rtc( char *rtc_buf, size_t rtc_buf_len ) {
   SEND_AT_CMD_E_OR_RET( "+cclk" );
   return at_uart_pack_txt_resp( 
