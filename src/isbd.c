@@ -11,13 +11,13 @@
 
 /**
  * @brief Short timeout for commands which usually take
- * shorter than 1 second, for example: AT+CGSN
+ * less than 1 second, for example: AT+CGSN
  */
 #define SHORT_TIMEOUT_RESPONSE      1000 // ms
 
 /**
- * @brief Long timeout is used for commands which take longer
- * than 1 seconds, for example: AT+SBDI, AT+SBDIX, AT+CSQ, ...
+ * @brief Long timeout for commands which take
+ * more than 1 second, for example: AT+SBDI, AT+SBDIX, AT+CSQ, ...
  */
 #define LONG_TIMEOUT_RESPONSE       (60 * 1000) // ms
 
