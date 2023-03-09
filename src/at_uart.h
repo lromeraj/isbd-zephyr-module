@@ -6,6 +6,7 @@
   #include <stdbool.h>
 
   #include "at.h"
+  #include "zuart.h"
 
   // Expected AT command response lines
   #define AT_1_LINE_RESP    1
@@ -20,11 +21,11 @@
    * command string, finally result code is used in order to return
    * automatically or not
    */
-  #define SEND_AT_CMD_OR_RET( fn, ... ) \
+  #define SEND_AT_CMD_OR_RET( at_uart, fn, ... ) \
     do { \
       AT_DEFINE_CMD_BUFF( _M_at_buff ); \
       at_uart_code_t _M_at_code = at_uart_write_cmd( \
-        _M_at_buff, at_cmd##fn ( _M_at_buff, __VA_ARGS__ ) ); \
+        at_uart, _M_at_buff, at_cmd##fn ( _M_at_buff, __VA_ARGS__ ) ); \
       if ( _M_at_code != AT_UART_OK ) { return _M_at_code; } \
     } while ( 0 );
 
@@ -32,39 +33,38 @@
    * @brief Exec AT command, returns in case of failure
    * @param name AT command name
    */
-  #define SEND_AT_CMD_E_OR_RET( name ) \
-    SEND_AT_CMD_OR_RET( _e, name )
+  #define SEND_AT_CMD_E_OR_RET( at_uart, name ) \
+    SEND_AT_CMD_OR_RET( at_uart, _e, name )
 
   /**
    * @brief Exec AT command with parameter in place, returns in case of failure
    * @param name AT command name
    * @param param Unsigned byte param, this number will be concatenated to the AT command name
    */
-  #define SEND_AT_CMD_P_OR_RET( name, param ) \
-    SEND_AT_CMD_OR_RET( _p, name, param )
+  #define SEND_AT_CMD_P_OR_RET( at_uart, name, param ) \
+    SEND_AT_CMD_OR_RET( at_uart, _p, name, param )
 
   /**
    * @brief Test AT command, returns in case of failure
    * @param name AT command name
    */
-  #define SEND_AT_CMD_T_OR_RET( name ) \
-    SEND_AT_CMD_OR_RET( _t, name )
+  #define SEND_AT_CMD_T_OR_RET( at_uart, name ) \
+    SEND_AT_CMD_OR_RET( at_uart, _t, name )
 
   /**
    * @brief Read AT command, returns in case of failure
    * @param name AT command name
    */
-  #define SEND_AT_CMD_R_OR_RET( name ) \
-    SEND_AT_CMD_OR_RET( _r, name )
+  #define SEND_AT_CMD_R_OR_RET( at_uart, name ) \
+    SEND_AT_CMD_OR_RET( at_uart, _r, name )
 
   /**
    * @brief Set AT command, returns in case of failure
    * @param name AT command name
    * @param params A string which contains command parameters
    */
-  #define SEND_AT_CMD_S_OR_RET( name, params ) \
-    SEND_AT_CMD_OR_RET( _s, name, params )
-
+  #define SEND_AT_CMD_S_OR_RET( at_uart, name, params ) \
+    SEND_AT_CMD_OR_RET( at_uart, _s, name, params )
   
   typedef enum at_uart_code {
     AT_UART_TIMEOUT     = -2,
@@ -74,12 +74,20 @@
     AT_UART_OK          = 0,
   } at_uart_code_t;
 
-  struct at_uart_config {
+  typedef struct at_uart_config {
     bool echo;
     bool verbose;
-    struct device *dev;
-  };
+    zuart_config_t zuart;
+  } at_uart_config_t;
 
+  typedef struct at_uart {
+    bool _echoed;
+    unsigned char eol; // end of line char
+  
+    zuart_t zuart;
+    at_uart_config_t config;
+
+  } at_uart_t;
 
   /**
    * @brief Setup AT UART module
@@ -87,7 +95,7 @@
    * @param at_uart_config 
    * @return at_uart_code_t 
    */
-  at_uart_code_t at_uart_setup( struct at_uart_config *at_uart_config );
+  at_uart_code_t at_uart_setup( at_uart_t *at_uart, struct at_uart_config *at_uart_config );
 
   /**
    * @brief Tries to retrieve AT command result code from the given string
@@ -95,7 +103,7 @@
    * @param str_buf String buffer to check
    * @return at_uart_code_t 
    */
-  at_uart_code_t at_uart_get_str_code( const char *str_buf );
+  at_uart_code_t at_uart_get_str_code( at_uart_t *at_uart, const char *str_buf );
 
   /**
    * @brief Writes the given AT command directly to serial port
@@ -111,22 +119,18 @@
    * 
    * @return at_uart_code_t 
    */
-  at_uart_code_t at_uart_write_cmd( char *cmd, size_t cmd_len );
+  at_uart_code_t at_uart_write_cmd( at_uart_t *at_uart, char *cmd, size_t cmd_len );
   
-  /**
-   * @brief Writes the given buffer directly to serial port
-   * 
-   * @param buf Buffer to be written
-   * @param buf_len Buffer length
-   * @return uint16_t 
-   */
-  uint16_t at_uart_write( uint8_t *buf, size_t buf_len );
-  uint16_t at_uart_get_n_bytes( uint8_t *bytes, uint16_t n_bytes, uint16_t timeout_ms );
+  at_uart_code_t at_uart_check_echo( at_uart_t *at_uart );
+
+  at_uart_code_t at_uart_pack_txt_resp( 
+    at_uart_t *at_uart, char *str_resp, size_t str_resp_len, uint8_t lines, uint16_t timeout_ms );
   
-  at_uart_code_t at_uart_check_echo();
-  at_uart_code_t at_uart_pack_txt_resp( char *str_resp, size_t str_resp_len, uint8_t lines, uint16_t timeout_ms );
-  at_uart_code_t at_uart_pack_txt_resp_code( int8_t *cmd_code, uint16_t timeout_ms );
-  at_uart_code_t at_uart_skip_txt_resp( uint8_t lines, uint16_t timeout_ms );
+  at_uart_code_t at_uart_pack_txt_resp_code( 
+    at_uart_t *at_uart, int8_t *cmd_code, uint16_t timeout_ms );
+  
+  at_uart_code_t at_uart_skip_txt_resp( 
+    at_uart_t *at_uart, uint8_t lines, uint16_t timeout_ms );
 
   /**
    * @brief Retrieves the corresponding string from
@@ -137,10 +141,10 @@
    */
   const char *at_uart_err_to_name( at_uart_code_t code );
 
-  int8_t at_uart_set_dtr( uint8_t option );
-  int8_t at_uart_set_flow_control( uint8_t option );
-  int8_t at_uart_store_active_config( uint8_t profile );
-  int8_t at_uart_set_reset_profile( uint8_t profile );
-  int8_t at_uart_flush_to_eeprom();
+  int8_t at_uart_set_dtr( at_uart_t *at_uart, uint8_t option );
+  int8_t at_uart_set_flow_control( at_uart_t *at_uart, uint8_t option );
+  int8_t at_uart_store_active_config( at_uart_t *at_uart, uint8_t profile );
+  int8_t at_uart_set_reset_profile( at_uart_t *at_uart, uint8_t profile );
+  int8_t at_uart_flush_to_eeprom( at_uart_t *at_uart );
   
 #endif
