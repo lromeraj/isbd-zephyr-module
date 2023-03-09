@@ -3,7 +3,7 @@
 
   #include <stdint.h>
 
-  #include "uart.h"
+  #include "at_uart.h"
 
   typedef enum isbd_err {
     ISBD_OK        = 0,

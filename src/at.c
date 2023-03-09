@@ -16,7 +16,6 @@
 // AT command end of line
 #define AT_CMD_EOL        "\r"
 
-
 /**
  * @brief This macro is used to safely write into
  * a predefined AT buffer. Returns the number of bytes written into the buffer.

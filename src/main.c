@@ -74,6 +74,9 @@ void set_info_led() {
   gpio_pin_configure_dt( &blue_led, GPIO_OUTPUT_ACTIVE );
 }
 
+static uint8_t rx_buf[ 512 ];
+static uint8_t tx_buf[ 512 ];
+
 void main(void) {
 
   /*
@@ -99,9 +102,15 @@ void main(void) {
 
   struct isbd_config isbd_config = {
     .at_uart = {
+      .zuart = {
+        .dev = uart_slave_device,
+        .rx_buf = rx_buf,
+        .rx_buf_size = sizeof( rx_buf ),
+        .tx_buf = tx_buf,
+        .tx_buf_size = sizeof( tx_buf ),
+      },
       .echo = true,
       .verbose = true,
-      .dev = uart_slave_device,
     }
   };
 
@@ -186,6 +195,7 @@ void main(void) {
 
   TEST_AT_CMD( {}, {}, isbd_set_evt_report, &evt_report );
 
+  /*
   while (1) {
 
     // TODO: this logic should be moved to isbd module, 
@@ -197,6 +207,7 @@ void main(void) {
     }
 
   }
+  */
 
   /*
   uint8_t signal;
