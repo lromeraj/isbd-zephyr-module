@@ -93,10 +93,13 @@ at_uart_code_t at_uart_check_echo( at_uart_t *at_uart ) {
     // ! this loop could get stuck until \r char is randomly found
     // TODO: Illegal private access, create a function inside zuart module
     // TODO: to retrieve specific transmission byte
-    if ( at_uart->zuart.buf.tx[ byte_i ] != byte ) {
-      // Echoed command do not matches previously transmitted command
-      at_code = AT_UART_ERR;
-    }
+
+    // ! If we want to check echo like this we have an additional buffer
+    // ! to store the transmitted command, otherwise we can skip the command completely
+    // if ( at_uart->zuart.buf.tx[ byte_i ] != byte ) {
+    //   // Echoed command do not matches previously transmitted command
+    //   at_code = AT_UART_ERR;
+    // }
 
     byte_i++;
 
@@ -294,7 +297,7 @@ at_uart_code_t at_uart_setup(
   // ! correctly applied to the ISU
   _at_uart_enable_echo( at_uart, at_uart->config.echo );
   _at_uart_set_verbose( at_uart, at_uart->config.verbose );
-  
+
 
   // ! Enable or disable flow control depending on uart configuration
   // ! this will avoid hangs during communication

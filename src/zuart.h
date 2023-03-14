@@ -2,6 +2,7 @@
   #define ZUART_H_
   
   #include <stdint.h>
+  #include <zephyr/sys/ring_buffer.h>
 
   struct zuart_buf {
     uint8_t *rx;
@@ -26,7 +27,17 @@
   typedef struct zuart {
     struct device *dev;
     struct zuart_buf buf; 
-    struct k_msgq rx_queue; // TODO: tx_queue ??
+    
+    struct k_sem rx_sem; // used based on specific user logic
+    struct k_sem tx_sem; // used when the isr has transmitted a chunk
+
+    struct k_msgq rx_queue;
+
+    struct ring_buf rx_rbuf;
+    struct ring_buf tx_rbuf;
+
+    // TODO: ring buffer for transmission too
+
     zuart_config_t config;
   } zuart_t;
 
@@ -45,7 +56,7 @@
    * @return int 
    */
   int zuart_read( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t ms_timeout );
-  int zuart_write( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t ms_timeout );
+  uint32_t zuart_write( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t ms_timeout );
 
   void zuart_drain( zuart_t *zuart );
 
