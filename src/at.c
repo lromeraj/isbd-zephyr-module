@@ -28,16 +28,22 @@
     return AT_MAX_CMD_SIZE-1; \
   }
 
-// exec
+// exec command
 uint8_t at_cmd_e( char *at_buf, const char *cmd_name ) {
   BUILD_AT_CMD_RET( 
     at_buf, AT_CMD_H "%s" AT_CMD_EOL, cmd_name );
 }
 
-// exec with param
+// exec command with concatenated param
 uint8_t at_cmd_p( char *at_buf, const char *cmd_name, uint8_t param ) {
   BUILD_AT_CMD_RET( 
     at_buf, AT_CMD_H "%s%hhu" AT_CMD_EOL, cmd_name, param );
+}
+
+// exec command with concatenated string param
+uint8_t at_cmd_ps( char *at_buf, const char *cmd_name, const char *param ) {
+  BUILD_AT_CMD_RET( 
+    at_buf, AT_CMD_H "%s%s" AT_CMD_EOL, cmd_name, param );
 }
 
 // test

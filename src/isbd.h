@@ -27,12 +27,11 @@
     uint8_t mt_queued;
   } isbd_session_ext_t;
 
-
-  typedef struct evt_report {
+  typedef struct isbd_evt_report {
     uint8_t mode;
     uint8_t signal;
     uint8_t service;
-  } evt_report_t;
+  } isbd_evt_report_t;
 
   isbd_err_t isbd_setup( struct isbd_config *config );
 
@@ -143,6 +142,6 @@ the form:
    */
   int8_t isbd_get_sig_q( uint8_t *signal );
 
-  int8_t isbd_set_evt_report( evt_report_t *evt_report );
+  int8_t isbd_set_evt_report( isbd_evt_report_t *evt_report );
 
 #endif

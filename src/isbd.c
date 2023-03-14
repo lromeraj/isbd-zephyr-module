@@ -171,7 +171,7 @@ int8_t isbd_set_mo( const uint8_t *msg, size_t msg_len ) {
 
     // finally write binary data to the ISU
     // MSG (N bytes) + CHECKSUM (2 bytes)
-    zuart_write_async( &g_isbd.at_uart.zuart, tx_buf, tx_buf_size );
+    zuart_write( &g_isbd.at_uart.zuart, tx_buf, tx_buf_size, 0 );
 
     // retrieve the command result code
     at_uart_pack_txt_resp_code( 
@@ -254,15 +254,15 @@ at_uart_code_t _isbd_pack_bin_resp(
 ) {
 
   // TODO: this should be at_uart_get_n_bytes ...
-  zuart_read_sync( 
+  zuart_read( 
     &g_isbd.at_uart.zuart, (uint8_t*)msg_buf_len, 2, timeout_ms ); // message length
   
   *msg_buf_len = ntohs( *msg_buf_len );
 
-  zuart_read_sync( 
+  zuart_read( 
     &g_isbd.at_uart.zuart, msg_buf, *msg_buf_len, timeout_ms );
 
-  zuart_read_sync( 
+  zuart_read( 
     &g_isbd.at_uart.zuart, (uint8_t*)csum, 2, timeout_ms );
   
   *csum = ntohs( *csum );
@@ -286,7 +286,7 @@ int8_t isbd_get_sig_q( uint8_t *signal_q ) {
   return at_code;
 }
 
-int8_t isbd_set_evt_report( evt_report_t *evt_report ) {
+int8_t isbd_set_evt_report( isbd_evt_report_t *evt_report ) {
 
   char buf[16];
 
@@ -296,7 +296,7 @@ int8_t isbd_set_evt_report( evt_report_t *evt_report ) {
   SEND_AT_CMD_S_OR_RET( &g_isbd.at_uart, "+cier", buf );
 
   // ! This command has a peculiarity,
-  // ! after command is successfully executed, it returns an OK response,
+  // ! after the command is successfully executed, it returns an OK response,
   // ! but just after that it transmits the first indicator event
   // ! so we skip those lines
   at_uart_code_t at_code = at_uart_skip_txt_resp( 
