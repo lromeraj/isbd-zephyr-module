@@ -45,6 +45,14 @@
     SEND_AT_CMD_OR_RET( at_uart, _p, name, param )
 
   /**
+   * @brief Exec AT command with a string parameter in place, returns in case of failure
+   * @param name AT command name
+   * @param param String param, this string will be concatenated with the AT command name
+   */
+  #define SEND_AT_CMD_PS_OR_RET( at_uart, name, param ) \
+    SEND_AT_CMD_OR_RET( at_uart, _ps, name, param )
+
+  /**
    * @brief Test AT command, returns in case of failure
    * @param name AT command name
    */

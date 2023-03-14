@@ -4,14 +4,24 @@
   
 #include "zuart.h"
 
+
+// --------- Start of private methods -----------
+/**
+ * @brief UART ISR handler
+ * 
+ * @param dev UART driver instance
+ * @param user_data Pointer to the zuart struct
+ */
 static void _uart_isr( const struct device *dev, void *user_data );
 
+// ---------- End of private methods -----------
 
-int zuart_write_sync( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t timeout_ms ) {
-  return -1;
-}
 
-int zuart_read_sync( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t timeout_ms ) {
+// TODO: instead of reading byte per byte we can tell to the ISR
+// TODO: that we want to be notified when N bytes have been received
+// TODO: or when a specific byte is reached or if the buffer has been filled
+
+int zuart_read( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t timeout_ms ) {
 
   uint8_t byte;
   int n_bytes_read = 0;
@@ -20,18 +30,16 @@ int zuart_read_sync( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t timeo
   // so we temporary store the value instead of recomputing for each loop
   k_timeout_t k_timeout = K_MSEC( timeout_ms );
 
-  while ( n_bytes_read < n_bytes
+  while ( bytes 
+    && n_bytes_read < n_bytes
     && k_msgq_get( &zuart->rx_queue, &byte, k_timeout ) == 0 ) {
-    if ( bytes ) {
       *bytes++ = byte;
-    }
-    n_bytes_read++;
+      n_bytes_read++;
   }
-
   return n_bytes_read;
 }
 
-int zuart_write_async( zuart_t *zuart, uint8_t *bytes, int n_bytes ) {
+int zuart_write( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t timeout_ms ) {
 
   n_bytes = n_bytes > zuart->buf.tx_size 
     ? zuart->buf.tx_size 
@@ -47,12 +55,15 @@ int zuart_write_async( zuart_t *zuart, uint8_t *bytes, int n_bytes ) {
   return n_bytes;
 }
 
-void zuart_rx_purge( zuart_t *zuart ) {
-  k_msgq_purge( &zuart->rx_queue );
+
+// used to transfer received bytes to reception queue
+void zuart_flush( zuart_t *zuart ) {
+
 }
 
-int zuart_read_async( zuart_t *zuart, uint8_t *bytes, int n_bytes ) {
-  return -1;
+// all bytes pending in the reception buffer will be drained
+void zuart_drain( zuart_t *zuart ) {
+  k_msgq_purge( &zuart->rx_queue );
 }
 
 int zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config ) {
@@ -134,9 +145,8 @@ static void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
       // ! See: https://github.com/zephyrproject-rtos/zephyr/issues/10672
       uart_irq_tx_disable( dev );
     }
-
+    
   }
-
 }
 
 static void _uart_rx_isr( const struct device *dev, zuart_t *zuart ) {
@@ -145,11 +155,10 @@ static void _uart_rx_isr( const struct device *dev, zuart_t *zuart ) {
   
   if ( uart_fifo_read( dev, &byte, 1 ) == 1 ) {
     
-    int ret = k_msgq_put( &zuart->rx_queue, &byte, K_NO_WAIT );
-    
-    if ( ret !=  0 ) {
-      // set OVERRUN flag
-    } 
+    int err = k_msgq_put( &zuart->rx_queue, &byte, K_NO_WAIT );
+
+    // TODO: handle overrun
+    if ( err == ENOMSG ) { } 
 
   }
 }

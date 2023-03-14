@@ -64,6 +64,11 @@ void set_warning_led() {
   gpio_pin_configure_dt( &green_led, GPIO_OUTPUT_ACTIVE );
 }
 
+void set_error_led() {
+  clear_leds();
+  gpio_pin_configure_dt( &red_led, GPIO_OUTPUT_ACTIVE );
+}
+
 void set_success_led() {
   clear_leds();
   gpio_pin_configure_dt( &green_led, GPIO_OUTPUT_ACTIVE );
@@ -137,7 +142,7 @@ void main(void) {
     printk( "IMEI : %s", buf );
   }, {}, isbd_get_imei, buf, sizeof( buf ) );  
 
-  const char *msg = "hello";
+  const char *msg = "MIoT";
 
   TEST_AT_CMD({}, {}, isbd_set_mo, msg, strlen( msg ) );
 
@@ -156,17 +161,16 @@ void main(void) {
     printk( ", len=%d, csum=%04X", len, csum );
   }, {}, isbd_get_mt, buf, &len, &csum );
 
-  /*
   isbd_session_ext_t session;
 
   TEST_AT_CMD({ // success
 
     printk( "mo_sts=%hhu, "
-          "mo_msn=%hu, "
-          "mt_sts=%hhu, "
-          "mt_msn=%hu, "
-          "mt_length=%hu, "
-          "mt_queued=%hu",
+            "mo_msn=%hu, "
+            "mt_sts=%hhu, "
+            "mt_msn=%hu, "
+            "mt_length=%hu, "
+            "mt_queued=%hu",
     session.mo_sts,
     session.mo_msn,
     session.mt_sts,
@@ -175,25 +179,24 @@ void main(void) {
     session.mt_queued );
 
     if ( session.mo_sts < 3 ) {
-      gpio_pin_configure_dt( &green_led, GPIO_OUTPUT_ACTIVE );
+      set_success_led();
     } else {
-      gpio_pin_configure_dt( &red_led, GPIO_OUTPUT_ACTIVE );
+      set_error_led();
     }
 
   }, { // AT command failed
-    gpio_pin_configure_dt( &red_led, GPIO_OUTPUT_ACTIVE );
+    set_error_led();
   }, isbd_init_session, &session );
 
-  gpio_pin_configure_dt( &blue_led, GPIO_OUTPUT_INACTIVE );
-  */ 
-
-  evt_report_t evt_report = {
+  /*
+  isbd_evt_report_t evt_report = {
     .mode = 1,
     .service = 1,
     .signal = 1,
   };
 
   TEST_AT_CMD( {}, {}, isbd_set_evt_report, &evt_report );
+  */
 
   /*
   while (1) {

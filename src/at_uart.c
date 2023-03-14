@@ -5,6 +5,8 @@
 #include "at_uart.h"
 #include "utils.h"
 
+// For reference: https://www.etsi.org/deliver/etsi_ts/127000_127099/127007/10.03.00_60/ts_127007v100300p.pdf
+
 // Minumum buffer size required to parse 
 // at least AT string codes
 #define AT_MIN_BUFF_SIZE          32
@@ -61,7 +63,7 @@ static int8_t _at_uart_set_verbose( at_uart_t *at_uart, bool enable );
 static int8_t _at_uart_enable_echo( at_uart_t *at_uart, bool enable );
 
 
-static int8_t _at_uart_using_three_wire_connection( at_uart_t *at_uart, bool using );
+static int8_t _at_uart_three_wire_connection( at_uart_t *at_uart, bool using );
 
 // --------- End of private AT basic command methods ------------
 
@@ -80,7 +82,7 @@ at_uart_code_t at_uart_check_echo( at_uart_t *at_uart ) {
 
   at_uart_code_t at_code = AT_UART_OK;
 
-  while( zuart_read_sync( &at_uart->zuart, &byte, 1, AT_SHORT_TIMEOUT ) == 1 ) {
+  while( zuart_read( &at_uart->zuart, &byte, 1, AT_SHORT_TIMEOUT ) == 1 ) {
     
     if ( byte_i == 0 && byte == '\n' ) continue;
 
@@ -122,7 +124,7 @@ at_uart_code_t at_uart_pack_txt_resp(
   char at_buf[ AT_MIN_BUFF_SIZE ] = "";
 
   // TODO: timeout should be only for the first character
-  while ( zuart_read_sync( &at_uart->zuart, &byte, 1, timeout_ms ) == 1 ) {
+  while ( zuart_read( &at_uart->zuart, &byte, 1, timeout_ms ) == 1 ) {
     
     // ! If queue is full rx will be disabled,
     // ! so we have to reenable rx interrupts
@@ -229,8 +231,8 @@ at_uart_code_t at_uart_write_cmd( at_uart_t *at_uart, char *src_buf, size_t len 
   // }
 
   // also fully purge queue
-  zuart_rx_purge( &at_uart->zuart );
-  zuart_write_async( &at_uart->zuart, src_buf, len );
+  zuart_drain( &at_uart->zuart );
+  zuart_write( &at_uart->zuart, src_buf, len, 0 );
 
   return at_uart_check_echo( at_uart );
 }
@@ -278,8 +280,10 @@ at_uart_code_t at_uart_setup(
   // setup underlying uart
   zuart_setup( &at_uart->zuart, &at_uart_config->zuart );
 
+
   // ! Disable quiet mode in order to parse command results
   _at_uart_set_quiet( at_uart, false );
+
 
   // ! The response code of this commands
   // ! are not checked due to the possibility of 
@@ -290,7 +294,7 @@ at_uart_code_t at_uart_setup(
   // ! correctly applied to the ISU
   _at_uart_enable_echo( at_uart, at_uart->config.echo );
   _at_uart_set_verbose( at_uart, at_uart->config.verbose );
-
+  
 
   // ! Enable or disable flow control depending on uart configuration
   // ! this will avoid hangs during communication
@@ -302,9 +306,9 @@ at_uart_code_t at_uart_setup(
   uart_config_get( at_uart->zuart.dev, &config );
 
   if ( config.flow_ctrl == UART_CFG_FLOW_CTRL_NONE ) {
-    at_code = _at_uart_using_three_wire_connection( at_uart, true );
+    at_code = _at_uart_three_wire_connection( at_uart, true );
   } else {
-    at_code = _at_uart_using_three_wire_connection( at_uart, false );
+    at_code = _at_uart_three_wire_connection( at_uart, false );
   }
 
   return at_code; 
@@ -326,7 +330,6 @@ const char *at_uart_err_to_name( at_uart_code_t code ) {
 }
 
 // ------ Non proprietary AT basic commands implementation ------
-
 int8_t at_uart_set_flow_control( at_uart_t *at_uart, uint8_t option ) {
   SEND_AT_CMD_P_OR_RET( at_uart, "&k", option );
   return at_uart_skip_txt_resp( 
@@ -356,6 +359,9 @@ int8_t at_uart_flush_to_eeprom( at_uart_t *at_uart ) {
   return at_uart_skip_txt_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
+// ---- End of proprietary AT basic commands implementation -----
+
+// ---------------- ! (Internal use only) ! --------------------
 
 static int8_t _at_uart_set_quiet( at_uart_t *at_uart, bool enable ) {
   SEND_AT_CMD_P_OR_RET( at_uart, "q", enable );
@@ -377,7 +383,7 @@ static int8_t _at_uart_set_verbose( at_uart_t *at_uart, bool enable ) {
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
-static int8_t _at_uart_using_three_wire_connection( at_uart_t *at_uart, bool using ) {
+static int8_t _at_uart_three_wire_connection( at_uart_t *at_uart, bool using ) {
   
   at_uart_code_t at_code;
   uint8_t en_param = using ? 0 : 3;
@@ -391,4 +397,4 @@ static int8_t _at_uart_using_three_wire_connection( at_uart_t *at_uart, bool usi
   return at_code;
 }
 
-// ---- End of proprietary AT basic commands implementation -----
+// -------------------------------------------------------------

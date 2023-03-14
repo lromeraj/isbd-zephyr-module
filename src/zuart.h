@@ -12,6 +12,7 @@
   };
 
   typedef struct zuart_config {
+    
     struct device *dev;
     
     uint8_t *tx_buf;
@@ -19,23 +20,33 @@
 
     uint8_t *rx_buf;
     int rx_buf_size;
+
   } zuart_config_t;
 
   typedef struct zuart {
     struct device *dev;
     struct zuart_buf buf; 
-    struct k_msgq rx_queue;
+    struct k_msgq rx_queue; // TODO: tx_queue ??
     zuart_config_t config;
   } zuart_t;
 
   int zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config );
   
-  int zuart_write_sync( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t ms_timeout );
-  int zuart_write_async( zuart_t *zuart, uint8_t *bytes, int n_bytes );
-  
-  int zuart_read_sync( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t ms_timeout );
-  int zuart_read_async( zuart_t *zuart, uint8_t *bytes, int n_bytes );
+  /**
+   * @brief Allows to request a specific number of bytes from que reception queue
+   * 
+   * @note Use timeout in order to decide if this call should wait 
+   * for all the requested bytes
+   * 
+   * @param zuart zuart instance
+   * @param bytes Output buffer
+   * @param n_bytes Number of bytes to read from the serial port
+   * @param ms_timeout The number of milliseconds this function should wait
+   * @return int 
+   */
+  int zuart_read( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t ms_timeout );
+  int zuart_write( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t ms_timeout );
 
-  void zuart_rx_purge( zuart_t *zuart );
+  void zuart_drain( zuart_t *zuart );
 
 #endif

@@ -32,6 +32,17 @@ uint8_t at_cmd_e( char *at_buf, const char *cmd_name );
 uint8_t at_cmd_p( char *at_buf, const char *cmd_name, uint8_t param );
 
 /**
+ * @brief Equivalent to at_cmd_p but allows to pass a string if
+ * the parameter is not just an unsigned integer
+ * 
+ * @param at_buf 
+ * @param cmd_name 
+ * @param param 
+ * @return uint8_t 
+ */
+uint8_t at_cmd_ps( char *at_buf, const char *cmd_name, const char *param );
+
+/**
  * @brief 
  * 
  * @param at_buf 
