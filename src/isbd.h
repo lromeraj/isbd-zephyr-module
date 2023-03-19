@@ -11,9 +11,22 @@
   } isbd_err_t;
 
   typedef enum isbd_clear_buffer {
+
+    /**
+     * @brief  Clear the mobile originated buffer
+     */
     ISBD_CLEAR_MO_BUFF      = 0,
+
+    /**
+     * @brief Clear the mobile terminated buffer
+     */
     ISBD_CLEAR_MT_BUFF      = 1,
-    ISBD_CLEAR_MO_MT_BUFF   = 2,
+
+    /**
+     * @brief Clear both the mobile originated and mobile terminated buffers
+     */
+    ISBD_CLEAR_MO_MT_BUFF   = 2, 
+
   } isbd_clear_buffer_t;
 
   struct isbd_config {
