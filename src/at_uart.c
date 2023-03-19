@@ -1,3 +1,4 @@
+#include <ctype.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
@@ -68,7 +69,7 @@ static int8_t _at_uart_three_wire_connection( at_uart_t *at_uart, bool using );
 // --------- End of private AT basic command methods ------------
 
 
-at_uart_code_t at_uart_check_echo( at_uart_t *at_uart ) {
+at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
 
   if ( !at_uart->config.echo || at_uart->_echoed ) {
     return AT_UART_OK;
@@ -80,7 +81,7 @@ at_uart_code_t at_uart_check_echo( at_uart_t *at_uart ) {
   // This flag is used to avoid rechecking echo for segmented responses
   at_uart->_echoed = true;
 
-  at_uart_code_t at_code = AT_UART_OK;
+  at_uart_err_t at_code = AT_UART_OK;
 
   while( zuart_read( &at_uart->zuart, &byte, 1, AT_SHORT_TIMEOUT ) == 1 ) {
     
@@ -111,7 +112,7 @@ at_uart_code_t at_uart_check_echo( at_uart_t *at_uart ) {
   return AT_UART_TIMEOUT;
 }
 
-at_uart_code_t at_uart_pack_txt_resp(
+at_uart_err_t at_uart_pack_txt_resp(
   at_uart_t *at_uart, char *buf, size_t buf_len, uint8_t lines, uint16_t timeout_ms 
 ) {
   
@@ -121,17 +122,12 @@ at_uart_code_t at_uart_pack_txt_resp(
   uint16_t buf_i = 0;
   uint16_t at_buf_i = 0;
 
-  at_uart_code_t at_code;
+  at_uart_err_t at_code;
 
   // this little buffer is used to parse AT status codes like ERROR, OK, READY ...
   char at_buf[ AT_MIN_BUFF_SIZE ] = "";
 
-  // TODO: timeout should be only for the first character
   while ( zuart_read( &at_uart->zuart, &byte, 1, timeout_ms ) == 1 ) {
-    
-    // ! If queue is full rx will be disabled,
-    // ! so we have to reenable rx interrupts
-    // uart_irq_rx_enable( g_isbd.config.dev );
 
     // printk( "LINE: %d / %d\n", line_n, lines );
     uint8_t trail_char = 0;
@@ -194,7 +190,7 @@ at_uart_code_t at_uart_pack_txt_resp(
   return AT_UART_TIMEOUT;
 }
 
-at_uart_code_t at_uart_pack_txt_resp_code( 
+at_uart_err_t at_uart_get_cmd_resp_code( 
   at_uart_t *at_uart, int8_t *cmd_code, uint16_t timeout_ms 
 ) {
 
@@ -202,7 +198,7 @@ at_uart_code_t at_uart_pack_txt_resp_code(
   // ! an AT command response code which usually are between 0 and 9
   char cmd_code_buf[ AT_MIN_BUFF_SIZE ] = "";
 
-  at_uart_code_t at_code = at_uart_pack_txt_resp( 
+  at_uart_err_t at_code = at_uart_pack_txt_resp( 
     at_uart, cmd_code_buf, sizeof( cmd_code_buf ), AT_1_LINE_RESP, timeout_ms );
   
   // ! We should considere conflicts when verbose mode is disabled,
@@ -215,14 +211,33 @@ at_uart_code_t at_uart_pack_txt_resp_code(
   return at_code;
 }
 
-inline at_uart_code_t at_uart_skip_txt_resp(
+int16_t at_uart_pack_resp_code(
+  at_uart_t *at_uart, char *str_code, uint16_t str_code_len, uint16_t timeout_ms
+) {
+
+  at_uart_err_t at_code = at_uart_pack_txt_resp( 
+    at_uart, str_code, str_code_len, AT_1_LINE_RESP, timeout_ms );
+  
+  uint8_t first_char = str_code[ 0 ];
+  
+  // ! We should considere conflicts when verbose mode is disabled,
+  // ! in which case returned AT interface codes are also numbers 
+  if ( at_code == AT_UART_UNK && isdigit( first_char ) ) {
+    return atoi( str_code );
+  }
+
+  return at_code;
+}
+
+inline at_uart_err_t at_uart_skip_txt_resp(
   at_uart_t *at_uart, uint8_t lines, uint16_t timeout_ms 
 ) {
   return at_uart_pack_txt_resp( at_uart, NULL, 0, lines, timeout_ms );
 }
 
-
-at_uart_code_t at_uart_write_cmd( at_uart_t *at_uart, char *src_buf, size_t len ) {
+at_uart_err_t at_uart_write_cmd( 
+  at_uart_t *at_uart, char *cmd_buf, size_t cmd_len
+) {
 
   at_uart->_echoed = false;
   
@@ -235,22 +250,26 @@ at_uart_code_t at_uart_write_cmd( at_uart_t *at_uart, char *src_buf, size_t len 
 
   // also fully purge queue
   zuart_drain( &at_uart->zuart );
-  zuart_write( &at_uart->zuart, src_buf, len, 0 );
+
+  int32_t ret = zuart_write( 
+    &at_uart->zuart, cmd_buf, cmd_len, AT_SHORT_TIMEOUT );
+
+  if ( ret == ZUART_ERR_TIMEOUT ) {
+    return AT_UART_TIMEOUT;
+  }
 
   return at_uart_check_echo( at_uart );
 }
 
-at_uart_code_t at_uart_get_str_code( at_uart_t *at_uart, const char *buf ) {
+at_uart_err_t at_uart_get_str_code( at_uart_t *at_uart, const char *buf ) {
 
   if ( at_uart->config.verbose ) {
-    
     // ordered by occurrence frequency
     if ( streq( buf, "OK" ) ) {
       return AT_UART_OK;
     } else if ( streq( buf, "ERROR" ) ) {
       return AT_UART_ERR;
     }
-
   } else {
     if ( streq( buf, "0" ) ) {
       return AT_UART_OK;
@@ -258,16 +277,11 @@ at_uart_code_t at_uart_get_str_code( at_uart_t *at_uart, const char *buf ) {
       return AT_UART_ERR;
     }
   }
-  
-  // READY is the same for both modes
-  if ( streq( buf, "READY" ) ) {
-    return AT_UART_RDY;
-  }
 
   return AT_UART_UNK;
 }
 
-at_uart_code_t at_uart_setup( 
+at_uart_err_t at_uart_setup( 
   at_uart_t *at_uart, at_uart_config_t *at_uart_config 
 ) {
 
@@ -304,7 +318,7 @@ at_uart_code_t at_uart_setup(
   // ! Remember that the ISU transits between different states
   // ! depending under specific circumstances, but for AT commands
   // ! flow control is implicitly disabled
-  at_uart_code_t at_code;
+  at_uart_err_t at_code;
   struct uart_config config;
   uart_config_get( at_uart->zuart.dev, &config );
 
@@ -317,14 +331,12 @@ at_uart_code_t at_uart_setup(
   return at_code; 
 }
 
-const char *at_uart_err_to_name( at_uart_code_t code ) {
+const char *at_uart_err_to_name( at_uart_err_t code ) {
   
   if ( code == AT_UART_OK ) {
     return "AT_UART_OK";
   } else if ( code == AT_UART_ERR ) {
     return "AT_UART_ERROR";
-  } else if ( code == AT_UART_RDY ) {
-    return "AT_UART_READY";
   } else if ( code == AT_UART_TIMEOUT ) {
     return "AT_UART_TIMEOUT";
   }
@@ -388,7 +400,7 @@ static int8_t _at_uart_set_verbose( at_uart_t *at_uart, bool enable ) {
 
 static int8_t _at_uart_three_wire_connection( at_uart_t *at_uart, bool using ) {
   
-  at_uart_code_t at_code;
+  at_uart_err_t at_code;
   uint8_t en_param = using ? 0 : 3;
 
   at_code = at_uart_set_flow_control( at_uart, en_param );

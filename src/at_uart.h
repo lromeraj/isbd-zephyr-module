@@ -24,7 +24,7 @@
   #define SEND_AT_CMD_OR_RET( at_uart, fn, ... ) \
     do { \
       AT_DEFINE_CMD_BUFF( _M_at_buff ); \
-      at_uart_code_t _M_at_code = at_uart_write_cmd( \
+      at_uart_err_t _M_at_code = at_uart_write_cmd( \
         at_uart, _M_at_buff, at_cmd##fn ( _M_at_buff, __VA_ARGS__ ) ); \
       if ( _M_at_code != AT_UART_OK ) { return _M_at_code; } \
     } while ( 0 );
@@ -74,13 +74,12 @@
   #define SEND_AT_CMD_S_OR_RET( at_uart, name, params ) \
     SEND_AT_CMD_OR_RET( at_uart, _s, name, params )
   
-  typedef enum at_uart_code {
-    AT_UART_TIMEOUT     = -2,
-    AT_UART_RDY         = -3,
-    AT_UART_ERR         = -4,
-    AT_UART_UNK         = -5,
+  typedef enum at_uart_err {
     AT_UART_OK          = 0,
-  } at_uart_code_t;
+    AT_UART_TIMEOUT     = -1,
+    AT_UART_ERR         = -2,
+    AT_UART_UNK         = -3,
+  } at_uart_err_t;
 
   typedef struct at_uart_config {
     bool echo;
@@ -103,7 +102,7 @@
    * @param at_uart_config 
    * @return at_uart_code_t 
    */
-  at_uart_code_t at_uart_setup( at_uart_t *at_uart, struct at_uart_config *at_uart_config );
+  at_uart_err_t at_uart_setup( at_uart_t *at_uart, struct at_uart_config *at_uart_config );
 
   /**
    * @brief Tries to retrieve AT command result code from the given string
@@ -111,7 +110,7 @@
    * @param str_buf String buffer to check
    * @return at_uart_code_t 
    */
-  at_uart_code_t at_uart_get_str_code( at_uart_t *at_uart, const char *str_buf );
+  at_uart_err_t at_uart_get_str_code( at_uart_t *at_uart, const char *str_buf );
 
   /**
    * @brief Writes the given AT command directly to serial port
@@ -127,17 +126,20 @@
    * 
    * @return at_uart_code_t 
    */
-  at_uart_code_t at_uart_write_cmd( at_uart_t *at_uart, char *cmd, size_t cmd_len );
+  at_uart_err_t at_uart_write_cmd( at_uart_t *at_uart, char *cmd, size_t cmd_len );
   
-  at_uart_code_t at_uart_check_echo( at_uart_t *at_uart );
+  at_uart_err_t at_uart_check_echo( at_uart_t *at_uart );
 
-  at_uart_code_t at_uart_pack_txt_resp( 
+  at_uart_err_t at_uart_pack_txt_resp( 
     at_uart_t *at_uart, char *str_resp, size_t str_resp_len, uint8_t lines, uint16_t timeout_ms );
   
-  at_uart_code_t at_uart_pack_txt_resp_code( 
+  at_uart_err_t at_uart_get_cmd_resp_code( 
     at_uart_t *at_uart, int8_t *cmd_code, uint16_t timeout_ms );
+
+  int16_t at_uart_pack_resp_code( 
+    at_uart_t *at_uart, char *str_code, uint16_t str_code_len, uint16_t timeout_ms );
   
-  at_uart_code_t at_uart_skip_txt_resp( 
+  at_uart_err_t at_uart_skip_txt_resp( 
     at_uart_t *at_uart, uint8_t lines, uint16_t timeout_ms );
 
   /**
@@ -147,7 +149,7 @@
    * @param code Error code to be named
    * @return const char* A null terminated error string
    */
-  const char *at_uart_err_to_name( at_uart_code_t code );
+  const char *at_uart_err_to_name( at_uart_err_t code );
 
   int8_t at_uart_set_dtr( at_uart_t *at_uart, uint8_t option );
   int8_t at_uart_set_flow_control( at_uart_t *at_uart, uint8_t option );

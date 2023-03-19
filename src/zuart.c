@@ -4,6 +4,13 @@
 
 #include "zuart.h"
 
+#define FLAG_OVERRUN    1 // bit 1
+
+#define SET_FLAG( var, flag ) \
+  WRITE_BIT( var, flag, 1 )
+
+#define CLEAR_FLAG( var, flag ) \
+  WRITE_BIT( var, flag, 0 )
 
 // --------- Start of private methods -----------
 /**
@@ -13,9 +20,7 @@
  * @param user_data Pointer to the zuart struct
  */
 static void _uart_isr( const struct device *dev, void *user_data );
-
 // ---------- End of private methods -----------
-
 
 // TODO: we should use a semaphore with a native ring buffer
 // TODO: see https://docs.zephyrproject.org/3.2.0/kernel/data_structures/ring_buffers.html
@@ -28,52 +33,54 @@ static void _uart_isr( const struct device *dev, void *user_data );
 // TODO: we have to push something on it, also if the requested amount of bytes
 // TODO: is small the queue will waste a lot of space in the buffer
 
-int zuart_read( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t timeout_ms ) {
+int32_t zuart_read(
+  zuart_t *zuart, uint8_t *bytes, uint16_t n_bytes, uint16_t timeout_ms 
+) {
+  
+  int sem_ret;
+  uint32_t bytes_read = 0;
+  uint32_t total_bytes_read = 0;
 
   // this conversion takes a little due to arithmetic division
   // so we temporary store the value instead of recomputing for each loop
-  k_timeout_t k_timeout = 
-    timeout_ms == 0 
-      ? K_NO_WAIT 
-      : K_MSEC( timeout_ms );
-  
-  uint32_t bytes_read = 0;
-  uint32_t total_bytes = 0;
+  k_timeout_t k_timeout = K_MSEC( timeout_ms );
 
-  while ( total_bytes < n_bytes
-    && k_sem_take( &zuart->rx_sem, k_timeout ) == 0
-    && ( (bytes_read = ring_buf_get( 
+  while ( total_bytes_read < n_bytes
+    && ( sem_ret = k_sem_take( &zuart->rx_sem, k_timeout ) ) == 0
+    && ( (bytes_read = ring_buf_get(
       // ! We have have to take care ONLY if concurrent reads are a possibility,
       // ! at least we should warn to the user
       &zuart->rx_rbuf, 
-      bytes + total_bytes, 
-      n_bytes - total_bytes ) ) > 0 )
+      bytes + total_bytes_read, 
+      n_bytes - total_bytes_read ) ) > 0 )
   ) {
-    total_bytes += bytes_read;
+    total_bytes_read += bytes_read;
   }
 
-  return total_bytes;
+  if ( zuart->flags & FLAG_OVERRUN ) {
+    CLEAR_FLAG( zuart->flags, FLAG_OVERRUN );
+    return ZUART_ERR_OVERRUN;
+  }
+
+  if ( timeout_ms > 0 && sem_ret ) {
+    return ZUART_ERR_TIMEOUT; 
+  }
+
+  return total_bytes_read;
 }
 
-uint32_t zuart_write( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t timeout_ms ) {
-
-  /*
-  n_bytes = n_bytes > zuart->buf.tx_size 
-    ? zuart->buf.tx_size 
-    : n_bytes;
-  */
+int32_t zuart_write( 
+  zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint16_t timeout_ms 
+) {
 
   k_sem_reset( &zuart->tx_sem );
-
-  // zuart->buf.tx_idx = 0;
-  // zuart->buf.tx_len = n_bytes;
 
   // ! This function is public so the user should take care ONLY 
   // ! if concurrent writes are a possibility
   uint32_t bytes_written = 0;
   
   if ( timeout_ms == 0 ) {
-    bytes_written = ring_buf_put( &zuart->tx_rbuf, bytes, n_bytes );
+    bytes_written = ring_buf_put( &zuart->tx_rbuf, src_buffer, n_bytes );
     uart_irq_tx_enable( zuart->dev );
   } else {
     
@@ -82,7 +89,7 @@ uint32_t zuart_write( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t time
     while ( bytes_written < n_bytes ) {
 
       uint32_t bytes_read = ring_buf_put( 
-        &zuart->tx_rbuf, bytes + bytes_written, n_bytes - bytes_written );
+        &zuart->tx_rbuf, src_buffer + bytes_written, n_bytes - bytes_written );
       
        // enable irq to transmit given buffer
       uart_irq_tx_enable( zuart->dev );
@@ -90,7 +97,7 @@ uint32_t zuart_write( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t time
       if ( k_sem_take( &zuart->tx_sem, k_timeout ) == 0 ) {
         bytes_written += bytes_read;
       } else {
-        break;
+        return ZUART_ERR_TIMEOUT;
       }
 
     }
@@ -99,7 +106,6 @@ uint32_t zuart_write( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t time
   return bytes_written;
 }
 
-
 // used to transfer received bytes to reception queue
 void zuart_flush( zuart_t *zuart ) {
 
@@ -107,7 +113,7 @@ void zuart_flush( zuart_t *zuart ) {
 
 // all bytes pending in the reception buffer will be drained
 void zuart_drain( zuart_t *zuart ) {
-  // k_msgq_purge( &zuart->rx_queue );
+  // purge ring buffer
   ring_buf_get( &zuart->rx_rbuf, NULL, 0 );
 }
 
@@ -115,27 +121,9 @@ int zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config ) {
   
   // driver instance
   zuart->dev = zuart_config->dev;
-  
-  // rx buffer
-  zuart->buf.rx = zuart_config->rx_buf;
-  zuart->buf.rx_size = zuart_config->rx_buf_size;
-
-  // tx buffer
-  zuart->buf.tx = zuart_config->tx_buf;
-  zuart->buf.tx_size = zuart_config->tx_buf_size;
-  zuart->buf.tx_idx = 0;
-  zuart->buf.tx_len = 0;
+  zuart->config = *zuart_config;
 
   #ifdef CONFIG_UART_INTERRUPT_DRIVEN
-
-    // initialize message queue
-    /*
-    k_msgq_init( 
-      &zuart->rx_queue,
-      zuart->buf.rx,
-      sizeof( uint8_t ),
-      zuart->buf.rx_size / sizeof( uint8_t ) );
-    */
 
     uart_irq_callback_user_data_set( 
       zuart->dev, _uart_isr, zuart );
@@ -167,10 +155,10 @@ int zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config ) {
     uart_irq_rx_enable( zuart->dev );
     uart_irq_tx_disable( zuart->dev );
 
-    return 0;
+    return ZUART_OK;
 
   #else
-    return -1;
+    return ZUART_ERR_SETUP;
   #endif
 
 }
@@ -228,12 +216,12 @@ static void _uart_rx_isr( const struct device *dev, zuart_t *zuart ) {
   
   if ( uart_fifo_read( dev, &byte, sizeof( byte ) ) == sizeof( byte ) ) {
     
-    if ( ring_buf_put( &zuart->rx_rbuf, &byte, sizeof( byte ) ) == 0) {
-      // TODO: handle overrun
-    }  
-    
+    if ( ring_buf_put( &zuart->rx_rbuf, &byte, sizeof( byte ) ) == 0 ) {
+      SET_FLAG( zuart->flags, FLAG_OVERRUN );
+    }
+
     // TODO: we could give semaphore depending on some additional logic
-    k_sem_give( &zuart->rx_sem ); 
+    k_sem_give( &zuart->rx_sem );
   }
   
 }

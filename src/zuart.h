@@ -4,47 +4,52 @@
   #include <stdint.h>
   #include <zephyr/sys/ring_buffer.h>
 
-  struct zuart_buf {
-    uint8_t *rx;
-    int rx_len, rx_size;
-
-    uint8_t *tx;
-    int tx_len, tx_idx, tx_size;
-  };
+  typedef enum zuart_err {
+    ZUART_OK = 0,
+    ZUART_ERR_SETUP,
+    ZUART_ERR_OVERRUN,
+    ZUART_ERR_TIMEOUT,
+  } zuart_err_t;
 
   typedef struct zuart_config {
-    
-    struct device *dev;
-    
+
     uint8_t *tx_buf;
-    int tx_buf_size;
+    uint32_t tx_buf_size;
 
     uint8_t *rx_buf;
-    int rx_buf_size;
+    uint32_t rx_buf_size;
+
+    struct device *dev;
 
   } zuart_config_t;
 
   typedef struct zuart {
-    struct device *dev;
-    struct zuart_buf buf; 
     
+    uint8_t flags; // for internal use only
+
+    struct device *dev;
+
     struct k_sem rx_sem; // used based on specific user logic
     struct k_sem tx_sem; // used when the isr has transmitted a chunk
-
-    struct k_msgq rx_queue;
 
     struct ring_buf rx_rbuf;
     struct ring_buf tx_rbuf;
 
-    // TODO: ring buffer for transmission too
-
     zuart_config_t config;
+
   } zuart_t;
 
+  /**
+   * @brief 
+   * 
+   * @param zuart 
+   * @param zuart_config 
+   * @return int 
+   */
   int zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config );
   
   /**
-   * @brief Allows to request a specific number of bytes from que reception queue
+   * @brief Allows to request a specific number of bytes from que reception buffer
    * 
    * @note Use timeout in order to decide if this call should wait 
    * for all the requested bytes
@@ -55,9 +60,24 @@
    * @param ms_timeout The number of milliseconds this function should wait
    * @return int 
    */
-  int zuart_read( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t ms_timeout );
-  uint32_t zuart_write( zuart_t *zuart, uint8_t *bytes, int n_bytes, uint16_t ms_timeout );
+  int32_t zuart_read( zuart_t *zuart, uint8_t *out_buffer, uint16_t n_bytes, uint16_t ms_timeout );
 
+  /**
+   * @brief 
+   * 
+   * @param zuart 
+   * @param bytes 
+   * @param n_bytes 
+   * @param ms_timeout 
+   * @return uint32_t 
+   */
+  int32_t zuart_write( zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint16_t ms_timeout );
+
+  /**
+   * @brief 
+   * 
+   * @param zuart 
+   */
   void zuart_drain( zuart_t *zuart );
 
 #endif

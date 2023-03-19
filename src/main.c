@@ -39,12 +39,12 @@ static const struct gpio_dt_spec green_led = GPIO_DT_SPEC_GET( LED0_NODE, gpios 
 #define TEST_AT_CMD(ok_block, err_block, f_name, ... ) \
 do { \
   printk( "%-20s() ", #f_name ); \
-  uint8_t M_g_code = f_name( __VA_ARGS__ ); \
+  int16_t M_g_code = f_name( __VA_ARGS__ ); \
   if ( M_g_code == 0 ) { \
     printk( "OK; " ); \
     ok_block \
   } else { \
-    printk( "ERR: %s; ", at_uart_err_to_name( M_g_code ) ); \
+    printk( "ERR: (%03d) %s; ", M_g_code, at_uart_err_to_name( M_g_code ) ); \
     err_block \
   } \
   printk( "\n" ); \
@@ -114,7 +114,7 @@ void main(void) {
         .tx_buf = tx_buf,
         .tx_buf_size = sizeof( tx_buf ),
       },
-      .echo = true,
+      .echo = false,
       .verbose = true,
     }
   };
@@ -187,6 +187,8 @@ void main(void) {
   }, { // AT command failed
     set_error_led();
   }, isbd_init_session, &session );
+
+  TEST_AT_CMD({}, {}, isbd_clear_buffer, ISBD_CLEAR_MO_MT_BUFF );
 
   /*
   isbd_evt_report_t evt_report = {
