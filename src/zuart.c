@@ -27,7 +27,7 @@ static void _uart_isr( const struct device *dev, void *user_data );
 
 // TODO: think about using events instead of semaphores
 
-int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *bytes, uint16_t n_bytes, uint16_t timeout_ms ) {
+int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms ) {
   
   int sem_ret;
   uint16_t bytes_read = 0;
@@ -43,7 +43,7 @@ int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *bytes, uint16_t n_bytes, 
       // ! We have have to take care ONLY if concurrent reads are a possibility,
       // ! at least we should warn to the user
       &zuart->rx_rbuf, 
-      bytes + total_bytes_read, 
+      out_buf + total_bytes_read, 
       n_bytes - total_bytes_read ) ) > 0 )
   ) {
     total_bytes_read += bytes_read;
@@ -63,7 +63,7 @@ int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *bytes, uint16_t n_bytes, 
 }
 
 
-int32_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buffer, uint16_t n_bytes, uint16_t timeout_ms ) {
+int32_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms ) {
 
   uint8_t byte;
   uint16_t total_bytes_read = 0;
@@ -73,7 +73,7 @@ int32_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buffer, uint16_t n_b
     while ( total_bytes_read < n_bytes 
       && uart_poll_in( zuart->dev, &byte ) == 0 ) {
 
-      out_buffer[ total_bytes_read ] = byte;
+      out_buf[ total_bytes_read ] = byte;
       total_bytes_read++;
     }
 
@@ -92,7 +92,7 @@ int32_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buffer, uint16_t n_b
       int ret = uart_poll_in( zuart->dev, &byte );
 
       if ( ret == 0 ) {
-        out_buffer[ total_bytes_read ] = byte;
+        out_buf[ total_bytes_read ] = byte;
         total_bytes_read++;
       } else if ( ret == -1 ) {
         k_yield();
@@ -119,7 +119,7 @@ int32_t zuart_read(
 
 
 int32_t zuart_write_irq_proto(
-  zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint16_t timeout_ms 
+  zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint16_t timeout_ms 
 ) {
   
   k_sem_reset( &zuart->tx_sem );
@@ -129,7 +129,7 @@ int32_t zuart_write_irq_proto(
   uint16_t bytes_written = 0;
   
   if ( timeout_ms == 0 ) {
-    bytes_written = ring_buf_put( &zuart->tx_rbuf, src_buffer, n_bytes );
+    bytes_written = ring_buf_put( &zuart->tx_rbuf, src_buf, n_bytes );
     uart_irq_tx_enable( zuart->dev );
   } else {
     
@@ -138,7 +138,7 @@ int32_t zuart_write_irq_proto(
     while ( bytes_written < n_bytes ) {
 
       uint16_t bytes_read = ring_buf_put( 
-        &zuart->tx_rbuf, src_buffer + bytes_written, n_bytes - bytes_written );
+        &zuart->tx_rbuf, src_buf + bytes_written, n_bytes - bytes_written );
       
       // enable irq to transmit given buffer
       uart_irq_tx_enable( zuart->dev );
@@ -156,7 +156,7 @@ int32_t zuart_write_irq_proto(
 }
 
 int32_t zuart_write_poll_proto(
-  zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint16_t timeout_ms 
+  zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint16_t timeout_ms 
 ) {
 
   uint16_t bytes_written = 0;
@@ -170,7 +170,7 @@ int32_t zuart_write_poll_proto(
       return ZUART_ERR_TIMEOUT;
     }
 
-    uint8_t byte = src_buffer[ bytes_written ];
+    uint8_t byte = src_buf[ bytes_written ];
     uart_poll_out( zuart->dev, byte );
     bytes_written++;
   }
