@@ -94,6 +94,17 @@ The following table shows the current status of the library based on the differe
 
 > **NOTE**: by the moment tested means (at least) that it works on a *NXP FDRM K64F* board using the *Iridium 9602 SBD Transceiver*, however it should work with other combinations of boards and modems.
 
-# Prototipo de pruebas utilizado
+# Test prototype
 
 ![ISBD 9602 Test Prototype](./img/isbd_portable_prototype.jpg)
+
+## Example program output
+``` txt
+isbd_get_revision   () OK; Revision : Call Processor Version: TA21004 ...
+isbd_get_imei       () OK; IMEI : 300534063281170
+isbd_set_mo         () OK; 
+isbd_mo_to_mt       () OK; SBDTC: Outbound SBD Copied to Inbound SBD: size = 4
+isbd_get_mt         () OK; msg=MIoT, len=4, csum=0159
+isbd_init_session   () OK; mo_sts=32, mo_msn=48, mt_sts=2, mt_msn=0, mt_length=0, mt_queued=0
+isbd_clear_buffer   () OK; 
+```

@@ -297,10 +297,8 @@ at_uart_err_t at_uart_setup(
   // setup underlying uart
   zuart_setup( &at_uart->zuart, &at_uart_config->zuart );
 
-
   // ! Disable quiet mode in order to parse command results
   _at_uart_set_quiet( at_uart, false );
-
 
   // ! The response code of this commands
   // ! are not checked due to the possibility of 
@@ -312,7 +310,6 @@ at_uart_err_t at_uart_setup(
   _at_uart_enable_echo( at_uart, at_uart->config.echo );
   _at_uart_set_verbose( at_uart, at_uart->config.verbose );
 
-
   // ! Enable or disable flow control depending on uart configuration
   // ! this will avoid hangs during communication
   // ! Remember that the ISU transits between different states
@@ -320,6 +317,7 @@ at_uart_err_t at_uart_setup(
   // ! flow control is implicitly disabled
   at_uart_err_t at_code;
   struct uart_config config;
+  
   uart_config_get( at_uart->zuart.dev, &config );
 
   if ( config.flow_ctrl == UART_CFG_FLOW_CTRL_NONE ) {

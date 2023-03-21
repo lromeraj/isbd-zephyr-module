@@ -4,26 +4,101 @@
   #include <stdint.h>
   #include <zephyr/sys/ring_buffer.h>
 
+  #define ZUART_CONF_DEFAULT( _dev ) \
+    { \
+      .dev = _dev, \
+      .rx_buf = NULL, \
+      .rx_buf_size = 0, \
+      .tx_buf = NULL, \
+      .tx_buf_size = 0, \
+      .mode = ZUART_MODE_POLL, \
+    }
+  
+  #define ZUART_CONF_POLL( _dev ) \
+    { \
+      .dev = _dev, \
+      .rx_buf = NULL, \
+      .rx_buf_size = 0, \
+      .tx_buf = NULL, \
+      .tx_buf_size = 0, \
+      .mode = ZUART_MODE_POLL, \
+    }
+
+  #define ZUART_CONF_IRQ( _dev, _rx_buf, _rx_buf_size, _tx_buf, _tx_buf_size ) \
+    { \
+      .dev = _dev, \
+      .rx_buf = _rx_buf, \
+      .rx_buf_size = _rx_buf_size, \
+      .tx_buf = _tx_buf, \
+      .tx_buf_size = _tx_buf_size, \
+      .mode = ZUART_MODE_IRQ, \
+    }
+
+  #define ZUART_CONF_MIX_RX_IRQ_TX_POLL( _dev, _rx_buf, _rx_buf_size ) \
+    { \
+      .dev = _dev, \
+      .rx_buf = _rx_buf, \
+      .rx_buf_size = _rx_buf_size, \
+      .tx_buf = NULL, \
+      .tx_buf_size = 0, \
+      .mode = ZUART_MODE_MIXED, \
+    }
+
+  #define ZUART_CONF_MIX_RX_POLL_TX_IRQ( _dev, _tx_buf, _tx_buf_size ) \
+    { \
+      .dev = _dev, \
+      .rx_buf = NULL, \
+      .rx_buf_size = 0, \
+      .tx_buf = _tx_buf, \
+      .tx_buf_size = _tx_buf_size, \
+      .mode = ZUART_MODE_MIXED, \
+    }
+
   typedef enum zuart_err {
-    ZUART_OK = 0,
-    ZUART_ERR_SETUP,
-    ZUART_ERR_OVERRUN,
-    ZUART_ERR_TIMEOUT,
+    ZUART_OK              = 0,
+    ZUART_ERR             = -1,
+    ZUART_ERR_SETUP       = -2,
+    ZUART_ERR_OVERRUN     = -3,
+    ZUART_ERR_TIMEOUT     = -4,
   } zuart_err_t;
 
-  typedef struct zuart_config {
+  typedef enum zuart_mode {
+    ZUART_MODE_IRQ,
+    ZUART_MODE_POLL,
+    ZUART_MODE_MIXED,
+  } zuart_mode_t;
+
+
+
+  typedef struct zuart zuart_t;
+  typedef struct zuart_config zuart_config_t;
+
+  typedef int32_t (*zuart_read_proto_t)(
+    zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint16_t timeout_ms 
+  );
+
+  typedef int32_t (*zuart_write_proto_t)( 
+    zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint16_t timeout_ms 
+  );
+
+  struct zuart_config {
+    
+    zuart_mode_t mode;
 
     uint8_t *tx_buf;
     uint32_t tx_buf_size;
 
     uint8_t *rx_buf;
     uint32_t rx_buf_size;
-
+    
     struct device *dev;
 
-  } zuart_config_t;
+    zuart_read_proto_t read_proto;
+    zuart_write_proto_t write_proto;
 
-  typedef struct zuart {
+  };
+
+  struct zuart {
     
     uint8_t flags; // for internal use only
 
@@ -37,7 +112,7 @@
 
     zuart_config_t config;
 
-  } zuart_t;
+  };
 
   /**
    * @brief 
@@ -46,7 +121,7 @@
    * @param zuart_config 
    * @return int 
    */
-  int zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config );
+  zuart_err_t zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config );
   
   /**
    * @brief Allows to request a specific number of bytes from que reception buffer
@@ -79,5 +154,12 @@
    * @param zuart 
    */
   void zuart_drain( zuart_t *zuart );
+
+
+  int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms );
+  int32_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms );
+
+  int32_t zuart_write_irq_proto( zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint16_t timeout_ms );
+  int32_t zuart_write_poll_proto( zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint16_t timeout_ms );
 
 #endif

@@ -12,6 +12,9 @@
 #define CLEAR_FLAG( var, flag ) \
   WRITE_BIT( var, flag, 0 )
 
+#define GET_FLAG( var, flag ) \
+  ( (var) & BIT( flag ) )
+
 // --------- Start of private methods -----------
 /**
  * @brief UART ISR handler
@@ -22,24 +25,13 @@
 static void _uart_isr( const struct device *dev, void *user_data );
 // ---------- End of private methods -----------
 
-// TODO: we should use a semaphore with a native ring buffer
-// TODO: see https://docs.zephyrproject.org/3.2.0/kernel/data_structures/ring_buffers.html
-// TODO: the ISR should give the semaphore each time it receives some character,
-// TODO: also we can tell to the ISR what logic should follow to give that semaphore,
-// TODO: one logic could be, for example, every time a byte is received give the semaphore,
-// TODO: each time you find a character like \n give the semaphore, etc ...
+// TODO: think about using events instead of semaphores
 
-// TODO: using a queue is worse because if we want to notify that there are available chars
-// TODO: we have to push something on it, also if the requested amount of bytes
-// TODO: is small the queue will waste a lot of space in the buffer
-
-int32_t zuart_read(
-  zuart_t *zuart, uint8_t *bytes, uint16_t n_bytes, uint16_t timeout_ms 
-) {
+int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *bytes, uint16_t n_bytes, uint16_t timeout_ms ) {
   
   int sem_ret;
-  uint32_t bytes_read = 0;
-  uint32_t total_bytes_read = 0;
+  uint16_t bytes_read = 0;
+  uint16_t total_bytes_read = 0;
 
   // this conversion takes a little due to arithmetic division
   // so we temporary store the value instead of recomputing for each loop
@@ -57,7 +49,7 @@ int32_t zuart_read(
     total_bytes_read += bytes_read;
   }
 
-  if ( zuart->flags & FLAG_OVERRUN ) {
+  if ( GET_FLAG( zuart->flags, FLAG_OVERRUN ) ) {
     CLEAR_FLAG( zuart->flags, FLAG_OVERRUN );
     return ZUART_ERR_OVERRUN;
   }
@@ -67,17 +59,74 @@ int32_t zuart_read(
   }
 
   return total_bytes_read;
+
 }
 
-int32_t zuart_write( 
+
+int32_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buffer, uint16_t n_bytes, uint16_t timeout_ms ) {
+
+  uint8_t byte;
+  uint16_t total_bytes_read = 0;
+
+  if ( timeout_ms == 0 ) {
+
+    while ( total_bytes_read < n_bytes 
+      && uart_poll_in( zuart->dev, &byte ) == 0 ) {
+
+      out_buffer[ total_bytes_read ] = byte;
+      total_bytes_read++;
+    }
+
+  } else {
+
+    uint64_t ts_old = k_uptime_get();
+
+    while ( total_bytes_read < n_bytes ) {
+      
+      uint64_t ts_now = k_uptime_get();
+
+      if ( ts_now - ts_old >= timeout_ms ) {
+        return ZUART_ERR_TIMEOUT;
+      }
+
+      int ret = uart_poll_in( zuart->dev, &byte );
+
+      if ( ret == 0 ) {
+        out_buffer[ total_bytes_read ] = byte;
+        total_bytes_read++;
+      } else if ( ret == -1 ) {
+        k_yield();
+      } else {
+        return ZUART_ERR;
+      }
+
+    }
+
+  }
+
+  return total_bytes_read; 
+}
+
+int32_t zuart_read(
+  zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms 
+) {
+  if ( zuart->config.read_proto ) {
+    return zuart->config.read_proto( zuart, out_buf, n_bytes, timeout_ms );
+  } else {
+    return ZUART_ERR;
+  }
+}
+
+
+int32_t zuart_write_irq_proto(
   zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint16_t timeout_ms 
 ) {
-
+  
   k_sem_reset( &zuart->tx_sem );
 
   // ! This function is public so the user should take care ONLY 
   // ! if concurrent writes are a possibility
-  uint32_t bytes_written = 0;
+  uint16_t bytes_written = 0;
   
   if ( timeout_ms == 0 ) {
     bytes_written = ring_buf_put( &zuart->tx_rbuf, src_buffer, n_bytes );
@@ -88,10 +137,10 @@ int32_t zuart_write(
 
     while ( bytes_written < n_bytes ) {
 
-      uint32_t bytes_read = ring_buf_put( 
+      uint16_t bytes_read = ring_buf_put( 
         &zuart->tx_rbuf, src_buffer + bytes_written, n_bytes - bytes_written );
       
-       // enable irq to transmit given buffer
+      // enable irq to transmit given buffer
       uart_irq_tx_enable( zuart->dev );
 
       if ( k_sem_take( &zuart->tx_sem, k_timeout ) == 0 ) {
@@ -106,8 +155,39 @@ int32_t zuart_write(
   return bytes_written;
 }
 
-// used to transfer received bytes to reception queue
-void zuart_flush( zuart_t *zuart ) {
+int32_t zuart_write_poll_proto(
+  zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint16_t timeout_ms 
+) {
+
+  uint16_t bytes_written = 0;
+  uint64_t ts_old = k_uptime_get();
+
+  while ( bytes_written < n_bytes ) {
+    
+    uint64_t ts_now = k_uptime_get();
+
+    if ( timeout_ms > 0 && ts_now - ts_old >= timeout_ms ) {
+      return ZUART_ERR_TIMEOUT;
+    }
+
+    uint8_t byte = src_buffer[ bytes_written ];
+    uart_poll_out( zuart->dev, byte );
+    bytes_written++;
+  }
+
+  return bytes_written;
+}
+
+
+int32_t zuart_write( 
+  zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint16_t timeout_ms 
+) {
+
+  if ( zuart->config.write_proto ) {
+    return zuart->config.write_proto( zuart, src_buf, n_bytes, timeout_ms );
+  } else {
+    return ZUART_ERR;
+  }
 
 }
 
@@ -117,50 +197,66 @@ void zuart_drain( zuart_t *zuart ) {
   ring_buf_get( &zuart->rx_rbuf, NULL, 0 );
 }
 
-int zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config ) {
-  
-  // driver instance
+zuart_err_t zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config ) {
+
+  // copy device pointer
   zuart->dev = zuart_config->dev;
+
+  // copy config
   zuart->config = *zuart_config;
 
-  #ifdef CONFIG_UART_INTERRUPT_DRIVEN
+  if ( zuart_config->mode == ZUART_MODE_IRQ ) {
 
-    uart_irq_callback_user_data_set( 
-      zuart->dev, _uart_isr, zuart );
+    zuart->config.read_proto = zuart_read_irq_proto;
+    zuart->config.write_proto = zuart_write_irq_proto;
+
+  } else if ( zuart_config->mode == ZUART_MODE_POLL ) {
+
+    zuart->config.read_proto = zuart_read_poll_proto;
+    zuart->config.write_proto = zuart_write_poll_proto;
+
+  } else { // mixed mode
+
+    zuart->config.read_proto = zuart_read_poll_proto;
+    zuart->config.write_proto = zuart_write_poll_proto;
+
+  }
+
+  if ( zuart_config->read_proto == zuart_read_irq_proto 
+      || zuart_config->write_proto == zuart_write_irq_proto ) {
+    
+    uart_irq_callback_user_data_set( zuart->dev, _uart_isr, zuart );
+  }
+
+  if ( zuart_config->read_proto == zuart_read_irq_proto ) {
+
+    if ( zuart_config->rx_buf == NULL || zuart_config->rx_buf_size == 0 ) {
+      return ZUART_ERR_SETUP;
+    }
 
     k_sem_init(
       &zuart->rx_sem, 0, 1 );
+
+    ring_buf_init(
+      &zuart->rx_rbuf, zuart_config->rx_buf_size, zuart_config->rx_buf );    
+
+    uart_irq_rx_enable( zuart->dev );
+  } 
+
+  if ( zuart_config->write_proto == zuart_write_irq_proto ) {
+
+    if ( zuart_config->tx_buf == NULL || zuart_config->tx_buf_size == 0 ) {
+      return ZUART_ERR_SETUP;
+    }
 
     k_sem_init(
       &zuart->tx_sem, 0, 1 );
 
     ring_buf_init(
-      &zuart->rx_rbuf, zuart_config->rx_buf_size, zuart_config->rx_buf );    
-
-    ring_buf_init(
       &zuart->tx_rbuf, zuart_config->tx_buf_size, zuart_config->tx_buf );
+  }
 
-    /*
-    if (ret < 0) {
-      if (ret == -ENOTSUP) {
-        printk("Interrupt-driven UART API support not enabled\n");
-      } else if (ret == -ENOSYS) {
-        printk("UART device does not support interrupt-driven API\n");
-      } else {
-        printk("Error setting UART callback: %d\n", ret);
-      }
-    }
-    */
-
-    uart_irq_rx_enable( zuart->dev );
-    uart_irq_tx_disable( zuart->dev );
-
-    return ZUART_OK;
-
-  #else
-    return ZUART_ERR_SETUP;
-  #endif
-
+  return ZUART_OK;
 }
 
 static void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
@@ -182,7 +278,7 @@ static void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
     // send byte to uart fifo
     uart_fifo_fill( dev, &byte, 1 ); 
 
-    // is practically impossible to receive value lower than 1
+    // is theoretically impossible to receive value lower than 1
     // due to the previous check using uart_irq_tx_ready(), 
     // otherwise is a driver fault
 
