@@ -97,8 +97,6 @@ void main(void) {
 		return;
   }
 
-	// print_uart( uart_master_device, "Hello! I'm your echo bot for Iridium 9602 module.\r\n\r\n" );
-
   struct uart_config uart_config;
 
 	uart_config_get( uart_slave_device, &uart_config );
@@ -107,15 +105,9 @@ void main(void) {
 
   struct isbd_config isbd_config = {
     .at_uart = {
-      .zuart = {
-        .dev = uart_slave_device,
-        .rx_buf = rx_buf,
-        .rx_buf_size = sizeof( rx_buf ),
-        .tx_buf = tx_buf,
-        .tx_buf_size = sizeof( tx_buf ),
-      },
-      .echo = false,
+      .echo = true,
       .verbose = true,
+      .zuart = ZUART_CONF_DEFAULT( uart_slave_device ),
     }
   };
 
@@ -130,9 +122,6 @@ void main(void) {
   }
 
   set_info_led();
-
-  // isbd_fetch_imei( __buff, sizeof( __buff ) );
-  // CHECK_AT_CMD( code, {}, isbd_enable_echo, true );
 
   TEST_AT_CMD({
     printk( "Revision : %s", buf );
