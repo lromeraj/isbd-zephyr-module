@@ -1,0 +1,5 @@
+tests:
+  tests.zuart:
+    tags: serial uart
+    platform_allow: frdm_k64f
+
