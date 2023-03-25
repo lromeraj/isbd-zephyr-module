@@ -19,7 +19,8 @@
       "system_error": "c",
       "defs.h": "c",
       "at.h": "c",
-      "type_traits": "c"
+      "type_traits": "c",
+      "cstdio": "c"
     }
   }
 }

@@ -194,10 +194,12 @@ int32_t zuart_write(
 // all bytes pending in the reception buffer will be drained
 void zuart_drain( zuart_t *zuart ) {
   // purge ring buffer
-  ring_buf_get( &zuart->rx_rbuf, NULL, 0 );
+  uint32_t size = ring_buf_size_get( &zuart->rx_rbuf );
+  
+  ring_buf_get( &zuart->rx_rbuf, NULL, size );
 }
 
-zuart_err_t zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config ) {
+zuart_err_t zuart_setup( zuart_t *zuart, const zuart_config_t *zuart_config ) {
 
   // copy device pointer
   zuart->dev = zuart_config->dev;
@@ -214,23 +216,17 @@ zuart_err_t zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config ) {
 
     zuart->config.read_proto = zuart_read_poll_proto;
     zuart->config.write_proto = zuart_write_poll_proto;
-
-  } else { // mixed mode
-
-    zuart->config.read_proto = zuart_read_poll_proto;
-    zuart->config.write_proto = zuart_write_poll_proto;
-
   }
 
-  if ( zuart_config->read_proto == zuart_read_irq_proto 
-      || zuart_config->write_proto == zuart_write_irq_proto ) {
+  if ( zuart->config.read_proto == zuart_read_irq_proto 
+      || zuart->config.write_proto == zuart_write_irq_proto ) {
     
     uart_irq_callback_user_data_set( zuart->dev, _uart_isr, zuart );
   }
 
-  if ( zuart_config->read_proto == zuart_read_irq_proto ) {
+  if ( zuart->config.read_proto == zuart_read_irq_proto ) {
 
-    if ( zuart_config->rx_buf == NULL || zuart_config->rx_buf_size == 0 ) {
+    if ( zuart->config.rx_buf == NULL || zuart->config.rx_buf_size == 0 ) {
       return ZUART_ERR_SETUP;
     }
 
@@ -238,14 +234,14 @@ zuart_err_t zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config ) {
       &zuart->rx_sem, 0, 1 );
 
     ring_buf_init(
-      &zuart->rx_rbuf, zuart_config->rx_buf_size, zuart_config->rx_buf );    
-
+      &zuart->rx_rbuf, zuart->config.rx_buf_size, zuart->config.rx_buf );    
+    
     uart_irq_rx_enable( zuart->dev );
   } 
 
-  if ( zuart_config->write_proto == zuart_write_irq_proto ) {
+  if ( zuart->config.write_proto == zuart_write_irq_proto ) {
 
-    if ( zuart_config->tx_buf == NULL || zuart_config->tx_buf_size == 0 ) {
+    if ( zuart->config.tx_buf == NULL || zuart->config.tx_buf_size == 0 ) {
       return ZUART_ERR_SETUP;
     }
 
@@ -253,18 +249,19 @@ zuart_err_t zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config ) {
       &zuart->tx_sem, 0, 1 );
 
     ring_buf_init(
-      &zuart->tx_rbuf, zuart_config->tx_buf_size, zuart_config->tx_buf );
+      &zuart->tx_rbuf, zuart->config.tx_buf_size, zuart->config.tx_buf );
   }
-
+  
   return ZUART_OK;
 }
 
-static void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
+static inline void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
 
   // uint8_t *tx_buff = zuart->buf.tx;
   // size_t *tx_buff_len = &zuart->buf.tx_len;
   // size_t *tx_buff_idx = &zuart->buf.tx_idx;
   
+
   if ( ring_buf_size_get( &zuart->tx_rbuf ) > 0 ) {
     
     uint8_t byte;
@@ -306,7 +303,7 @@ static void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
   }
 }
 
-static void _uart_rx_isr( const struct device *dev, zuart_t *zuart ) {
+static inline void _uart_rx_isr( const struct device *dev, zuart_t *zuart ) {
   
   uint8_t byte;
   

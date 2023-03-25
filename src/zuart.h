@@ -42,6 +42,8 @@
       .tx_buf = NULL, \
       .tx_buf_size = 0, \
       .mode = ZUART_MODE_MIXED, \
+      .read_proto = zuart_read_irq_proto, \
+      .write_proto = zuart_write_poll_proto, \
     }
 
   #define ZUART_CONF_MIX_RX_POLL_TX_IRQ( _dev, _tx_buf, _tx_buf_size ) \
@@ -52,6 +54,8 @@
       .tx_buf = _tx_buf, \
       .tx_buf_size = _tx_buf_size, \
       .mode = ZUART_MODE_MIXED, \
+      .read_proto = zuart_read_poll_proto, \
+      .write_proto = zuart_write_irq_proto, \
     }
 
   typedef enum zuart_err {
@@ -67,8 +71,6 @@
     ZUART_MODE_POLL,
     ZUART_MODE_MIXED,
   } zuart_mode_t;
-
-
 
   typedef struct zuart zuart_t;
   typedef struct zuart_config zuart_config_t;
@@ -121,7 +123,7 @@
    * @param zuart_config 
    * @return int 
    */
-  zuart_err_t zuart_setup( zuart_t *zuart, zuart_config_t *zuart_config );
+  zuart_err_t zuart_setup( zuart_t *zuart, const zuart_config_t *zuart_config );
   
   /**
    * @brief Allows to request a specific number of bytes from que reception buffer

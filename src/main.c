@@ -18,9 +18,6 @@
 
 #define MSG_SIZE 32
 
-#define STACK_SIZE		2048
-#define PRIORITY		  5
-
 /* change this to any other UART peripheral if desired */
 // #define UART_MASTER_DEVICE_NODE DT_NODELABEL(uart0)
 #define UART_SLAVE_DEVICE_NODE DT_NODELABEL(uart3)
@@ -103,11 +100,15 @@ void main(void) {
 	uart_config.baudrate = 19200;
 	uart_configure( uart_slave_device, &uart_config );
 
+
   struct isbd_config isbd_config = {
     .at_uart = {
       .echo = true,
       .verbose = true,
-      .zuart = ZUART_CONF_DEFAULT( uart_slave_device ),
+      // .zuart = ZUART_CONF_POLL( uart_slave_device ),
+      .zuart = ZUART_CONF_IRQ( uart_slave_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
+      // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( uart_slave_device, rx_buf, sizeof( rx_buf ) ),
+      // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( uart_slave_device, tx_buf, sizeof( tx_buf ) ),
     }
   };
 
