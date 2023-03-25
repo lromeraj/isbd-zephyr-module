@@ -2,6 +2,6 @@ tests:
   tests.zuart:
     tags: serial uart
     platform_allow: qemu_cortex_m3
-    extra_args: QEMU_PTY=1 # https://github.com/zephyrproject-rtos/zephyr/pull/41415
+    # extra_args: QEMU_PTY=1 # https://github.com/zephyrproject-rtos/zephyr/pull/41415
     extra_configs:
       - CONFIG_QEMU_ICOUNT=n

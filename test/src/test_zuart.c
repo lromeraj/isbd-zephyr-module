@@ -6,8 +6,7 @@
 
 #include "../../src/zuart.h"
 
-
-#define UART_SLAVE_DEVICE_NODE DT_NODELABEL(uart0)
+#define UART_SLAVE_DEVICE_NODE DT_NODELABEL(uart1)
 
 static const struct device *uart_slave_device = 
   DEVICE_DT_GET(UART_SLAVE_DEVICE_NODE);
@@ -31,9 +30,9 @@ static void* zuart_suite_setup(void) {
 
   struct uart_config config;
 
-  // uart_config_get( uart_slave_device, &config );
-  // config.baudrate = 19200;
-  // uart_configure( uart_slave_device, &config );
+  uart_config_get( uart_slave_device, &config );
+  config.baudrate = 115200;
+  uart_configure( uart_slave_device, &config );
 
   zassert_equal( zuart_setup( &fixture->zuart, &zuart_config ), ZUART_OK, "Setup error" );
 
@@ -62,22 +61,34 @@ ZTEST_F( zuart_suite, test_overrun ) {
   char read_buf[ 16 ];
   char write_buf[ 16 ];
 
-  write_buf_len = sprintf( write_buf, "AT\r" );
+  write_buf_len = sprintf( write_buf, "ping\n" );
+  
+  do {
+    zuart_write( &fixture->zuart, write_buf, write_buf_len, 0 );
+    
+    // accept any byte as response
+    ret = zuart_read( &fixture->zuart, read_buf, 1, 100 );
 
-  for ( int i=0; i < 100; i++ ) {
-    ret = zuart_write( 
-      &fixture->zuart, write_buf, write_buf_len, 100 );
-  }
+  } while ( ret != 1 );
 
-  k_msleep( 5000 );
+  write_buf_len = sprintf( write_buf, "flood %d\n", sizeof( fixture->rx_buf ) + 1 );
 
+  zuart_write( &fixture->zuart, write_buf, write_buf_len, 1000 );
+
+  // wait enough to receive whole flood
+  k_msleep( 100 );
+
+  // overrun should be returned
   ret = zuart_read( &fixture->zuart, read_buf, 1, 0 );
 
   zassert_equal( ret, ZUART_ERR_OVERRUN, "Overrun not triggered" );
 
+  write_buf_len = sprintf( write_buf, "close\n" );
+
+  zuart_write( &fixture->zuart, write_buf, write_buf_len, 1000 );
+
   // printk( "RX SIZE: %d ~ %d\n", rx_size, (rx_size * 8 * 1000)/19200 );
   // printk( "TX SIZE: %d ~ %d\n", tx_size, (tx_size * 8 * 1000)/19200 );
-  
 
 	// zassert_false(0, "0 was true");
 	// zassert_is_null(NULL, "NULL was not NULL");
