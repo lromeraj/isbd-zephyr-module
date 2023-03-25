@@ -59,9 +59,7 @@ int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes
   }
 
   return total_bytes_read;
-
 }
-
 
 int32_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms ) {
 

@@ -4,10 +4,10 @@
 #include <zephyr/drivers/uart.h>
 #include <zephyr/sys/multi_heap.h>
 
-
 #include "../../src/zuart.h"
 
-#define UART_SLAVE_DEVICE_NODE DT_NODELABEL(uart3)
+
+#define UART_SLAVE_DEVICE_NODE DT_NODELABEL(uart0)
 
 static const struct device *uart_slave_device = 
   DEVICE_DT_GET(UART_SLAVE_DEVICE_NODE);
@@ -31,9 +31,9 @@ static void* zuart_suite_setup(void) {
 
   struct uart_config config;
 
-  uart_config_get( uart_slave_device, &config );
-  config.baudrate = 19200;
-  uart_configure( uart_slave_device, &config );
+  // uart_config_get( uart_slave_device, &config );
+  // config.baudrate = 19200;
+  // uart_configure( uart_slave_device, &config );
 
   zassert_equal( zuart_setup( &fixture->zuart, &zuart_config ), ZUART_OK, "Setup error" );
 
@@ -42,7 +42,6 @@ static void* zuart_suite_setup(void) {
 
 ZTEST_SUITE(zuart_suite, NULL, zuart_suite_setup, NULL, NULL, NULL);
 
-/*
 uint32_t read_line( zuart_t *zuart ) {
 
   int32_t ret;
@@ -54,7 +53,6 @@ uint32_t read_line( zuart_t *zuart ) {
   }
   return rx_size;
 }
-*/
 
 ZTEST_F( zuart_suite, test_overrun ) {
 
@@ -66,10 +64,12 @@ ZTEST_F( zuart_suite, test_overrun ) {
 
   write_buf_len = sprintf( write_buf, "AT\r" );
 
-  for ( int i=0; i < 100; i++ ) {    
+  for ( int i=0; i < 100; i++ ) {
     ret = zuart_write( 
       &fixture->zuart, write_buf, write_buf_len, 100 );
   }
+
+  k_msleep( 5000 );
 
   ret = zuart_read( &fixture->zuart, read_buf, 1, 0 );
 
