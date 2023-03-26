@@ -32,6 +32,5 @@ while 1:
         size = int( argv[ 1 ] )
         ser.write( bytearray( size ) )
     elif argv[ 0 ] == "close":
-        pass
-        # ser.close();
-        # break;
+        ser.close()
+        break

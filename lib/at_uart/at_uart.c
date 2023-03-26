@@ -125,10 +125,12 @@ at_uart_err_t at_uart_pack_txt_resp(
 
   at_uart_err_t at_code;
 
+
   // this little buffer is used to parse AT status codes like ERROR, OK, READY ...
   char at_buf[ AT_MIN_BUFF_SIZE ] = "";
 
   while ( zuart_read( &at_uart->zuart, &byte, 1, timeout_ms ) == 1 ) {
+
 
     // printk( "LINE: %d / %d\n", line_n, lines );
     uint8_t trail_char = 0;
@@ -286,6 +288,7 @@ at_uart_err_t at_uart_setup(
   at_uart_t *at_uart, at_uart_config_t *at_uart_config 
 ) {
 
+
   // update whole configuration
   at_uart->config = *at_uart_config;
 
@@ -295,11 +298,15 @@ at_uart_err_t at_uart_setup(
     at_uart->eol = '\r';
   }
 
+
   // setup underlying uart
   zuart_setup( &at_uart->zuart, &at_uart_config->zuart );
 
+
   // ! Disable quiet mode in order to parse command results
   _at_uart_set_quiet( at_uart, false );
+
+
 
   // ! The response code of this commands
   // ! are not checked due to the possibility of 

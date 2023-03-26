@@ -1,10 +1,10 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <zephyr/kernel.h>
-#include <zephyr/device.h>
+// #include <zephyr/kernel.h>
+// #include <zephyr/device.h>
 #include <zephyr/net/net_ip.h>
-#include <zephyr/drivers/uart.h>
+// #include <zephyr/drivers/uart.h>
 
 #include "stru.h"
 #include "at_uart.h"
@@ -42,6 +42,7 @@ isbd_err_t isbd_setup( struct isbd_config *isbd_config ) {
 
   at_uart_err_t at_code = at_uart_setup( 
     &g_isbd.at_uart, &isbd_config->at_uart );
+
 
   return at_code == AT_UART_OK ? ISBD_OK : ISBD_ERR;
 }
