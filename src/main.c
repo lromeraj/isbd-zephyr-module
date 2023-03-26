@@ -13,7 +13,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "at.h"
 #include "isbd.h"
 
 #define MSG_SIZE 32
@@ -99,7 +98,6 @@ void main(void) {
 	uart_config_get( uart_slave_device, &uart_config );
 	uart_config.baudrate = 19200;
 	uart_configure( uart_slave_device, &uart_config );
-
 
   struct isbd_config isbd_config = {
     .at_uart = {
