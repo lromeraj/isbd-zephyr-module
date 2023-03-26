@@ -1,14 +1,15 @@
-#include <errno.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/net/net_ip.h>
 #include <zephyr/drivers/uart.h>
 
-#include "isbd.h"
+#include "stru.h"
 #include "at_uart.h"
-#include "utils.h"
+
+#include "inc/isbd.h"
 
 #define AT_READY_STR         "READY"
 

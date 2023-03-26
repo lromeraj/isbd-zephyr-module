@@ -1,0 +1,3 @@
+build/
+twister-out*
+__pycache__/
