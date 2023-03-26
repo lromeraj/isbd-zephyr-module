@@ -1,10 +1,11 @@
 #include <ctype.h>
+#include <stdlib.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
 
+#include "stru.h"
 #include "at_uart.h"
-#include "utils.h"
 
 // For reference: https://www.etsi.org/deliver/etsi_ts/127000_127099/127007/10.03.00_60/ts_127007v100300p.pdf
 

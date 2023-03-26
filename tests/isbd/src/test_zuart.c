@@ -4,12 +4,12 @@
 #include <zephyr/drivers/uart.h>
 #include <zephyr/sys/multi_heap.h>
 
-#include "../../src/zuart.h"
+#include "zuart.h"
 
-#define UART_SLAVE_DEVICE_NODE DT_NODELABEL(uart1)
+#define UART_HOST_NODE DT_NODELABEL(uart1)
 
 static const struct device *uart_slave_device = 
-  DEVICE_DT_GET(UART_SLAVE_DEVICE_NODE);
+  DEVICE_DT_GET( UART_HOST_NODE );
 
 struct zuart_suite_fixture {
   zuart_t zuart;
@@ -51,6 +51,10 @@ uint32_t read_line( zuart_t *zuart ) {
     if ( byte == '\n' ) break;
   }
   return rx_size;
+}
+
+ZTEST_F( zuart_suite, test_setup ) {
+  
 }
 
 ZTEST_F( zuart_suite, test_overrun ) {

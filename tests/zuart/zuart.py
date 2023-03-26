@@ -8,9 +8,9 @@ import logging
 SERIAL_PORT = '/dev/pts/1'
 SERIAL_BAUDRATE = 115200
 ser = serial.Serial()
-    
+
 ser.port=SERIAL_PORT
-ser.baudrate=SERIAL_BAUDRATE 
+ser.baudrate=SERIAL_BAUDRATE
 
 while True:
     try:
@@ -32,5 +32,6 @@ while 1:
         size = int( argv[ 1 ] )
         ser.write( bytearray( size ) )
     elif argv[ 0 ] == "close":
-        ser.close();
-        break;
+        pass
+        # ser.close();
+        # break;
