@@ -5,7 +5,7 @@ import time
 import serial
 import logging
 
-SERIAL_PORT = '/dev/pts/1'
+SERIAL_PORT = 'ttyS1'
 SERIAL_BAUDRATE = 115200
 ser = serial.Serial()
 
