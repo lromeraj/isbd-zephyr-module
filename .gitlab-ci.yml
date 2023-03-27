@@ -11,6 +11,8 @@ stages:
 test-job:
   stage: test
   script:
+    - source ~/zephyrproject/.venv/bin/activate
+    - source ~/zephyrproject/zephyr/zephyr-env.sh
     - twister -vv -T tests/zuart -W
   environment:
     name: production
