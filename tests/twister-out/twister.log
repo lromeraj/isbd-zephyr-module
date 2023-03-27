@@ -1,0 +1,4 @@
+2023-03-27 09:46:41,903 - twister - INFO - Using Ninja..
+2023-03-27 09:46:42,136 - twister - INFO - Zephyr version: zephyr-v3.3.0-604-g41eec536fba8
+2023-03-27 09:46:42,144 - twister - DEBUG - Running cmake script /home/jrl/zephyrproject/zephyr/cmake/verify-toolchain.cmake
+2023-03-27 09:46:42,144 - twister - DEBUG - Calling cmake: /usr/bin/cmake -DFORMAT=json -P /home/jrl/zephyrproject/zephyr/cmake/verify-toolchain.cmake
