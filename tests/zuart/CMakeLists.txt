@@ -2,25 +2,19 @@
 
 cmake_minimum_required(VERSION 3.20.0)
 
-set(BOARD frdm_k64f)
-
-# This flags will be passed to QEMU which in this case 
-# are used to create a virtual PTY in order to communicate
-# with the virtual device
-set(
-  ENV{QEMU_EXTRA_FLAGS}
-  "-chardev pty,id=con1,mux=on -serial chardev:con1" )
-
-# TODO: move this to other side
 if(TEST)
 
-  # This script will be automatically killed 
-  # when CMake process exits
-  execute_process( COMMAND bash -c "./zuart.py &"
+  # This flags will be passed to QEMU which in this case 
+  # are used to create a virtual PTY in order to communicate
+  # with the virtual device
+  set(
+    ENV{QEMU_EXTRA_FLAGS}
+    "-chardev serial,id=con1,path=${CMAKE_CURRENT_SOURCE_DIR}/ttyS0 -serial chardev:con1" )
+
+  execute_process( COMMAND bash setup.sh
     INPUT_FILE /dev/null
     OUTPUT_FILE /dev/null
-    ERROR_FILE /dev/null
-    RESULT_VARIABLE RESULT )
+    ERROR_FILE /dev/null )
 
 endif()
 
