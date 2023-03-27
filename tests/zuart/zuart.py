@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import sys
 import re
 import time
 import serial
@@ -7,18 +8,16 @@ import logging
 
 SERIAL_PORT = 'ttyS1'
 SERIAL_BAUDRATE = 115200
+
+if len( sys.argv ) == 2:
+    SERIAL_PORT = sys.argv[1]
+
 ser = serial.Serial()
 
 ser.port=SERIAL_PORT
 ser.baudrate=SERIAL_BAUDRATE
 
-while True:
-    try:
-        ser.open();
-        print( "Serial port opened" )
-        break
-    except serial.SerialException as e:
-        time.sleep( 0.1 );
+ser.open();
 
 while 1:
     line = ser.readline().decode( 'ascii' ).replace( '\n', '' );
