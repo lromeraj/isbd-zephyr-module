@@ -1,3 +1,4 @@
 build/
 pids
 __pycache__/
+ttyS*
