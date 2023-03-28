@@ -125,12 +125,9 @@ at_uart_err_t at_uart_pack_txt_resp(
 
   at_uart_err_t at_code;
 
-
   // this little buffer is used to parse AT status codes like ERROR, OK, READY ...
   char at_buf[ AT_MIN_BUFF_SIZE ] = "";
-
   while ( zuart_read( &at_uart->zuart, &byte, 1, timeout_ms ) == 1 ) {
-
 
     // printk( "LINE: %d / %d\n", line_n, lines );
     uint8_t trail_char = 0;

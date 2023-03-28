@@ -1,6 +1,7 @@
 {
   "files.associations": {
     "*.ejs": "html",
-    "ztest.h": "c"
+    "ztest.h": "c",
+    "isbd.h": "c"
   }
 }

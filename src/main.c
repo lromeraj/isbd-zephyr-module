@@ -103,8 +103,8 @@ void main(void) {
     .at_uart = {
       .echo = true,
       .verbose = true,
-      // .zuart = ZUART_CONF_POLL( uart_slave_device ),
-      .zuart = ZUART_CONF_IRQ( uart_slave_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
+      .zuart = ZUART_CONF_POLL( uart_slave_device ),
+      // .zuart = ZUART_CONF_IRQ( uart_slave_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
       // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( uart_slave_device, rx_buf, sizeof( rx_buf ) ),
       // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( uart_slave_device, tx_buf, sizeof( tx_buf ) ),
     }

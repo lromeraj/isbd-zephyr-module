@@ -151,16 +151,49 @@
   int32_t zuart_write( zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint16_t ms_timeout );
 
   /**
-   * @brief 
+   * @brief
    * 
    * @param zuart 
    */
   void zuart_drain( zuart_t *zuart );
 
-
+  /**
+   * @brief Read from serial port using interrupt technique
+   * 
+   * @param zuart 
+   * @param out_buf 
+   * @param n_bytes 
+   * @param timeout_ms 
+   * @return int32_t 
+   */
   int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms );
+  
+  /**
+   * @brief Reads from serial port using polling technique
+   * 
+   * @note: Using this technique implies that the calling thread
+   * must be fast enough to pull out every char in the FIFO buffer, 
+   * otherwise data loss will ocurre. Use this mode only if your 
+   * software/hardware architecture capabilities are enough 
+   * to handle the desired baudrate.
+   * 
+   * @param zuart 
+   * @param out_buf 
+   * @param n_bytes 
+   * @param timeout_ms 
+   * @return int32_t 
+   */
   int32_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms );
 
+  /**
+   * @brief Write to serial port using interrupts technique
+   * 
+   * @param zuart 
+   * @param src_buf 
+   * @param n_bytes 
+   * @param timeout_ms 
+   * @return int32_t 
+   */
   int32_t zuart_write_irq_proto( zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint16_t timeout_ms );
   int32_t zuart_write_poll_proto( zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint16_t timeout_ms );
 

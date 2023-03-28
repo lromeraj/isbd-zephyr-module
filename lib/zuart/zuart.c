@@ -25,11 +25,11 @@
 static void _uart_isr( const struct device *dev, void *user_data );
 // ---------- End of private methods -----------
 
-// TODO: think about using events instead of semaphores
+// TODO: think about using events
 
 int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms ) {
   
-  int sem_ret;
+  int sem_ret = 0;
   uint16_t bytes_read = 0;
   uint16_t total_bytes_read = 0;
 
@@ -37,17 +37,33 @@ int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes
   // so we temporary store the value instead of recomputing for each loop
   k_timeout_t k_timeout = K_MSEC( timeout_ms );
 
-  while ( total_bytes_read < n_bytes
-    && ( sem_ret = k_sem_take( &zuart->rx_sem, k_timeout ) ) == 0
-    && ( (bytes_read = ring_buf_get(
-      // ! We have have to take care ONLY if concurrent reads are a possibility,
-      // ! at least we should warn to the user
-      &zuart->rx_rbuf, 
-      out_buf + total_bytes_read, 
-      n_bytes - total_bytes_read ) ) > 0 )
-  ) {
+  while ( total_bytes_read < n_bytes ) {
+    
+    if ( ring_buf_is_empty( &zuart->rx_rbuf ) ) {
+      sem_ret = k_sem_take( &zuart->rx_sem, k_timeout );
+      if ( sem_ret < 0 ) break;
+    }
+
+    bytes_read = ring_buf_get(
+      &zuart->rx_rbuf, out_buf + total_bytes_read, n_bytes - total_bytes_read );
+
     total_bytes_read += bytes_read;
+
   }
+
+  // ! This is causing data loss, please see: (FIXED) 
+  // ! https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/11
+  // while ( total_bytes_read < n_bytes
+  //   && ( sem_ret = k_sem_take( &zuart->rx_sem, k_timeout ) ) == 0
+  //   && ( (bytes_read = ring_buf_get(
+  //     // ! We have have to take care ONLY if concurrent reads are a possibility,
+  //     // ! at least we should warn to the user
+  //     &zuart->rx_rbuf, 
+  //     out_buf + total_bytes_read, 
+  //     n_bytes - total_bytes_read ) ) > 0 )
+  // ) {
+  //   total_bytes_read += bytes_read;
+  // }
 
   if ( GET_FLAG( zuart->flags, FLAG_OVERRUN ) ) {
     CLEAR_FLAG( zuart->flags, FLAG_OVERRUN );
@@ -189,11 +205,12 @@ int32_t zuart_write(
 
 }
 
-// all bytes pending in the reception buffer will be drained
+// TODO: https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/10
 void zuart_drain( zuart_t *zuart ) {
-  // purge ring buffer
+
   uint32_t size = ring_buf_size_get( &zuart->rx_rbuf );
   
+  // purge ring buffer
   ring_buf_get( &zuart->rx_rbuf, NULL, size );
 }
 
@@ -313,6 +330,7 @@ static inline void _uart_rx_isr( const struct device *dev, zuart_t *zuart ) {
 
     // TODO: we could give semaphore depending on some additional logic
     k_sem_give( &zuart->rx_sem );
+
   }
   
 }
