@@ -18,8 +18,9 @@
    * of failure
    * 
    * @note This macro defines a temporary buffer to store the AT
-   * command string, finally result code is used in order to return
+   * command string, finally the result code is used in order to return
    * automatically or not
+   * TODO: we should have an argumento for the command buffer
    */
   #define SEND_AT_CMD_OR_RET( at_uart, fn, ... ) \
     do { \

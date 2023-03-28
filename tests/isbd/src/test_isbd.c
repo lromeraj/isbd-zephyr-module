@@ -6,16 +6,17 @@
 
 #include "isbd.h"
 
+#define RX_BUF_SIZE    256
+#define TX_BUF_SIZE    256
+
 #define UART_HOST_NODE DT_NODELABEL(uart1)
 
 static const struct device *uart_slave_device = 
   DEVICE_DT_GET( UART_HOST_NODE );
 
-#define RX_TX_BUF_SIZE    512
-
 struct isbd_suite_fixture {
-  uint8_t rx_buf[ RX_TX_BUF_SIZE ];
-  uint8_t tx_buf[ RX_TX_BUF_SIZE ];
+  uint8_t rx_buf[ RX_BUF_SIZE ];
+  uint8_t tx_buf[ TX_BUF_SIZE ];
 };
 
 static void* isbd_suite_setup(void) {
@@ -37,23 +38,34 @@ static void* isbd_suite_setup(void) {
       .echo = false,
       .verbose = true,
       // .zuart = ZUART_CONF_POLL( uart_slave_device ),
-      .zuart = ZUART_CONF_IRQ( 
+      .zuart = ZUART_CONF_IRQ(
           uart_slave_device, 
-          fixture->rx_buf, RX_TX_BUF_SIZE, 
-          fixture->tx_buf, RX_TX_BUF_SIZE 
+          fixture->rx_buf, RX_BUF_SIZE, 
+          fixture->tx_buf, TX_BUF_SIZE 
       ),
       // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( uart_slave_device, rx_buf, sizeof( rx_buf ) ),
       // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( uart_slave_device, tx_buf, sizeof( tx_buf ) ),
     }
   };
+  isbd_err_t ret;
 
-  if ( isbd_setup( &isbd_config ) == ISBD_OK ) {
-    printk( "Modem OK\n" );
-  } else {
-    printk( "Could not talk to modem, probably busy ...\n" );
-  }
+  ret = isbd_setup( &isbd_config );
+  zassert_equal( ret, ISBD_OK, "Could not talk to modem, probably busy ..." );
 
   return fixture;
 }
 
 ZTEST_SUITE( isbd_suite, NULL, isbd_suite_setup, NULL, NULL, NULL );
+
+
+ZTEST_F( isbd_suite, test_imei ) {
+
+  int16_t ret;
+  char imei[ 256 ];
+
+  ret = isbd_get_imei( imei, sizeof( imei ) );
+
+  zassert_equal( ret, AT_UART_OK, "Could not fetch IMEI" );
+  // zassert_equal( strlen( imei ), 15, "IMEI length mismatch" );
+
+}

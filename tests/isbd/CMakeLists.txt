@@ -6,7 +6,6 @@ if(TEST)
   # This flags will be passed to QEMU which in this case
   # are used to create a virtual PTY in order to communicate
   # with the virtual device
-
   set(QEMU_TTY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/ttyS0")
   set(TEST_SETUP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/setup.sh")
 
