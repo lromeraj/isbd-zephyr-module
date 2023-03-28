@@ -1,4 +1,4 @@
 
 [submodule "tests/isbd/iridium-sbd-emulator"]
 	path = tests/isbd/iridium-sbd-emulator
-	url = ./iridium-sbd-emulator.git
+	url = ../iridium-sbd-emulator.git
