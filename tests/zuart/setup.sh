@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 WDIR=$(dirname $0)
 
 source $WDIR/shared.sh

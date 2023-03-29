@@ -125,6 +125,7 @@ int32_t zuart_read(
   zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms 
 ) {
   if ( zuart->config.read_proto ) {
+
     return zuart->config.read_proto( zuart, out_buf, n_bytes, timeout_ms );
   } else {
     return ZUART_ERR;

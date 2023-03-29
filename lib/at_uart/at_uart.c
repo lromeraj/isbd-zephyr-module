@@ -85,7 +85,7 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
   at_uart_err_t at_code = AT_UART_OK;
 
   while( zuart_read( &at_uart->zuart, &byte, 1, AT_SHORT_TIMEOUT ) == 1 ) {
-    
+
     if ( byte_i == 0 && byte == '\n' ) continue;
 
     // ! When a mismatch is detected we have to drop all remaining chars
@@ -109,6 +109,8 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
       return at_code;
     }
   }
+
+
 
   return AT_UART_TIMEOUT;
 }
@@ -251,8 +253,11 @@ at_uart_err_t at_uart_write_cmd(
   // also fully purge queue
   zuart_drain( &at_uart->zuart );
 
+
+
   int32_t ret = zuart_write( 
     &at_uart->zuart, cmd_buf, cmd_len, AT_SHORT_TIMEOUT );
+
 
   if ( ret == ZUART_ERR_TIMEOUT ) {
     return AT_UART_TIMEOUT;
@@ -285,7 +290,6 @@ at_uart_err_t at_uart_setup(
   at_uart_t *at_uart, at_uart_config_t *at_uart_config 
 ) {
 
-
   // update whole configuration
   at_uart->config = *at_uart_config;
 
@@ -295,15 +299,11 @@ at_uart_err_t at_uart_setup(
     at_uart->eol = '\r';
   }
 
-
   // setup underlying uart
   zuart_setup( &at_uart->zuart, &at_uart_config->zuart );
 
-
   // ! Disable quiet mode in order to parse command results
   _at_uart_set_quiet( at_uart, false );
-
-
 
   // ! The response code of this commands
   // ! are not checked due to the possibility of 
