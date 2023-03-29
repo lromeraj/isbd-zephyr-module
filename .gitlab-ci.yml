@@ -14,7 +14,7 @@ test-job:
   script:
     - source ~/zephyrproject/.venv/bin/activate
     - source ~/zephyrproject/zephyr/zephyr-env.sh
-    - twister -vv -T tests/zuart/ -W
+    - twister -vv -T tests/isbd/ -W
   tags:
     - isbd-library
   only:
