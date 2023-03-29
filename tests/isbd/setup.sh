@@ -15,7 +15,5 @@ ISBD_EMULATOR_PATH="${WDIR}/iridium-sbd-emulator"
 
 npm --prefix $ISBD_EMULATOR_PATH run build
 
-echo "YUPI $TTY_S0_PATH $TTY_S1_PATH"
-
 fg_process socat -dd pty,link=$TTY_S0_PATH,raw,echo=0 pty,link=$TTY_S1_PATH,raw,echo=0
 fg_process node $ISBD_EMULATOR_PATH/build/isbdemu.js --path $TTY_S1_PATH
