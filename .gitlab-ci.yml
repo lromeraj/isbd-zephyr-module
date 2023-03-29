@@ -15,7 +15,8 @@ test-job:
     - source ~/zephyrproject/.venv/bin/activate
     - source ~/zephyrproject/zephyr/zephyr-env.sh
     - cd tests/isbd/
-    - west -vv build -b qemu_cortex_m3 -t run
+    - bash setup.sh
+    - ls -la
   tags:
     - isbd-library
   only:
