@@ -18,7 +18,7 @@ static uint8_t tx_buf[ TX_BUF_SIZE ];
 static struct isbd_config isbd_config = {
   .at_uart = {
     .echo = false,
-    .verbose = true,
+    .verbose = false,
     // .zuart = ZUART_CONF_POLL( uart_slave_device ),
     .zuart = ZUART_CONF_IRQ( ISBD_UART, rx_buf, RX_BUF_SIZE, tx_buf, TX_BUF_SIZE ),
     // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( uart_slave_device, rx_buf, sizeof( rx_buf ) ),
@@ -56,4 +56,14 @@ ZTEST( isbd_suite, test_imei ) {
   zassert_equal( ret, AT_UART_OK, "Could not fetch IMEI" );
   zassert_equal( strlen( imei ), 15, "IMEI length mismatch" );
   
+}
+
+ZTEST( isbd_suite, test_mo ) {
+
+  int16_t ret;
+  const char *msg = "HOLA";
+
+  ret = isbd_set_mo( msg, strlen( msg ) );
+  zassert_equal( ret, AT_UART_OK, "Could not set MO buffer => %d", ret );
+
 }

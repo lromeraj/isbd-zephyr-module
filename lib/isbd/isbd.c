@@ -155,8 +155,6 @@ int8_t isbd_set_mo( const uint8_t *msg, size_t msg_len ) {
   // but if the length is not correct or some other validity check
   // fails, the resulting value will be a code corresponding to 
   // the command context and not to the AT command interface itself
-  // So if the returned code from this function is not AT_UART_OK, cmd_code
-  // will NOT be updated
   int16_t cmd_code;
   at_uart_err_t at_code; 
   char str_code[ 16 ];
@@ -164,31 +162,35 @@ int8_t isbd_set_mo( const uint8_t *msg, size_t msg_len ) {
   cmd_code = at_uart_pack_resp_code( 
     &g_isbd.at_uart, str_code, sizeof( str_code ), SHORT_TIMEOUT_RESPONSE );
 
-  if ( cmd_code == AT_UART_UNK 
-    && streq( str_code, AT_READY_STR ) ) {
+  if ( cmd_code == AT_UART_UNK ) {
 
-    // compute message checksum
-    uint32_t sum = 0;
-    for ( size_t i = 0; i < msg_len; i++ ) {
-      sum += tx_buf[ i ] = msg[ i ];
+    if ( streq( str_code, AT_READY_STR ) ) { // check READY string
+
+      // compute message checksum
+      uint32_t sum = 0;
+      for ( size_t i = 0; i < msg_len; i++ ) {
+        sum += tx_buf[ i ] = msg[ i ];
+      }
+
+      uint16_t *csum = (uint16_t*)&tx_buf[ msg_len ];
+      *csum = htons( sum & 0xFFFF );
+
+      // finally write binary data to the ISU
+      // MSG (N bytes) + CHECKSUM (2 bytes)
+      int32_t ret = zuart_write( // ! Check ret code
+        &g_isbd.at_uart.zuart, tx_buf, tx_buf_size, SHORT_TIMEOUT_RESPONSE );
+      
+      // retrieve the command result code
+      cmd_code = at_uart_pack_resp_code(
+        &g_isbd.at_uart, str_code, sizeof( str_code ), SHORT_TIMEOUT_RESPONSE );
     }
 
-    uint16_t *csum = (uint16_t*)&tx_buf[ msg_len ];
-    *csum = htons( sum & 0xFFFF );
+    // fetch last AT code ( OK / ERR )
+    at_code = at_uart_skip_txt_resp(
+      &g_isbd.at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
-    // finally write binary data to the ISU
-    // MSG (N bytes) + CHECKSUM (2 bytes)
-    int32_t ret = zuart_write( // ! Check ret code
-      &g_isbd.at_uart.zuart, tx_buf, tx_buf_size, SHORT_TIMEOUT_RESPONSE );
-    
-    // retrieve the command result code
-    cmd_code = at_uart_pack_resp_code(
-      &g_isbd.at_uart, str_code, sizeof( str_code ), SHORT_TIMEOUT_RESPONSE ); 
   }
 
-  // always fetch last AT code ( OK / ERR )
-  at_code = at_uart_skip_txt_resp(
-    &g_isbd.at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   return at_code == AT_UART_OK ? cmd_code : at_code;
 }
