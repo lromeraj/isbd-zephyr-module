@@ -14,9 +14,6 @@ test-job:
   script:
     - source ~/zephyrproject/.venv/bin/activate
     - source ~/zephyrproject/zephyr/zephyr-env.sh
-    - cd tests/isbd/
-    - bash setup.sh
-    - ls -la
   tags:
     - isbd-library
   only:
