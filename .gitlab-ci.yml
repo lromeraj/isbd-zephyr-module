@@ -14,7 +14,7 @@ test-job:
   script:
     - source ~/zephyrproject/.venv/bin/activate
     - source ~/zephyrproject/zephyr/zephyr-env.sh
-    - cd tests/isbd
+    - cd tests/zuart/
     - bash setup.sh
     - west -vv build -b qemu_cortex_m3 -t run 
   tags:
