@@ -17,6 +17,7 @@ test-job:
     - cd tests/isbd/
     - bash setup.sh
     - ls -la
+    - bash clear.sh
   tags:
     - isbd-library
   only:
