@@ -1,5 +1,5 @@
 tests:
-  tests.zuart:
+  tests.isbd:
     tags: isbd at uart
     platform_allow: qemu_cortex_m3
     extra_args: TEST=1
