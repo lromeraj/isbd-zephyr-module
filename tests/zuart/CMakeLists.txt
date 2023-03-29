@@ -16,7 +16,7 @@ if(TEST)
 
   execute_process( COMMAND bash ${TEST_SETUP_PATH}
     INPUT_FILE /dev/null
-    OUTPUT_FILE /dev/tty
+    OUTPUT_FILE /dev/null
     ERROR_FILE /dev/null )
 
 endif()
