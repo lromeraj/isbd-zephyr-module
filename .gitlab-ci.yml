@@ -14,7 +14,9 @@ test-job:
   script:
     - source ~/zephyrproject/.venv/bin/activate
     - source ~/zephyrproject/zephyr/zephyr-env.sh
-    - twister -vv -T tests/zuart/ -W
+    - cd tests/isbd
+    - bash setup.sh
+    - west -vv build -b qemu_cortex_m3 -t run 
   tags:
     - isbd-library
   only:
