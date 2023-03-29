@@ -10,14 +10,14 @@ if(TEST)
   set(QEMU_TTY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/ttyS0")
   set(TEST_SETUP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/setup.sh")
 
-  set(
-    ENV{QEMU_EXTRA_FLAGS}
-    "-chardev serial,id=con1,path=${QEMU_TTY_PATH} -serial chardev:con1" )
+  # set(
+  #   ENV{QEMU_EXTRA_FLAGS}
+  #   "-chardev serial,id=con1,path=${QEMU_TTY_PATH} -serial chardev:con1" )
 
-  # execute_process( COMMAND bash ${TEST_SETUP_PATH}
-  #   INPUT_FILE /dev/tty
-  #   OUTPUT_FILE /dev/tty
-  #   ERROR_FILE /dev/tty )
+  execute_process( COMMAND bash ${TEST_SETUP_PATH}
+    INPUT_FILE /dev/tty
+    OUTPUT_FILE /dev/tty
+    ERROR_FILE /dev/tty )
 
 endif()
 
