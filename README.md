@@ -18,6 +18,7 @@ Below, you can see an example of a "send and forgive" concept:
 ```
 This is a quite simple example, but tries to show a basic concept while using this library. In general you should consider to check the status codes returned by the different functions, so in this case you could implement a callback in order to receive resulting status codes.
 
+
 # AT command status tables
 The following table shows the current status of the library based on the different AT commands available in the Iridium 9602 SBD Transceiver:
 
