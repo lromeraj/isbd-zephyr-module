@@ -9,8 +9,9 @@ variables:
 stages:
   - test
 
-test-job:
+test:
   stage: test
+  timeout: 5 minutes
   script:
     - source ~/zephyrproject/.venv/bin/activate
     - source ~/zephyrproject/zephyr/zephyr-env.sh
@@ -18,4 +19,4 @@ test-job:
   tags:
     - isbd-library
   only:
-    - main
+    - dev
