@@ -75,12 +75,12 @@
   typedef struct zuart zuart_t;
   typedef struct zuart_config zuart_config_t;
 
-  typedef int32_t (*zuart_read_proto_t)(
-    zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint16_t timeout_ms 
+  typedef uint16_t (*zuart_read_proto_t)(
+    zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint32_t timeout_ms 
   );
 
-  typedef int32_t (*zuart_write_proto_t)( 
-    zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint16_t timeout_ms 
+  typedef uint16_t (*zuart_write_proto_t)( 
+    zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint32_t timeout_ms 
   );
 
   struct zuart_config {
@@ -103,6 +103,7 @@
   struct zuart {
     
     uint8_t flags; // for internal use only
+    zuart_err_t err; // used to know the last error recorded
 
     struct device *dev;
 
@@ -113,8 +114,17 @@
     struct ring_buf tx_rbuf;
 
     zuart_config_t config;
-
   };
+
+  /**
+   * @brief Returns the last recorded error
+   * 
+   * @param zuart 
+   * @return zuart_err_t 
+   */
+  static inline const zuart_err_t zuart_get_err( zuart_t *zuart ) {
+    return zuart->err;
+  }
 
   /**
    * @brief 
@@ -137,7 +147,7 @@
    * @param ms_timeout The number of milliseconds this function should wait
    * @return int 
    */
-  int32_t zuart_read( zuart_t *zuart, uint8_t *out_buffer, uint16_t n_bytes, uint16_t ms_timeout );
+  uint16_t zuart_read( zuart_t *zuart, uint8_t *out_buffer, uint16_t n_bytes, uint32_t ms_timeout );
 
   /**
    * @brief 
@@ -148,7 +158,7 @@
    * @param ms_timeout 
    * @return uint32_t 
    */
-  int32_t zuart_write( zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint16_t ms_timeout );
+  uint16_t zuart_write( zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint32_t ms_timeout );
 
   /**
    * @brief
@@ -166,7 +176,7 @@
    * @param timeout_ms 
    * @return int32_t 
    */
-  int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms );
+  uint16_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint32_t timeout_ms );
   
   /**
    * @brief Reads from serial port using polling technique
@@ -183,7 +193,7 @@
    * @param timeout_ms 
    * @return int32_t 
    */
-  int32_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms );
+  uint16_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint32_t timeout_ms );
 
   /**
    * @brief Write to serial port using interrupts technique
@@ -194,7 +204,8 @@
    * @param timeout_ms 
    * @return int32_t 
    */
-  int32_t zuart_write_irq_proto( zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint16_t timeout_ms );
-  int32_t zuart_write_poll_proto( zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint16_t timeout_ms );
+  uint16_t zuart_write_irq_proto( zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms );
+  uint16_t zuart_write_poll_proto( zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms );
 
+  
 #endif

@@ -32,7 +32,7 @@ struct isbd {
 
 static struct isbd g_isbd = {  };
 
-static at_uart_err_t _isbd_pack_bin_resp( 
+static at_uart_err_t _isbd_pack_bin_resp(
   uint8_t *msg_buf, size_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms 
 );
 
@@ -176,7 +176,7 @@ int8_t isbd_set_mo( const uint8_t *msg, size_t msg_len ) {
 
       // finally write binary data to the ISU
       // MSG (N bytes) + CHECKSUM (2 bytes)
-      int32_t ret = zuart_write( // ! Check ret code
+      zuart_write( // ! Check ret code
         &g_isbd.at_uart.zuart, tx_buf, tx_buf_size, SHORT_TIMEOUT_RESPONSE );
       
       // retrieve the command result code
