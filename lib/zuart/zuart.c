@@ -30,7 +30,6 @@ static void _uart_isr( const struct device *dev, void *user_data );
 int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms ) {
   
   int sem_ret = 0;
-  uint16_t bytes_read = 0;
   uint16_t total_bytes_read = 0;
 
   // this conversion takes a little due to arithmetic division
@@ -44,10 +43,8 @@ int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes
       if ( sem_ret < 0 ) break;
     }
 
-    bytes_read = ring_buf_get(
+    total_bytes_read += ring_buf_get(
       &zuart->rx_rbuf, out_buf + total_bytes_read, n_bytes - total_bytes_read );
-
-    total_bytes_read += bytes_read;
 
   }
 
@@ -132,7 +129,6 @@ int32_t zuart_read(
   }
 }
 
-
 int32_t zuart_write_irq_proto(
   zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint16_t timeout_ms 
 ) {
@@ -141,33 +137,34 @@ int32_t zuart_write_irq_proto(
 
   // ! This function is public so the user should take care ONLY 
   // ! if concurrent writes are a possibility
-  uint16_t bytes_written = 0;
+  uint16_t total_bytes_written = 0;
   
   if ( timeout_ms == 0 ) {
-    bytes_written = ring_buf_put( &zuart->tx_rbuf, src_buf, n_bytes );
+    total_bytes_written = ring_buf_put( &zuart->tx_rbuf, src_buf, n_bytes );
     uart_irq_tx_enable( zuart->dev );
   } else {
     
     k_timeout_t k_timeout = K_MSEC( timeout_ms );
 
-    while ( bytes_written < n_bytes ) {
-
-      uint16_t bytes_read = ring_buf_put( 
-        &zuart->tx_rbuf, src_buf + bytes_written, n_bytes - bytes_written );
+    while ( total_bytes_written < n_bytes ) {
       
-      // enable irq to transmit given buffer
-      uart_irq_tx_enable( zuart->dev );
-
-      if ( k_sem_take( &zuart->tx_sem, k_timeout ) == 0 ) {
-        bytes_written += bytes_read;
-      } else {
-        return ZUART_ERR_TIMEOUT;
+      if ( ring_buf_space_get( &zuart->tx_rbuf ) == 0 ) {
+        if ( k_sem_take( &zuart->tx_sem, k_timeout ) != 0 ) {
+          return ZUART_ERR_TIMEOUT; // TODO: see https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/15
+        }
       }
 
+      total_bytes_written += ring_buf_put(
+        &zuart->tx_rbuf, src_buf + total_bytes_written, n_bytes - total_bytes_written );
+      
+      // enable irq to transmit ring buffer
+      uart_irq_tx_enable( zuart->dev );
+
     }
+
   }
 
-  return bytes_written;
+  return total_bytes_written;
 }
 
 int32_t zuart_write_poll_proto(
@@ -294,6 +291,11 @@ static inline void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
     // is theoretically impossible to receive value lower than 1
     // due to the previous check using uart_irq_tx_ready(), 
     // otherwise is a driver fault
+    
+    // TODO: we could add extra logic here and give semaphore only if
+    // TODO: there are at least N bytes of free space in the ring buffer
+    // the semaphore will be given anyway to allow writing bytes
+    k_sem_give( &zuart->tx_sem );
 
   } else {
   
@@ -313,7 +315,6 @@ static inline void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
       // ! See: https://github.com/zephyrproject-rtos/zephyr/issues/10672
       uart_irq_tx_disable( dev );
 
-      k_sem_give( &zuart->tx_sem );
     }
     
   }
