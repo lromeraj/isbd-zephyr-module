@@ -2,6 +2,6 @@ tests:
   tests.isbd:
     tags: isbd at uart
     platform_allow: qemu_cortex_m3
-    extra_args: TEST=1
+#    extra_args:
     extra_configs:
       - CONFIG_QEMU_ICOUNT=n

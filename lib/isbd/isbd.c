@@ -155,14 +155,13 @@ int8_t isbd_set_mo( const uint8_t *msg, size_t msg_len ) {
   // but if the length is not correct or some other validity check
   // fails, the resulting value will be a code corresponding to 
   // the command context and not to the AT command interface itself
-  int16_t cmd_code;
-  at_uart_err_t at_code; 
+  int16_t ret_code;
   char str_code[ 16 ];
 
-  cmd_code = at_uart_pack_resp_code( 
+  ret_code = at_uart_pack_resp_code( 
     &g_isbd.at_uart, str_code, sizeof( str_code ), SHORT_TIMEOUT_RESPONSE );
 
-  if ( cmd_code == AT_UART_UNK ) {
+  if ( ret_code == AT_UART_UNK ) {
 
     if ( streq( str_code, AT_READY_STR ) ) { // check READY string
 
@@ -181,18 +180,18 @@ int8_t isbd_set_mo( const uint8_t *msg, size_t msg_len ) {
         &g_isbd.at_uart.zuart, tx_buf, tx_buf_size, SHORT_TIMEOUT_RESPONSE );
       
       // retrieve the command result code
-      cmd_code = at_uart_pack_resp_code(
+      ret_code = at_uart_pack_resp_code(
         &g_isbd.at_uart, str_code, sizeof( str_code ), SHORT_TIMEOUT_RESPONSE );
     }
 
     // fetch last AT code ( OK / ERR )
-    at_code = at_uart_skip_txt_resp(
+    ret_code = at_uart_skip_txt_resp(
       &g_isbd.at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   }
 
 
-  return at_code == AT_UART_OK ? cmd_code : at_code;
+  return ret_code;
 }
 
 int8_t isbd_get_mt( uint8_t *__msg, size_t *msg_len, uint16_t *csum ) {
