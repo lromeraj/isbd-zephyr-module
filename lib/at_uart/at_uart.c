@@ -19,8 +19,6 @@
 // Default AT short response timeout
 #define AT_SHORT_TIMEOUT          1000 // ms
 
-
-
 // ------------- Private AT basic command methods ---------------
 /**
  * @brief Enables or disables AT quiet mode. If enabled there will not be
@@ -32,7 +30,7 @@
  * @param enable Enable or disable quiet mode
  * @return int8_t 
  */
-static int8_t _at_uart_set_quiet( at_uart_t *at_uart, bool enable );
+static at_uart_err_t _at_uart_set_quiet( at_uart_t *at_uart, bool enable );
 
 /**
  * @brief Enables or disables AT command echo. If echo is enabled, 
@@ -41,7 +39,7 @@ static int8_t _at_uart_set_quiet( at_uart_t *at_uart, bool enable );
  * @param enable Enable or disable AT command echo
  * @return int8_t 
  */
-static int8_t _at_uart_enable_echo( at_uart_t *at_uart, bool enable );
+static at_uart_err_t _at_uart_enable_echo( at_uart_t *at_uart, bool enable );
 
 /**
  * @brief Enables or disables verbose mode. When enabled the
@@ -51,8 +49,7 @@ static int8_t _at_uart_enable_echo( at_uart_t *at_uart, bool enable );
  * @param enable 
  * @return int8_t 
  */
-static int8_t _at_uart_set_verbose( at_uart_t *at_uart, bool enable );
-
+static at_uart_err_t _at_uart_set_verbose( at_uart_t *at_uart, bool enable );
 
 /**
  * @brief Echo command characters.
@@ -67,10 +64,10 @@ static int8_t _at_uart_set_verbose( at_uart_t *at_uart, bool enable );
  * @param enable 
  * @return int8_t 
  */
-static int8_t _at_uart_enable_echo( at_uart_t *at_uart, bool enable );
+static at_uart_err_t _at_uart_enable_echo( at_uart_t *at_uart, bool enable );
 
 
-static int8_t _at_uart_three_wire_connection( at_uart_t *at_uart, bool using );
+static at_uart_err_t _at_uart_three_wire_connection( at_uart_t *at_uart, bool using );
 
 // --------- End of private AT basic command methods ------------
 
@@ -120,29 +117,26 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
 }
 
 at_uart_err_t at_uart_pack_txt_resp(
-  at_uart_t *at_uart, char *buf, size_t buf_len, uint8_t lines, uint16_t timeout_ms 
+  at_uart_t *at_uart, char *buf, size_t buf_size, uint8_t lines, uint16_t timeout_ms 
 ) {
   
-  uint8_t byte;
   uint8_t line_n = 1;
+  unsigned char byte;
 
   uint16_t buf_i = 0;
   uint16_t at_buf_i = 0;
 
   at_uart_err_t at_code;
 
-  // this little buffer is used to parse AT status codes like ERROR, OK, READY ...
+  // this little buffer is used to parse AT status codes like ERROR, OK, ...
   char at_buf[ AT_MIN_BUFF_SIZE ] = "";
+
   while ( zuart_read( &at_uart->zuart, &byte, 1, timeout_ms ) == 1 ) {
 
-    // printk( "LINE: %d / %d\n", line_n, lines );
-    uint8_t trail_char = 0;
+    unsigned char trail_char = 0;
 
     if ( byte == '\r' || byte == '\n' ) {
       trail_char = byte;
-      // printk( "CHAR: %d\n", byte );
-    } else {
-      // printk( "CHAR: %c\n", byte );
     }
 
     if ( at_buf_i > 0 && trail_char == at_uart->eol ) {
@@ -167,17 +161,25 @@ at_uart_err_t at_uart_pack_txt_resp(
 
     if ( !trail_char ) {
       
-      if ( buf
-        && buf_i < buf_len - 1
-        && ( lines == AT_1_LINE_RESP || line_n < lines) ) {
-        
-        // TODO: We should append trailing chars to source buf 
-        // TODO: if response string has multiple lines
+      if ( buf && ( lines == AT_1_LINE_RESP || line_n < lines) ) {
 
-        buf[ buf_i ] = byte;
+          if ( buf_i >= buf_size - 1 ) {
 
-        // TODO: Put this char only when buffer is terminated
-        buf[ buf_i + 1 ] = '\0';
+            // ! We are leaving all pending chars in the ring buffer
+            // ! so is very importante to clear reception buffer before
+            // ! sending a new command 
+            return AT_UART_OVERFLOW;
+
+          } else {
+
+            // TODO: We should append trailing chars to source buf 
+            // TODO: if response string has multiple lines
+            buf[ buf_i ] = byte;
+
+            // TODO: Put this char only when buffer is terminated
+            buf[ buf_i + 1 ] = '\0';
+          }
+
       }
 
       // at buff is only used for AT command responses
@@ -207,7 +209,7 @@ at_uart_err_t at_uart_get_cmd_resp_code(
   at_uart_err_t at_code = at_uart_pack_txt_resp( 
     at_uart, cmd_code_buf, sizeof( cmd_code_buf ), AT_1_LINE_RESP, timeout_ms );
   
-  // ! We should considere conflicts when verbose mode is disabled,
+  // ! We should consider conflicts when verbose mode is disabled,
   // ! in which case returned AT interface codes are also numbers 
   if ( at_code == AT_UART_UNK ) {
     *cmd_code = atoi( cmd_code_buf );
@@ -260,7 +262,6 @@ at_uart_err_t at_uart_write_cmd(
   int32_t ret = zuart_write( 
     &at_uart->zuart, cmd_buf, cmd_len, AT_SHORT_TIMEOUT );
 
-
   if ( ret == ZUART_ERR_TIMEOUT ) {
     return AT_UART_TIMEOUT;
   }
@@ -269,20 +270,34 @@ at_uart_err_t at_uart_write_cmd(
 }
 
 at_uart_err_t at_uart_send_cmd( 
-  at_uart_t *at_uart, const char *at_cmd_tmpl, ... 
+  at_uart_t *at_uart, 
+  char *at_cmd_buf, uint16_t at_cmd_buf_len,
+  const char *at_cmd_tmpl, ...
 ) {
 
   va_list args;
   va_start( args, at_cmd_tmpl );
 
-  AT_DEFINE_CMD_BUFF( at_cmd_buf );
+  at_uart_err_t ret = 
+    at_uart_send_vcmd( at_uart, at_cmd_buf, at_cmd_buf_len, at_cmd_tmpl, args ); 
+  
+  va_end( args );
+  
+  return ret;
+}
+
+at_uart_err_t at_uart_send_vcmd(
+  at_uart_t *at_uart, 
+  char *at_cmd_buf, uint16_t at_cmd_buf_len,
+  const char *at_cmd_tmpl, va_list args
+) {
 
   int ret = vsnprintf( 
-    at_cmd_buf, sizeof( at_cmd_buf ), at_cmd_tmpl, args );
+    at_cmd_buf, at_cmd_buf_len, at_cmd_tmpl, args );
 
   if ( ret < 0 ) {
     return AT_UART_ERR;
-  } else if (ret >= sizeof( at_cmd_buf ) ) {
+  } else if ( ret >= at_cmd_buf_len ) {
     return AT_UART_OVERFLOW;
   }
 
@@ -376,7 +391,7 @@ const char *at_uart_err_to_name( at_uart_err_t code ) {
 at_uart_err_t at_uart_set_flow_control( at_uart_t *at_uart, uint8_t option ) {
   // AT_UART_SEND_OR_RET( at_uart, AT_CMD_TMPL_EXEC_INT, "&k", option );
   at_uart_err_t ret;
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "&k", option );
 
   return at_uart_skip_txt_resp( 
@@ -386,7 +401,7 @@ at_uart_err_t at_uart_set_flow_control( at_uart_t *at_uart, uint8_t option ) {
 at_uart_err_t at_uart_set_dtr( at_uart_t *at_uart, uint8_t option ) {
   
   at_uart_err_t ret;
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "&d", option );
 
   return at_uart_skip_txt_resp( 
@@ -396,7 +411,7 @@ at_uart_err_t at_uart_set_dtr( at_uart_t *at_uart, uint8_t option ) {
 at_uart_err_t at_uart_store_active_config( at_uart_t *at_uart, uint8_t profile ) {
   
   at_uart_err_t ret; 
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "&w", profile );
 
   return at_uart_skip_txt_resp( 
@@ -406,7 +421,7 @@ at_uart_err_t at_uart_store_active_config( at_uart_t *at_uart, uint8_t profile )
 at_uart_err_t at_uart_set_reset_profile( at_uart_t *at_uart, uint8_t profile ) {
   
   at_uart_err_t ret; 
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "&y", profile );
 
   return at_uart_skip_txt_resp( 
@@ -415,10 +430,9 @@ at_uart_err_t at_uart_set_reset_profile( at_uart_t *at_uart, uint8_t profile ) {
 
 at_uart_err_t at_uart_flush_to_eeprom( at_uart_t *at_uart ) {
 
-  at_uart_err_t ret =
-    AT_UART_SEND_OR_RET( ret, at_uart, AT_CMD_TMPL_EXEC, "*f" );
-  
-  AT_UART_RET_IF_ERR( ret );
+  at_uart_err_t ret;
+  AT_UART_SEND_TINY_CMD_OR_RET( 
+    ret, at_uart, AT_CMD_TMPL_EXEC, "*f" );
 
   return at_uart_skip_txt_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
@@ -431,7 +445,7 @@ at_uart_err_t at_uart_flush_to_eeprom( at_uart_t *at_uart ) {
 static at_uart_err_t _at_uart_set_quiet( at_uart_t *at_uart, bool enable ) {
 
   at_uart_err_t ret;
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "q", enable );
 
   return at_uart_skip_txt_resp( 
@@ -443,7 +457,7 @@ static at_uart_err_t _at_uart_enable_echo( at_uart_t *at_uart, bool enable ) {
   at_uart_err_t ret;
   at_uart->config.echo = enable;
 
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "e", enable );
   
   return at_uart_skip_txt_resp( 
@@ -455,7 +469,7 @@ static at_uart_err_t _at_uart_set_verbose( at_uart_t *at_uart, bool enable ) {
   at_uart_err_t ret;
   at_uart->config.verbose = enable;
   
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "v", enable );
   
   return at_uart_skip_txt_resp( 

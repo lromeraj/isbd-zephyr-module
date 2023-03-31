@@ -13,16 +13,39 @@
   #define AT_2_LINE_RESP    2
   #define AT_3_LINE_RESP    3
   
-  
   #define AT_UART_RET_IF_ERR( r ) \
     if ( r != AT_UART_OK ) { return r; }
+
+  /**
+   * @brief Used to send a tiny command and return automatically in case
+   * of failure. The length of the command cannot exceed 255 bytes
+   */
+  #define AT_UART_SEND_TINY_CMD_OR_RET( ret, at_uart, at_cmd_tmpl, ... ) \
+    do { \
+      AT_DEFINE_CMD_BUFF( _M_at_buf ); \
+      ret = at_uart_send_cmd( \
+        at_uart, _M_at_buf, sizeof( _M_at_buf ), at_cmd_tmpl, __VA_ARGS__ ); \
+      AT_UART_RET_IF_ERR( ret ); \
+    } while (0);
+
+  /**
+   * @brief Used to send a tiny command, the resulting code will be
+   * assigned to ret
+   */
+  #define AT_UART_SEND_TINY_CMD( ret, at_uart, at_cmd_tmpl, ... ) \
+    do { \
+      AT_DEFINE_CMD_BUFF( _M_at_buf ); \
+      ret = at_uart_send_cmd( \
+        at_uart, _M_at_buf, sizeof( _M_at_buf ), at_cmd_tmpl, __VA_ARGS__ ); \
+    } while (0);
 
   /**
    * @brief Used to send a command and return automatically in case
    * of failure
    */
-  #define AT_UART_SEND_OR_RET( ret, at_uart, at_cmd_tmpl, ... ) \
-    ret = at_uart_send_cmd( at_uart, at_cmd_tmpl, __VA_ARGS__ ); \
+  #define AT_UART_SEND_CMD_OR_RET( ret, at_uart, buf, buf_size, at_cmd_tmpl, ... ) \
+    ret = at_uart_send_cmd( \
+      at_uart, buf, buf_size, at_cmd_tmpl, __VA_ARGS__ ); \
     AT_UART_RET_IF_ERR( ret );
 
   typedef enum at_uart_err {
@@ -45,7 +68,6 @@
   
     zuart_t zuart;
     at_uart_config_t config;
-
   } at_uart_t;
 
   /**
@@ -66,10 +88,17 @@
   at_uart_err_t at_uart_get_str_code( 
     at_uart_t *at_uart, const char *str_buf );
 
-
   at_uart_err_t at_uart_send_cmd( 
-    at_uart_t *at_uart, const char *at_cmd_tmpl, ... 
-  ) __attribute__((format(printf, 2, 3)));
+    at_uart_t *at_uart, 
+    char *at_cmd_buf, uint16_t at_cmd_buf_len,
+    const char *at_cmd_tmpl, ...
+  ) __attribute__((format(printf, 4, 5)));
+
+  at_uart_err_t at_uart_send_vcmd(
+    at_uart_t *at_uart, 
+    char *at_cmd_buf, uint16_t at_cmd_buf_len,
+    const char *at_cmd_tmpl, va_list args
+  );
   
   /**
    * @brief Writes the given AT command directly to serial port
