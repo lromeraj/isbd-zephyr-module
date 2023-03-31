@@ -49,7 +49,7 @@ ZTEST_SUITE( isbd_suite, NULL, isbd_suite_setup, NULL, NULL, NULL );
 ZTEST( isbd_suite, test_imei ) {
 
   int16_t ret;
-  char imei[ 256 ];
+  char imei[ 16 ];
 
   ret = isbd_get_imei( imei, sizeof( imei ) );
 
@@ -66,4 +66,17 @@ ZTEST( isbd_suite, test_mo ) {
   ret = isbd_set_mo( msg, strlen( msg ) );
   zassert_equal( ret, AT_UART_OK, "Could not set MO buffer => %d", ret );
 
+}
+
+// TODO: move this to a new AT-UART test module
+ZTEST( isbd_suite, test_overflow ) {
+
+  int16_t ret;
+  char imei[ 15 ];
+
+  // this should trigger overflow error because
+  // there is not enough space to write trailing \0
+  ret = isbd_get_imei( imei, sizeof( imei ) );
+
+  zassert_equal( ret, AT_UART_OVERFLOW );  
 }

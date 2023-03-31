@@ -49,7 +49,7 @@ isbd_err_t isbd_setup( struct isbd_config *isbd_config ) {
 int8_t isbd_get_imei( char *imei_buf, size_t imei_buf_len ) {
   
   at_uart_err_t ret;
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, &g_isbd.at_uart, AT_CMD_TMPL_EXEC, "+cgsn" );
 
   return at_uart_pack_txt_resp(
@@ -59,7 +59,7 @@ int8_t isbd_get_imei( char *imei_buf, size_t imei_buf_len ) {
 int8_t isbd_get_revision( char *rev_buf, size_t rev_buf_len ) {
   
   at_uart_err_t ret;
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, &g_isbd.at_uart, AT_CMD_TMPL_EXEC, "+cgmr" );
 
   return at_uart_pack_txt_resp( 
@@ -70,7 +70,7 @@ int8_t isbd_get_revision( char *rev_buf, size_t rev_buf_len ) {
 int8_t isbd_get_rtc( char *rtc_buf, size_t rtc_buf_len ) {
   
   at_uart_err_t ret;
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, &g_isbd.at_uart, AT_CMD_TMPL_EXEC, "+cclk" );
 
   return at_uart_pack_txt_resp( 
@@ -80,7 +80,7 @@ int8_t isbd_get_rtc( char *rtc_buf, size_t rtc_buf_len ) {
 int8_t isbd_init_session( isbd_session_ext_t *session ) {
   
   at_uart_err_t ret;
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, &g_isbd.at_uart, AT_CMD_TMPL_EXEC, "+sbdix" );
 
   char buf[ 64 ];
@@ -104,7 +104,7 @@ int8_t isbd_clear_buffer( isbd_clear_buffer_t buffer ) {
   int8_t cmd_code;
   at_uart_err_t ret;
 
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, &g_isbd.at_uart, AT_CMD_TMPL_EXEC_INT, "+sbdd", buffer );
 
   // retrieve command response code
@@ -144,7 +144,9 @@ int8_t isbd_set_mo_txt( const char *txt ) {
   }
   */
   at_uart_err_t ret;
-  AT_UART_SEND_OR_RET( 
+
+  // TODO: this is not a tiny command
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, &g_isbd.at_uart, AT_CMD_TMPL_SET_STR, "+sbdwt", txt );
 
   return at_uart_skip_txt_resp( 
@@ -162,7 +164,7 @@ int8_t isbd_set_mo( const uint8_t *msg, size_t msg_len ) {
   // snprintf( msg_len_buf, sizeof( msg_len_buf ), "%d", msg_len );
 
   at_uart_err_t ret;
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, &g_isbd.at_uart, AT_CMD_TMPL_SET_INT, "+sbdwb", msg_len );
   
   // After the initial AT+SBDWB command
@@ -213,7 +215,7 @@ int8_t isbd_get_mt( uint8_t *__msg, size_t *msg_len, uint16_t *csum ) {
   
   at_uart_err_t ret;
   
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, &g_isbd.at_uart, AT_CMD_TMPL_EXEC, "+sbdrb" );
 
   return _isbd_pack_bin_resp(
@@ -248,7 +250,7 @@ int8_t isbd_set_mo_txt_l( char *__txt ) {
 int8_t isbd_mo_to_mt( char *__out, size_t out_len ) {
   
   at_uart_err_t ret;
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, &g_isbd.at_uart, AT_CMD_TMPL_EXEC, "+sbdtc" );
   
   return at_uart_pack_txt_resp(
@@ -258,7 +260,7 @@ int8_t isbd_mo_to_mt( char *__out, size_t out_len ) {
 // TODO: review and improve this function
 int8_t isbd_get_mt_txt( char *__mt_buff, size_t mt_buff_len ) {
   at_uart_err_t ret;
-  AT_UART_SEND_OR_RET( ret, &g_isbd.at_uart, AT_CMD_TMPL_EXEC, "+sbdrt" );
+  AT_UART_SEND_TINY_CMD_OR_RET( ret, &g_isbd.at_uart, AT_CMD_TMPL_EXEC, "+sbdrt" );
   
   if ( g_isbd.config.at_uart.verbose ) {  
     return at_uart_pack_txt_resp( 
@@ -311,7 +313,7 @@ int8_t isbd_get_sig_q( uint8_t *signal_q ) {
   char buf[ 16 ];
 
   at_uart_err_t ret;
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, &g_isbd.at_uart, AT_CMD_TMPL_EXEC, "+csq" );
   
   ret = at_uart_pack_txt_resp(
@@ -332,7 +334,7 @@ int8_t isbd_set_evt_report( isbd_evt_report_t *evt_report ) {
     evt_report->mode, evt_report->signal, evt_report->service );
 
   at_uart_err_t ret;
-  AT_UART_SEND_OR_RET( 
+  AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, &g_isbd.at_uart, AT_CMD_TMPL_SET_STR, "+cier", buf );
 
   // ! This command has a peculiarity,
