@@ -108,9 +108,8 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
     if ( byte == '\r' ) {
       return at_code;
     }
+
   }
-
-
 
   return AT_UART_TIMEOUT;
 }

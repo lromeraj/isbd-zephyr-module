@@ -15,7 +15,7 @@ test:
   script:
     - source ~/zephyrproject/.venv/bin/activate
     - source ~/zephyrproject/zephyr/zephyr-env.sh
-    - twister -vv -T tests/ -W
+    - twister -vv -T tests/
   tags:
     - isbd-library
   only:

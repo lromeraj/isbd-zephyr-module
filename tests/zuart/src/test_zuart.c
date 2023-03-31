@@ -6,10 +6,8 @@
 
 #include "zuart.h"
 
-#define UART_HOST_NODE DT_NODELABEL(uart1)
-
-static const struct device *uart_slave_device = 
-  DEVICE_DT_GET( UART_HOST_NODE );
+#define ISBD_UART_NODE        DT_NODELABEL( uart1 )
+#define ISBD_UART_DEVICE      DEVICE_DT_GET( ISBD_UART_NODE )
 
 struct zuart_suite_fixture {
   zuart_t zuart;
@@ -24,38 +22,42 @@ static void* zuart_suite_setup(void) {
 
   zassume_not_null( fixture );
 
-  // zuart_config_t zuart_config = ZUART_CONF_POLL( uart_slave_device );
-  zuart_config_t zuart_config = ZUART_CONF_IRQ( uart_slave_device, 
-    fixture->rx_buf, sizeof( fixture->rx_buf ), fixture->tx_buf, sizeof( fixture->tx_buf ) );
+  // zuart_config_t zuart_config = ZUART_CONF_POLL( (struct device*)ISBD_UART_DEVICE );
+  zuart_config_t zuart_config = ZUART_CONF_IRQ( 
+    (struct device*)ISBD_UART_DEVICE, 
+    fixture->rx_buf, sizeof( fixture->rx_buf ), 
+    fixture->tx_buf, sizeof( fixture->tx_buf ) );
 
   struct uart_config config;
 
-  uart_config_get( uart_slave_device, &config );
+  uart_config_get( ISBD_UART_DEVICE, &config );
   config.baudrate = 115200;
-  uart_configure( uart_slave_device, &config );
+  uart_configure( ISBD_UART_DEVICE, &config );
+  
+  zuart_err_t ret = zuart_setup( &fixture->zuart, &zuart_config );
 
-  zassert_equal( zuart_setup( &fixture->zuart, &zuart_config ), ZUART_OK, "Setup error" );
+  zassert_equal( ret, ZUART_OK, "Setup error" );
 
   return fixture;
 }
 
 ZTEST_SUITE(zuart_suite, NULL, zuart_suite_setup, NULL, NULL, NULL);
 
-uint32_t read_line( zuart_t *zuart ) {
 
-  int32_t ret;
-  uint8_t byte;
-  uint32_t rx_size = 0;
-  while ( (ret = zuart_read( zuart, &byte, 1, 0 ) ) >= 0 ) {
-    rx_size += ret;
-    if ( byte == '\n' ) break;
-  }
-  return rx_size;
-}
+// uint32_t read_line( zuart_t *zuart ) {
 
-ZTEST_F( zuart_suite, test_setup ) {
-  
-}
+//   int32_t ret;
+//   uint8_t byte;
+//   uint32_t rx_size = 0;
+
+//   while ( (ret = zuart_read( zuart, &byte, 1, 0 ) ) >= 0 ) {
+//     rx_size += ret;
+//     if ( byte == '\n' ) break;
+//   }
+//   return rx_size;
+
+// }
+
 
 ZTEST_F( zuart_suite, test_overrun ) {
 
@@ -68,14 +70,17 @@ ZTEST_F( zuart_suite, test_overrun ) {
   write_buf_len = sprintf( write_buf, "ping\n" );
   
   do {
+
+    // printk("Waiting for host ... %d\n", ret );
     zuart_write( &fixture->zuart, write_buf, write_buf_len, 0 );
     
     // accept any byte as response
-    ret = zuart_read( &fixture->zuart, read_buf, 1, 100 );
+    ret = zuart_read( &fixture->zuart, read_buf, 1, 1000 );
 
   } while ( ret != 1 );
 
-  write_buf_len = sprintf( write_buf, "flood %d\n", sizeof( fixture->rx_buf ) + 1 );
+  write_buf_len = sprintf( 
+    write_buf, "flood %d\n", sizeof( fixture->rx_buf ) + 1 );
 
   zuart_write( &fixture->zuart, write_buf, write_buf_len, 1000 );
 
@@ -85,7 +90,9 @@ ZTEST_F( zuart_suite, test_overrun ) {
   // overrun should be returned
   ret = zuart_read( &fixture->zuart, read_buf, 1, 0 );
 
-  zassert_equal( ret, ZUART_ERR_OVERRUN, "Overrun not triggered" );
+  zassert_equal( 
+    zuart_get_err( &fixture->zuart ), ZUART_ERR_OVERRUN, 
+    "Overrun not triggered" );
 
   write_buf_len = sprintf( write_buf, "close\n" );
 

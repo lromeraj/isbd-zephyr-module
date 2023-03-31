@@ -9,8 +9,8 @@
 #define RX_BUF_SIZE    256
 #define TX_BUF_SIZE    256
 
-#define ISBD_UART_NODE    DT_NODELABEL(uart1)
-#define ISBD_UART         DEVICE_DT_GET( ISBD_UART_NODE )
+#define ISBD_UART_NODE        DT_NODELABEL(uart1)
+#define ISBD_UART_DEVICE      DEVICE_DT_GET( ISBD_UART_NODE )
 
 static uint8_t rx_buf[ RX_BUF_SIZE ];
 static uint8_t tx_buf[ TX_BUF_SIZE ];
@@ -20,7 +20,7 @@ static struct isbd_config isbd_config = {
     .echo = false,
     .verbose = false,
     // .zuart = ZUART_CONF_POLL( uart_slave_device ),
-    .zuart = ZUART_CONF_IRQ( ISBD_UART, rx_buf, RX_BUF_SIZE, tx_buf, TX_BUF_SIZE ),
+    .zuart = ZUART_CONF_IRQ( (struct device*)ISBD_UART_DEVICE, rx_buf, RX_BUF_SIZE, tx_buf, TX_BUF_SIZE ),
     // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( uart_slave_device, rx_buf, sizeof( rx_buf ) ),
     // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( uart_slave_device, tx_buf, sizeof( tx_buf ) ),
   }
@@ -31,9 +31,9 @@ static void* isbd_suite_setup(void) {
   // zuart_config_t zuart_config = ZUART_CONF_POLL( uart_slave_device );
   struct uart_config config;
 
-  uart_config_get( ISBD_UART, &config );
+  uart_config_get( ISBD_UART_DEVICE, &config );
   config.baudrate = 19200;
-  uart_configure( ISBD_UART, &config );
+  uart_configure( ISBD_UART_DEVICE, &config );
 
   isbd_err_t ret;
 

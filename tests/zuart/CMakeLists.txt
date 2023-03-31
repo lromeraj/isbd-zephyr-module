@@ -1,9 +1,9 @@
 # SPDX-License-Identifier: Apache-2.0
 cmake_minimum_required(VERSION 3.20.0)
 
-if(TEST)
+if(QEMU_PIPE)
 
-  # This flags will be passed to QEMU which in this case 
+  # This flags will be passed to QEMU which in this case
   # are used to create a virtual PTY in order to communicate
   # with the virtual device
 
@@ -16,8 +16,8 @@ if(TEST)
 
   execute_process( COMMAND bash ${TEST_SETUP_PATH}
     INPUT_FILE /dev/null
-    OUTPUT_FILE /dev/null
-    ERROR_FILE /dev/null )
+    OUTPUT_FILE /dev/tty
+    ERROR_FILE /dev/tty )
 
 endif()
 

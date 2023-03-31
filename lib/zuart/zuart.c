@@ -27,7 +27,7 @@ static void _uart_isr( const struct device *dev, void *user_data );
 
 // TODO: think about using events
 
-int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms ) {
+uint16_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint32_t timeout_ms ) {
   
   int sem_ret = 0;
   uint16_t total_bytes_read = 0;
@@ -63,18 +63,16 @@ int32_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes
   // }
 
   if ( GET_FLAG( zuart->flags, FLAG_OVERRUN ) ) {
+    zuart->err = ZUART_ERR_OVERRUN;
     CLEAR_FLAG( zuart->flags, FLAG_OVERRUN );
-    return ZUART_ERR_OVERRUN;
-  }
-
-  if ( timeout_ms > 0 && sem_ret ) {
-    return ZUART_ERR_TIMEOUT; 
+  } else if ( timeout_ms > 0 && sem_ret ) {
+    zuart->err = ZUART_ERR_TIMEOUT;
   }
 
   return total_bytes_read;
 }
 
-int32_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms ) {
+uint16_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint32_t timeout_ms ) {
 
   uint8_t byte;
   uint16_t total_bytes_read = 0;
@@ -97,7 +95,8 @@ int32_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byte
       uint64_t ts_now = k_uptime_get();
 
       if ( ts_now - ts_old >= timeout_ms ) {
-        return ZUART_ERR_TIMEOUT;
+        zuart->err = ZUART_ERR_TIMEOUT;
+        break;
       }
 
       int ret = uart_poll_in( zuart->dev, &byte );
@@ -108,7 +107,8 @@ int32_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byte
       } else if ( ret == -1 ) {
         k_yield();
       } else {
-        return ZUART_ERR;
+        zuart->err = ZUART_ERR;
+        break;
       }
 
     }
@@ -118,19 +118,19 @@ int32_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byte
   return total_bytes_read; 
 }
 
-int32_t zuart_read(
-  zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint16_t timeout_ms 
+uint16_t zuart_read(
+  zuart_t *zuart, uint8_t *out_buf, uint16_t n_bytes, uint32_t timeout_ms 
 ) {
   if ( zuart->config.read_proto ) {
-
     return zuart->config.read_proto( zuart, out_buf, n_bytes, timeout_ms );
-  } else {
-    return ZUART_ERR;
   }
+  
+  zuart->err = ZUART_ERR;
+  return 0;
 }
 
-int32_t zuart_write_irq_proto(
-  zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint16_t timeout_ms 
+uint16_t zuart_write_irq_proto(
+  zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms 
 ) {
   
   k_sem_reset( &zuart->tx_sem );
@@ -150,7 +150,8 @@ int32_t zuart_write_irq_proto(
       
       if ( ring_buf_space_get( &zuart->tx_rbuf ) == 0 ) {
         if ( k_sem_take( &zuart->tx_sem, k_timeout ) != 0 ) {
-          return ZUART_ERR_TIMEOUT; // TODO: see https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/15
+          zuart->err = ZUART_ERR_TIMEOUT;
+          break;
         }
       }
 
@@ -167,8 +168,8 @@ int32_t zuart_write_irq_proto(
   return total_bytes_written;
 }
 
-int32_t zuart_write_poll_proto(
-  zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint16_t timeout_ms 
+uint16_t zuart_write_poll_proto(
+  zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms 
 ) {
 
   uint16_t bytes_written = 0;
@@ -191,15 +192,16 @@ int32_t zuart_write_poll_proto(
 }
 
 
-int32_t zuart_write( 
-  zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint16_t timeout_ms 
+uint16_t zuart_write( 
+  zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms 
 ) {
 
   if ( zuart->config.write_proto ) {
     return zuart->config.write_proto( zuart, src_buf, n_bytes, timeout_ms );
-  } else {
-    return ZUART_ERR;
   }
+
+  zuart->err = ZUART_ERR;
+  return 0;
 
 }
 
@@ -332,7 +334,6 @@ static inline void _uart_rx_isr( const struct device *dev, zuart_t *zuart ) {
 
     // TODO: we could give semaphore depending on some additional logic
     k_sem_give( &zuart->rx_sem );
-
   }
   
 }
