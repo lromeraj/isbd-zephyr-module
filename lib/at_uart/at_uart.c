@@ -1,10 +1,13 @@
 #include <ctype.h>
 #include <stdlib.h>
+#include <stdarg.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
 
 #include "stru.h"
+
+#include "at.h"
 #include "at_uart.h"
 
 // For reference: https://www.etsi.org/deliver/etsi_ts/127000_127099/127007/10.03.00_60/ts_127007v100300p.pdf
@@ -15,6 +18,8 @@
 
 // Default AT short response timeout
 #define AT_SHORT_TIMEOUT          1000 // ms
+
+
 
 // ------------- Private AT basic command methods ---------------
 /**
@@ -252,8 +257,6 @@ at_uart_err_t at_uart_write_cmd(
   // also fully purge queue
   zuart_drain( &at_uart->zuart );
 
-
-
   int32_t ret = zuart_write( 
     &at_uart->zuart, cmd_buf, cmd_len, AT_SHORT_TIMEOUT );
 
@@ -263,6 +266,27 @@ at_uart_err_t at_uart_write_cmd(
   }
 
   return at_uart_check_echo( at_uart );
+}
+
+at_uart_err_t at_uart_send_cmd( 
+  at_uart_t *at_uart, const char *at_cmd_tmpl, ... 
+) {
+
+  va_list args;
+  va_start( args, at_cmd_tmpl );
+
+  AT_DEFINE_CMD_BUFF( at_cmd_buf );
+
+  int ret = vsnprintf( 
+    at_cmd_buf, sizeof( at_cmd_buf ), at_cmd_tmpl, args );
+
+  if ( ret < 0 ) {
+    return AT_UART_ERR;
+  } else if (ret >= sizeof( at_cmd_buf ) ) {
+    return AT_UART_OVERFLOW;
+  }
+
+  return at_uart_write_cmd( at_uart, at_cmd_buf, ret );
 }
 
 at_uart_err_t at_uart_get_str_code( at_uart_t *at_uart, const char *buf ) {
@@ -339,6 +363,8 @@ const char *at_uart_err_to_name( at_uart_err_t code ) {
     return "AT_UART_OK";
   } else if ( code == AT_UART_ERR ) {
     return "AT_UART_ERROR";
+  } else if ( code == AT_UART_OVERFLOW ) {
+    return "AT_UART_OVERFLOW";
   } else if ( code == AT_UART_TIMEOUT ) {
     return "AT_UART_TIMEOUT";
   }
@@ -347,71 +373,107 @@ const char *at_uart_err_to_name( at_uart_err_t code ) {
 }
 
 // ------ Non proprietary AT basic commands implementation ------
-int8_t at_uart_set_flow_control( at_uart_t *at_uart, uint8_t option ) {
-  SEND_AT_CMD_P_OR_RET( at_uart, "&k", option );
+at_uart_err_t at_uart_set_flow_control( at_uart_t *at_uart, uint8_t option ) {
+  // AT_UART_SEND_OR_RET( at_uart, AT_CMD_TMPL_EXEC_INT, "&k", option );
+  at_uart_err_t ret;
+  AT_UART_SEND_OR_RET( 
+    ret, at_uart, AT_CMD_TMPL_EXEC_INT, "&k", option );
+
   return at_uart_skip_txt_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
-int8_t at_uart_set_dtr( at_uart_t *at_uart, uint8_t option ) {
-  SEND_AT_CMD_P_OR_RET( at_uart, "&d", option );
+at_uart_err_t at_uart_set_dtr( at_uart_t *at_uart, uint8_t option ) {
+  
+  at_uart_err_t ret;
+  AT_UART_SEND_OR_RET( 
+    ret, at_uart, AT_CMD_TMPL_EXEC_INT, "&d", option );
+
   return at_uart_skip_txt_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
-int8_t at_uart_store_active_config( at_uart_t *at_uart, uint8_t profile ) {
-  SEND_AT_CMD_P_OR_RET( at_uart, "&w", profile );
+at_uart_err_t at_uart_store_active_config( at_uart_t *at_uart, uint8_t profile ) {
+  
+  at_uart_err_t ret; 
+  AT_UART_SEND_OR_RET( 
+    ret, at_uart, AT_CMD_TMPL_EXEC_INT, "&w", profile );
+
   return at_uart_skip_txt_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
-int8_t at_uart_set_reset_profile( at_uart_t *at_uart, uint8_t profile ) {
-  SEND_AT_CMD_P_OR_RET( at_uart, "&y", profile );
+at_uart_err_t at_uart_set_reset_profile( at_uart_t *at_uart, uint8_t profile ) {
+  
+  at_uart_err_t ret; 
+  AT_UART_SEND_OR_RET( 
+    ret, at_uart, AT_CMD_TMPL_EXEC_INT, "&y", profile );
+
   return at_uart_skip_txt_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
-int8_t at_uart_flush_to_eeprom( at_uart_t *at_uart ) {
-  SEND_AT_CMD_E_OR_RET( at_uart, "*f" );
+at_uart_err_t at_uart_flush_to_eeprom( at_uart_t *at_uart ) {
+
+  at_uart_err_t ret =
+    AT_UART_SEND_OR_RET( ret, at_uart, AT_CMD_TMPL_EXEC, "*f" );
+  
+  AT_UART_RET_IF_ERR( ret );
+
   return at_uart_skip_txt_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 // ---- End of proprietary AT basic commands implementation -----
 
+
 // ---------------- ! (Internal use only) ! --------------------
 
-static int8_t _at_uart_set_quiet( at_uart_t *at_uart, bool enable ) {
-  SEND_AT_CMD_P_OR_RET( at_uart, "q", enable );
+static at_uart_err_t _at_uart_set_quiet( at_uart_t *at_uart, bool enable ) {
+
+  at_uart_err_t ret;
+  AT_UART_SEND_OR_RET( 
+    ret, at_uart, AT_CMD_TMPL_EXEC_INT, "q", enable );
+
   return at_uart_skip_txt_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
-static int8_t _at_uart_enable_echo( at_uart_t *at_uart, bool enable ) {
+static at_uart_err_t _at_uart_enable_echo( at_uart_t *at_uart, bool enable ) {
+
+  at_uart_err_t ret;
   at_uart->config.echo = enable;
-  SEND_AT_CMD_P_OR_RET( at_uart, "e", enable );
-  return at_uart_skip_txt_resp( 
-    at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
-}
 
-static int8_t _at_uart_set_verbose( at_uart_t *at_uart, bool enable ) {
-  at_uart->config.verbose = enable;
-  SEND_AT_CMD_P_OR_RET( at_uart, "v", enable );
-  return at_uart_skip_txt_resp( 
-    at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
-}
-
-static int8_t _at_uart_three_wire_connection( at_uart_t *at_uart, bool using ) {
+  AT_UART_SEND_OR_RET( 
+    ret, at_uart, AT_CMD_TMPL_EXEC_INT, "e", enable );
   
-  at_uart_err_t at_code;
+  return at_uart_skip_txt_resp( 
+    at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
+}
+
+static at_uart_err_t _at_uart_set_verbose( at_uart_t *at_uart, bool enable ) {
+  
+  at_uart_err_t ret;
+  at_uart->config.verbose = enable;
+  
+  AT_UART_SEND_OR_RET( 
+    ret, at_uart, AT_CMD_TMPL_EXEC_INT, "v", enable );
+  
+  return at_uart_skip_txt_resp( 
+    at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
+}
+
+static at_uart_err_t _at_uart_three_wire_connection( at_uart_t *at_uart, bool using ) {
+  
+  at_uart_err_t ret;
   uint8_t en_param = using ? 0 : 3;
 
-  at_code = at_uart_set_flow_control( at_uart, en_param );
+  ret = at_uart_set_flow_control( at_uart, en_param );
 
-  if ( at_code == AT_UART_OK ) {
-    at_code = at_uart_set_dtr( at_uart, en_param );
+  if ( ret == AT_UART_OK ) {
+    ret = at_uart_set_dtr( at_uart, en_param );
   }
 
-  return at_code;
+  return ret;
 }
 
 // -------------------------------------------------------------
