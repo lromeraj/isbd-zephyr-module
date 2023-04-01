@@ -20,3 +20,4 @@ test:
     - isbd-library
   only:
     - dev
+    - main
