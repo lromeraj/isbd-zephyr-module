@@ -49,11 +49,11 @@
     AT_UART_RET_IF_ERR( ret );
 
   typedef enum at_uart_err {
-    AT_UART_OK          = 0,
-    AT_UART_TIMEOUT     = -1,
-    AT_UART_OVERFLOW    = -2,
-    AT_UART_ERR         = -3,
-    AT_UART_UNK         = -4,
+    AT_UART_OK,
+    AT_UART_TIMEOUT,
+    AT_UART_OVERFLOW,
+    AT_UART_ERR,
+    AT_UART_UNK,
   } at_uart_err_t;
 
   typedef struct at_uart_config {
@@ -116,13 +116,14 @@
   at_uart_err_t at_uart_check_echo( at_uart_t *at_uart );
 
   at_uart_err_t at_uart_pack_txt_resp( 
-    at_uart_t *at_uart, char *str_resp, size_t str_resp_len, uint8_t lines, uint16_t timeout_ms );
+    at_uart_t *at_uart, 
+    char *str_resp, size_t str_resp_len, 
+    uint8_t lines, uint16_t timeout_ms );
   
-  at_uart_err_t at_uart_get_cmd_resp_code( 
-    at_uart_t *at_uart, int8_t *cmd_code, uint16_t timeout_ms );
-
-  int16_t at_uart_pack_resp_code( 
-    at_uart_t *at_uart, char *str_code, uint16_t str_code_len, uint16_t timeout_ms );
+  at_uart_err_t at_uart_get_resp_code( 
+    at_uart_t *at_uart, 
+    char *str_buf, uint16_t str_buf_len, 
+    int8_t *cmd_code, uint16_t timeout_ms );
   
   at_uart_err_t at_uart_skip_txt_resp( 
     at_uart_t *at_uart, uint8_t lines, uint16_t timeout_ms );

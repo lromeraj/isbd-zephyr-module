@@ -15,7 +15,7 @@ function fg_process {
 
 function fg_clear {
   if [ -e $1 ]; then
-    pkill -F $1
+    pkill -SIGTERM -F $1
     rm -f $1
   fi
 }

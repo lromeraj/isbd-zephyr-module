@@ -9,7 +9,7 @@
 #define RX_BUF_SIZE    256
 #define TX_BUF_SIZE    256
 
-#define ISBD_UART_NODE        DT_NODELABEL(uart1)
+#define ISBD_UART_NODE        DT_NODELABEL( uart1 )
 #define ISBD_UART_DEVICE      DEVICE_DT_GET( ISBD_UART_NODE )
 
 static uint8_t rx_buf[ RX_BUF_SIZE ];
@@ -38,7 +38,7 @@ static void* isbd_suite_setup(void) {
   isbd_err_t ret;
 
   ret = isbd_setup( &isbd_config );
-
+  
   zassert_equal( ret, ISBD_OK, "Could not talk to modem, probably busy ..." );
 
   return NULL;
@@ -52,19 +52,34 @@ ZTEST( isbd_suite, test_imei ) {
   char imei[ 16 ];
 
   ret = isbd_get_imei( imei, sizeof( imei ) );
-
-  zassert_equal( ret, AT_UART_OK, "Could not fetch IMEI" );
+  
+  zassert_equal( ret, ISBD_OK, "Could not fetch IMEI" );
   zassert_equal( strlen( imei ), 15, "IMEI length mismatch" );
   
 }
 
 ZTEST( isbd_suite, test_mo ) {
 
-  int16_t ret;
-  const char *msg = "HOLA";
+  isbd_err_t ret;
+  const char msg[] = "HOLA";
 
   ret = isbd_set_mo( msg, strlen( msg ) );
-  zassert_equal( ret, AT_UART_OK, "Could not set MO buffer => %d", ret );
+
+  zassert_equal( ret, ISBD_OK, "Could not set MO buffer" );
+
+  const char msg2[] = ""; // not enough length
+  ret = isbd_set_mo( msg2, strlen( msg2 ) );
+
+  zassert_equal( ret, ISBD_ERR );
+  zassert_equal( isbd_get_err(), 3 );
+
+  // - 0 - SBD message successfully written to the 9602.
+  // - 1 - SBD message write timeout. An insufficient number of bytes were transferred to 9602
+  // during the transfer period of 60 seconds.
+  // - 2 - SBD message checksum sent from DTE does not match the checksum calculated by the
+  // 9602.
+  // - 3 - SBD message size is not correct. The maximum mobile originated SBD message length
+  // is 340 bytes. The minimum mobile originated SBD message length is 1 byte.
 
 }
 
@@ -77,6 +92,8 @@ ZTEST( isbd_suite, test_overflow ) {
   // this should trigger overflow error because
   // there is not enough space to write trailing \0
   ret = isbd_get_imei( imei, sizeof( imei ) );
-
-  zassert_equal( ret, AT_UART_OVERFLOW );  
+  
+  zassert_equal( ret, ISBD_ERR_AT );
+  zassert_equal( isbd_get_err(), AT_UART_OVERFLOW, "Overflow not triggered" );
+  
 }

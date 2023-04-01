@@ -32,15 +32,27 @@ static const struct gpio_dt_spec red_led = GPIO_DT_SPEC_GET( LED2_NODE, gpios );
 static const struct gpio_dt_spec blue_led = GPIO_DT_SPEC_GET( LED1_NODE, gpios );
 static const struct gpio_dt_spec green_led = GPIO_DT_SPEC_GET( LED0_NODE, gpios );
 
+static void isbd_print_error( isbd_err_t err ) {
+
+  if ( err == ISBD_ERR_AT ) {
+    printk( "(%03d) @ ISBD_ERR_AT (%s)", isbd_get_err(), at_uart_err_to_name( isbd_get_err() ) );
+  } else if ( err == ISBD_ERR ) {
+    printk( "(%03d) @ ISBD_ERR", isbd_get_err() );
+  } else {
+    printk( "(\?\?\?) @ ISBD_ERR" );
+  }
+
+}
+
 #define TEST_AT_CMD(ok_block, err_block, f_name, ... ) \
 do { \
   printk( "%-20s() ", #f_name ); \
   int16_t M_g_code = f_name( __VA_ARGS__ ); \
-  if ( M_g_code == 0 ) { \
+  if ( M_g_code == ISBD_OK ) { \
     printk( "OK; " ); \
     ok_block \
   } else { \
-    printk( "ERR: (%03d) %s; ", M_g_code, at_uart_err_to_name( M_g_code ) ); \
+    printk( "ERR: " ); isbd_print_error( M_g_code ); printk( ";" ); \
     err_block \
   } \
   printk( "\n" ); \
