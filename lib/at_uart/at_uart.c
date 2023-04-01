@@ -198,40 +198,24 @@ at_uart_err_t at_uart_pack_txt_resp(
   return AT_UART_TIMEOUT;
 }
 
-at_uart_err_t at_uart_get_cmd_resp_code( 
-  at_uart_t *at_uart, int8_t *cmd_code, uint16_t timeout_ms 
+at_uart_err_t at_uart_get_resp_code( 
+  at_uart_t *at_uart, 
+  char *str_buf, uint16_t str_buf_len, 
+  int8_t *cmd_code, uint16_t timeout_ms 
 ) {
 
-  // ! The size of this buff needs at least the size to store
-  // ! an AT command response code which usually are between 0 and 9
-  char cmd_code_buf[ AT_MIN_BUFF_SIZE ] = "";
-
   at_uart_err_t at_code = at_uart_pack_txt_resp( 
-    at_uart, cmd_code_buf, sizeof( cmd_code_buf ), AT_1_LINE_RESP, timeout_ms );
+    at_uart, str_buf, str_buf_len, AT_1_LINE_RESP, timeout_ms );
   
+  unsigned char first_char = str_buf[ 0 ];
+
   // ! We should consider conflicts when verbose mode is disabled,
   // ! in which case returned AT interface codes are also numbers 
-  if ( at_code == AT_UART_UNK ) {
-    *cmd_code = atoi( cmd_code_buf );
-    return AT_UART_OK;
-  }
-
-  return at_code;
-}
-
-int16_t at_uart_pack_resp_code(
-  at_uart_t *at_uart, char *str_code, uint16_t str_code_len, uint16_t timeout_ms
-) {
-
-  at_uart_err_t at_code = at_uart_pack_txt_resp( 
-    at_uart, str_code, str_code_len, AT_1_LINE_RESP, timeout_ms );
-  
-  uint8_t first_char = str_code[ 0 ];
-  
-  // ! We should considere conflicts when verbose mode is disabled,
-  // ! in which case returned AT interface codes are also numbers 
   if ( at_code == AT_UART_UNK && isdigit( first_char ) ) {
-    return atoi( str_code );
+    *cmd_code = atoi( str_buf );
+    return AT_UART_OK;
+  } else if ( at_code == AT_UART_OK ) {
+    *cmd_code = 0;
   }
 
   return at_code;
@@ -259,11 +243,12 @@ at_uart_err_t at_uart_write_cmd(
   // also fully purge queue
   zuart_drain( &at_uart->zuart );
 
-  int32_t ret = zuart_write( 
+  uint16_t bytes_written = zuart_write( 
     &at_uart->zuart, cmd_buf, cmd_len, AT_SHORT_TIMEOUT );
 
-  if ( ret == ZUART_ERR_TIMEOUT ) {
-    return AT_UART_TIMEOUT;
+  if ( bytes_written < cmd_len 
+      && zuart_get_err( &at_uart->zuart ) == ZUART_ERR_TIMEOUT ) {
+    return AT_UART_TIMEOUT;    
   }
 
   return at_uart_check_echo( at_uart );

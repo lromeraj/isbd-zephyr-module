@@ -6,8 +6,10 @@
   #include "at_uart.h"
 
   typedef enum isbd_err {
-    ISBD_OK        = 0,
+    ISBD_OK               = 0,
     ISBD_ERR,
+    ISBD_ERR_AT,
+    ISBD_ERR_SETUP,
   } isbd_err_t;
 
   typedef enum isbd_clear_buffer {
@@ -46,6 +48,8 @@
     uint8_t service;
   } isbd_evt_report_t;
 
+  int isbd_get_err();
+
   isbd_err_t isbd_setup( struct isbd_config *config );
 
   /**
@@ -54,7 +58,7 @@
    * @param __rtc 
    * @return int8_t 
    */
-  int8_t isbd_get_rtc( char *__rtc , size_t rtc_len );
+  isbd_err_t isbd_get_rtc( char *__rtc , size_t rtc_len );
 
   /**
    * @brief Query the device IMEI
@@ -62,7 +66,7 @@
    * @param __imei Resulting IMEI memory buffer
    * @return int8_t
    */          
-  int8_t isbd_get_imei( char *__imei, size_t imei_len );
+  isbd_err_t isbd_get_imei( char *__imei, size_t imei_len );
 
   /**
    * @brief Query the device revision
@@ -70,7 +74,7 @@
    * @param __revision 
    * @return int8_t 
    */
-  int8_t isbd_get_revision( char *__rev, size_t rev_len );
+  isbd_err_t isbd_get_revision( char *__rev, size_t rev_len );
 
   /**
    * @brief Transfer a SBD text message from the DTE 
@@ -79,7 +83,7 @@
    * @param txt SBD message with a maximum length of 120 bytes (excluding null char)
    * @return isbd_at_code_t 
    */
-  int8_t isbd_set_mo_txt( const char *txt );
+  isbd_err_t isbd_set_mo_txt( const char *txt );
 
   /**
    * @brief Transfer a longer SBD text message from the DTE 
@@ -97,7 +101,7 @@
    * @param __out ISU string response. Use NULL to ignore the string response
    * @return int8_t 
    */
-  int8_t isbd_mo_to_mt( char *__out, size_t out_len );
+  isbd_err_t isbd_mo_to_mt( char *__out, size_t out_len );
 
   /**
    * @brief 
@@ -106,7 +110,7 @@
    * @param msg_len 
    * @return int8_t 
    */
-  int8_t isbd_get_mt( uint8_t *__msg, size_t *msg_len, uint16_t *csum );
+  isbd_err_t isbd_get_mt( uint8_t *__msg, size_t *msg_len, uint16_t *csum );
 
   /**
    * @brief 
@@ -115,7 +119,7 @@
    * @param msg_len 
    * @return int8_t 
    */
-  int8_t isbd_set_mo( const uint8_t *__msg, size_t msg_len );
+  isbd_err_t isbd_set_mo( const uint8_t *__msg, size_t msg_len );
 
   /**
    * @brief This command is used to transfer a text SBD message 
@@ -128,7 +132,7 @@
    * @param __mt_buff 
    * @return int8_t 
    */
-  int8_t isbd_get_mt_txt( char *__mt_buff, size_t mt_buff_len );
+  isbd_err_t isbd_get_mt_txt( char *__mt_buff, size_t mt_buff_len );
 
   /**
    * @brief 
@@ -136,7 +140,7 @@
    * @param session 
    * @return int8_t 
    */
-  int8_t isbd_init_session( isbd_session_ext_t *session );
+  isbd_err_t isbd_init_session( isbd_session_ext_t *session );
 
   /**
    * @brief 
@@ -144,7 +148,7 @@
    * @param session 
    * @return int8_t 
    */
-  int8_t isbd_clear_buffer( isbd_clear_buffer_t buffer );
+  isbd_err_t isbd_clear_buffer( isbd_clear_buffer_t buffer );
 
   /**
    * @brief Execution command returns the received signal strength indication <rssi> from the 9602. Response is in
@@ -153,8 +157,8 @@ the form:
    * @param signal 
    * @return int8_t 
    */
-  int8_t isbd_get_sig_q( uint8_t *signal );
+  isbd_err_t isbd_get_sig_q( uint8_t *signal );
 
-  int8_t isbd_set_evt_report( isbd_evt_report_t *evt_report );
+  isbd_err_t isbd_set_evt_report( isbd_evt_report_t *evt_report );
 
 #endif

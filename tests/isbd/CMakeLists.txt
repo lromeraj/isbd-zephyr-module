@@ -12,7 +12,7 @@ if(QEMU_PIPE)
     ENV{QEMU_EXTRA_FLAGS}
     "-chardev serial,id=con1,path=${QEMU_TTY_PATH} -serial chardev:con1" )
 
-  execute_process( 
+  execute_process(
     COMMAND bash ${TEST_SETUP_PATH}
       INPUT_FILE /dev/null
       OUTPUT_FILE /dev/null
