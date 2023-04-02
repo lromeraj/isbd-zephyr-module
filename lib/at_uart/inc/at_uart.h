@@ -99,6 +99,12 @@
     char *at_cmd_buf, uint16_t at_cmd_buf_len,
     const char *at_cmd_tmpl, va_list args
   );
+
+  at_uart_err_t at_uart_write( 
+    at_uart_t *at_uart, const uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms );
+
+  at_uart_err_t at_uart_read(
+    at_uart_t *at_uart, uint8_t *out_buf, uint16_t n_bytes, uint32_t timeout_ms );
   
   /**
    * @brief Writes the given AT command directly to serial port

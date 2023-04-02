@@ -27,8 +27,7 @@ static struct isbd_config isbd_config = {
 };
 
 static void* isbd_suite_setup(void) {
-
-  // zuart_config_t zuart_config = ZUART_CONF_POLL( uart_slave_device );
+  
   struct uart_config config;
 
   uart_config_get( ISBD_UART_DEVICE, &config );
