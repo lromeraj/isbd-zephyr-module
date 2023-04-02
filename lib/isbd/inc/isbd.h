@@ -48,7 +48,24 @@
     uint8_t service;
   } isbd_evt_report_t;
 
+
+  /**
+   * @brief Retrieve last reported error. 
+   * This function can be used to obtain a more detailed error
+   * when any function from this library returns an error like <b>isbd_err_t</b>
+   * 
+   * @return int Last reported error
+   */
   int isbd_get_err();
+  
+  /**
+   * @brief Computes the checksum from the given message buffer
+   * 
+   * @param msg_buf Message buffer
+   * @param msg_buf_len Message buffer length
+   * @return uint16_t Message checksum
+   */
+  uint16_t isbd_compute_checksum( const uint8_t *msg_buf, uint16_t msg_buf_len );
 
   isbd_err_t isbd_setup( struct isbd_config *config );
 
@@ -106,9 +123,10 @@
   /**
    * @brief 
    * 
-   * @param __msg 
+   * @param msg 
    * @param msg_len 
-   * @return int8_t 
+   * @param csum 
+   * @return isbd_err_t 
    */
   isbd_err_t isbd_get_mt( uint8_t *msg, uint16_t *msg_len, uint16_t *csum );
 
@@ -160,5 +178,6 @@ the form:
   isbd_err_t isbd_get_sig_q( uint8_t *signal );
 
   isbd_err_t isbd_set_evt_report( isbd_evt_report_t *evt_report );
+
 
 #endif
