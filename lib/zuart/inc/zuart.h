@@ -80,7 +80,7 @@
   );
 
   typedef uint16_t (*zuart_write_proto_t)( 
-    zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint32_t timeout_ms 
+    zuart_t *zuart, const uint8_t *src_buffer, uint16_t n_bytes, uint32_t timeout_ms 
   );
 
   struct zuart_config {
@@ -158,7 +158,7 @@
    * @param ms_timeout 
    * @return uint32_t 
    */
-  uint16_t zuart_write( zuart_t *zuart, uint8_t *src_buffer, uint16_t n_bytes, uint32_t ms_timeout );
+  uint16_t zuart_write( zuart_t *zuart, const uint8_t *src_buffer, uint16_t n_bytes, uint32_t ms_timeout );
 
   /**
    * @brief
@@ -204,8 +204,8 @@
    * @param timeout_ms 
    * @return int32_t 
    */
-  uint16_t zuart_write_irq_proto( zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms );
-  uint16_t zuart_write_poll_proto( zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms );
+  uint16_t zuart_write_irq_proto( zuart_t *zuart, const uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms );
+  uint16_t zuart_write_poll_proto( zuart_t *zuart, const uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms );
 
   
 #endif

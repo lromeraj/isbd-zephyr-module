@@ -7,14 +7,14 @@ if(QEMU_PIPE)
   # are used to create a virtual PTY in order to communicate
   # with the virtual device
 
-  set(QEMU_TTY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/ttyS0")
+  set(QEMU_TTY_PATH "/tmp/tests.zuart.ttyS0")
   set(TEST_SETUP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/setup.sh")
 
   set(
     ENV{QEMU_EXTRA_FLAGS}
     "-chardev serial,id=con1,path=${QEMU_TTY_PATH} -serial chardev:con1" )
 
-  execute_process( COMMAND bash ${TEST_SETUP_PATH}
+  execute_process( COMMAND bash ${TEST_SETUP_PATH} ${QEMU_TTY_PATH}
     INPUT_FILE /dev/null
     OUTPUT_FILE /dev/null
     ERROR_FILE /dev/null )

@@ -41,7 +41,7 @@ struct isbd {
 static struct isbd g_isbd = {  };
 
 static at_uart_err_t _isbd_pack_bin_resp(
-  uint8_t *msg_buf, size_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms 
+  uint8_t *msg_buf, uint16_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms 
 );
 
 static isbd_err_t _isbd_send_tiny_cmd( const char *at_cmd_tmpl, ... );
@@ -160,8 +160,9 @@ isbd_err_t isbd_set_mo_txt( const char *txt ) {
     __txt[ AT_SBDWT_MAX_LEN - 1 ] = '\n';
   }
   */
-  // TODO: this is not a tiny command
-  ISBD_SEND_TINY_CMD_OR_RET( AT_CMD_TMPL_SET_STR, "+sbdwt", txt );
+ 
+  ISBD_SEND_TINY_CMD_OR_RET( 
+    AT_CMD_TMPL_SET_STR, "+sbdwt", txt );
 
   g_isbd.err = at_uart_skip_txt_resp( 
     &g_isbd.at_uart, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
@@ -169,18 +170,18 @@ isbd_err_t isbd_set_mo_txt( const char *txt ) {
   return g_isbd.err == AT_UART_OK ? ISBD_OK : ISBD_ERR_AT;
 }
 
-isbd_err_t isbd_set_mo( const uint8_t *msg, size_t msg_len ) {
+isbd_err_t isbd_set_mo( const uint8_t *msg_buf, uint16_t msg_buf_len ) {
 
   // TODO: __data buffer is not mandatory and should be
   // TODO: removed in future modifications
-  uint8_t tx_buf_size = msg_len + 2;
-  uint8_t tx_buf[ tx_buf_size ];
+  // uint8_t tx_buf_size = msg_len + 2;
+  // uint8_t tx_buf[ tx_buf_size ];
 
   // unsigned char msg_len_buf[ 8 ];
   // snprintf( msg_len_buf, sizeof( msg_len_buf ), "%d", msg_len );
 
   ISBD_SEND_TINY_CMD_OR_RET( 
-    AT_CMD_TMPL_SET_INT, "+sbdwb", msg_len );
+    AT_CMD_TMPL_SET_INT, "+sbdwb", msg_buf_len );
   
   // After the initial AT+SBDWB command
   // the ISU should answer with a READY string
@@ -200,17 +201,22 @@ isbd_err_t isbd_set_mo( const uint8_t *msg, size_t msg_len ) {
     // compute message checksum
     // TODO: see https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/12
     uint32_t sum = 0;
-    for ( size_t i = 0; i < msg_len; i++ ) {
-      sum += tx_buf[ i ] = msg[ i ];
-    }
+    uint8_t csum_buf[ 2 ];
 
-    uint16_t *csum = (uint16_t*)&tx_buf[ msg_len ];
+    for ( size_t i = 0; i < msg_buf_len; i++ ) {
+      sum += msg_buf[ i ];
+    }
+    
+    uint16_t *csum = (uint16_t*)&csum_buf[ 0 ];
     *csum = htons( sum & 0xFFFF );
 
     // finally write binary data to the ISU
     // MSG (N bytes) + CHECKSUM (2 bytes)
     zuart_write( // TODO: this should be an inline function named at_uart_write()
-      &g_isbd.at_uart.zuart, tx_buf, tx_buf_size, SHORT_TIMEOUT_RESPONSE );
+      &g_isbd.at_uart.zuart, msg_buf, msg_buf_len, SHORT_TIMEOUT_RESPONSE );
+
+    zuart_write(
+      &g_isbd.at_uart.zuart, csum_buf, sizeof( csum_buf ), SHORT_TIMEOUT_RESPONSE );
 
     // due to AT nature it is not strictly necessary to check this result
     // this is will be done in the last call of at_uart_skip_txt_resp()
@@ -233,7 +239,7 @@ isbd_err_t isbd_set_mo( const uint8_t *msg, size_t msg_len ) {
 
 }
 
-isbd_err_t isbd_get_mt( uint8_t *__msg, size_t *msg_len, uint16_t *csum ) {
+isbd_err_t isbd_get_mt( uint8_t *__msg, uint16_t *msg_len, uint16_t *csum ) {
   
   ISBD_SEND_TINY_CMD_OR_RET( AT_CMD_TMPL_EXEC, "+sbdrb" );
 
@@ -268,12 +274,12 @@ int8_t isbd_set_mo_txt_l( char *__txt ) {
 }
 */
 
-isbd_err_t isbd_mo_to_mt( char *__out, size_t out_len ) {
+isbd_err_t isbd_mo_to_mt( char *out, uint16_t out_len ) {
   
   ISBD_SEND_TINY_CMD_OR_RET( AT_CMD_TMPL_EXEC, "+sbdtc" );
   
-  g_isbd.err =  at_uart_pack_txt_resp(
-    &g_isbd.at_uart, __out, out_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
+  g_isbd.err = at_uart_pack_txt_resp(
+    &g_isbd.at_uart, out, out_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
   
   return g_isbd.err == AT_UART_OK ? ISBD_OK : ISBD_ERR_AT;
 }
@@ -366,7 +372,7 @@ isbd_err_t isbd_set_evt_report( isbd_evt_report_t *evt_report ) {
 
 static at_uart_err_t _isbd_pack_bin_resp(
   // TODO: timeout could be implicitly specified
-  uint8_t *msg_buf, size_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms
+  uint8_t *msg_buf, uint16_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms
 ) {
 
   // TODO: this should be at_uart_get_n_bytes ...
