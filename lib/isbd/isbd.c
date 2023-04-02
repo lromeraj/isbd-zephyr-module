@@ -180,14 +180,6 @@ uint16_t isbd_compute_checksum( const uint8_t *msg_buf, uint16_t msg_buf_len ) {
 
 isbd_err_t isbd_set_mo( const uint8_t *msg_buf, uint16_t msg_buf_len ) {
 
-  // TODO: __data buffer is not mandatory and should be
-  // TODO: removed in future modifications
-  // uint8_t tx_buf_size = msg_len + 2;
-  // uint8_t tx_buf[ tx_buf_size ];
-
-  // unsigned char msg_len_buf[ 8 ];
-  // snprintf( msg_len_buf, sizeof( msg_len_buf ), "%d", msg_len );
-
   ISBD_SEND_TINY_CMD_OR_RET( 
     AT_CMD_TMPL_SET_INT, "+sbdwb", msg_buf_len );
   
@@ -196,6 +188,7 @@ isbd_err_t isbd_set_mo( const uint8_t *msg_buf, uint16_t msg_buf_len ) {
   // but if the length is not correct 
   // the resulting value will be a code corresponding to 
   // the command context and not to the AT command interface itself
+  
   int err;
   uint8_t code;
   char str_code[ 16 ];
@@ -207,16 +200,17 @@ isbd_err_t isbd_set_mo( const uint8_t *msg_buf, uint16_t msg_buf_len ) {
       && streq( str_code, AT_READY_STR ) ) {
       
     uint8_t csum_buf[ 2 ];
+
     *( (uint16_t*)&csum_buf[ 0 ] ) = htons( 
       isbd_compute_checksum( msg_buf, msg_buf_len ) );
 
     // finally write binary data to the ISU
     // MSG (N bytes) + CHECKSUM (2 bytes)
-    zuart_write( // TODO: this should be an inline function named at_uart_write()
-      &g_isbd.at_uart.zuart, msg_buf, msg_buf_len, SHORT_TIMEOUT_RESPONSE );
+    at_uart_write( // TODO: if write fails return immediately
+      &g_isbd.at_uart, msg_buf, msg_buf_len, SHORT_TIMEOUT_RESPONSE );
 
-    zuart_write(
-      &g_isbd.at_uart.zuart, csum_buf, sizeof( csum_buf ), SHORT_TIMEOUT_RESPONSE );
+    at_uart_write( // TODO: if write fails return immediately
+      &g_isbd.at_uart, csum_buf, sizeof( csum_buf ), SHORT_TIMEOUT_RESPONSE );
 
     // due to AT nature it is not strictly necessary to check this result
     // this is will be done in the last call of at_uart_skip_txt_resp()
@@ -371,21 +365,19 @@ isbd_err_t isbd_set_evt_report( isbd_evt_report_t *evt_report ) {
 }
 
 static at_uart_err_t _isbd_pack_bin_resp(
-  // TODO: timeout could be implicitly specified
   uint8_t *msg_buf, uint16_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms
 ) {
 
-  // TODO: this should be at_uart_get_n_bytes ...
-  zuart_read( 
-    &g_isbd.at_uart.zuart, (uint8_t*)msg_buf_len, 2, timeout_ms ); // message length
+  at_uart_read( // TODO: if read fails return immediately 
+    &g_isbd.at_uart, (uint8_t*)msg_buf_len, 2, timeout_ms ); // message length
   
   *msg_buf_len = ntohs( *msg_buf_len );
 
-  zuart_read( 
-    &g_isbd.at_uart.zuart, msg_buf, *msg_buf_len, timeout_ms );
+  at_uart_read( // TODO: if read fails return immediately
+    &g_isbd.at_uart, msg_buf, *msg_buf_len, timeout_ms );
 
-  zuart_read( 
-    &g_isbd.at_uart.zuart, (uint8_t*)csum, 2, timeout_ms );
+  at_uart_read( // TODO: if read fails return immediately
+    &g_isbd.at_uart, (uint8_t*)csum, 2, timeout_ms );
   
   *csum = ntohs( *csum );
 

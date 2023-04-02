@@ -227,31 +227,63 @@ inline at_uart_err_t at_uart_skip_txt_resp(
   return at_uart_pack_txt_resp( at_uart, NULL, 0, lines, timeout_ms );
 }
 
+at_uart_err_t at_uart_write( 
+  at_uart_t *at_uart, const uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms
+) {
+
+  uint16_t bytes_written = zuart_write( 
+    &at_uart->zuart, src_buf, n_bytes, timeout_ms );
+
+  if ( bytes_written < n_bytes ) {
+    
+    if ( zuart_get_err( &at_uart->zuart ) == ZUART_ERR_TIMEOUT ) {
+      return AT_UART_TIMEOUT;
+    } else{
+      return AT_UART_ERR;
+    }
+
+  } else {
+    return AT_UART_OK;
+  }
+
+}
+
+at_uart_err_t at_uart_read(
+  at_uart_t *at_uart, uint8_t *out_buf, uint16_t n_bytes, uint32_t timeout_ms
+) {
+
+  uint16_t bytes_read = zuart_read( 
+    &at_uart->zuart, out_buf, n_bytes, timeout_ms );
+
+  if ( bytes_read < n_bytes ) {
+    if ( zuart_get_err( &at_uart->zuart ) == ZUART_ERR_TIMEOUT ) {
+      return AT_UART_TIMEOUT;
+    } else{
+      return AT_UART_ERR;
+    }
+  } else {
+    return AT_UART_OK;
+  }
+}
+
 at_uart_err_t at_uart_write_cmd( 
   at_uart_t *at_uart, char *cmd_buf, size_t cmd_len
 ) {
 
   at_uart->_echoed = false;
   
-  // ! if device tries to send async data before sending a command,
-  // ! we have to skip those bytes (or save for later use)
-  // ! this should not be necessary if flow control is enabled
-  // if ( k_msgq_num_used_get( &g_uart.queue.rx_q ) > 0 ) {
-  //   at_uart_skip_txt_resp( AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
-  // }
-
-  // also fully purge queue
+  // ! Clear reception buffer to clear data remnants
   zuart_drain( &at_uart->zuart );
 
-  uint16_t bytes_written = zuart_write( 
-    &at_uart->zuart, cmd_buf, cmd_len, AT_SHORT_TIMEOUT );
-
-  if ( bytes_written < cmd_len 
-      && zuart_get_err( &at_uart->zuart ) == ZUART_ERR_TIMEOUT ) {
-    return AT_UART_TIMEOUT;    
+  at_uart_err_t err = at_uart_write(
+    at_uart, cmd_buf, cmd_len, AT_SHORT_TIMEOUT );
+  
+  if ( err == AT_UART_OK ) {
+    return at_uart_check_echo( at_uart ); 
+  } else {
+    return err;
   }
-
-  return at_uart_check_echo( at_uart );
+  
 }
 
 at_uart_err_t at_uart_send_cmd( 
