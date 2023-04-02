@@ -68,6 +68,8 @@ ZTEST( isbd_suite, test_mo_mt ) {
   const uint8_t msg[] = { 
     0x34, 0x1E, 0x45, 0x23, 0x34, 0xBB, 0xCC, 0x54, 0x32, 0x13, 0x34, 0xA5
   };
+  const uint16_t msg_len = sizeof( msg );
+  const uint16_t msg_csum = isbd_compute_checksum( msg, msg_len );
 
   ret = isbd_set_mo( msg, sizeof( msg ) );
   zassert_equal( ret, ISBD_OK, "Could not set MO buffer" );
@@ -77,6 +79,8 @@ ZTEST( isbd_suite, test_mo_mt ) {
    * mobile terminated buffer
    */
   ret = isbd_mo_to_mt( NULL, 0 );
+  
+  // check if the MT buffer was read successfully
   zassert_equal( ret, ISBD_OK, "Could not transfer message from MO to MT" );
 
   /**
@@ -84,13 +88,22 @@ ZTEST( isbd_suite, test_mo_mt ) {
    * contains exactly the same as the original message
   */
   uint16_t mt_csum;
-  char mt_buf[ sizeof( msg ) + 2 ];
+  char mt_buf[ msg_len ];
   uint16_t mt_len = sizeof( mt_buf );
 
   ret = isbd_get_mt( mt_buf, &mt_len, &mt_csum );
+
+  // check if MT buffer could be fetched
   zassert_equal( ret, ISBD_OK, "Could not fetch MT buffer" );
-  zassert_equal( mt_len, sizeof( msg ), "MT message length mismatch" );
-  // TODO: checksum assert ...
+  zassert_equal( mt_len, msg_len, "MT message length mismatch" );
+  
+  // check if message content is exactly the same
+  for ( uint16_t i=0; i < mt_len; i++ ) {
+    zassert_equal( mt_buf[ i ], msg[ i ], "MT message content mismatch" );
+  }
+
+  // compute checksum
+  zassert_equal( msg_csum, mt_csum , "MT checksum mismatch" );
 
   /**
    * @brief Here we try to send an empty message

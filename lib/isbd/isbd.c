@@ -170,6 +170,14 @@ isbd_err_t isbd_set_mo_txt( const char *txt ) {
   return g_isbd.err == AT_UART_OK ? ISBD_OK : ISBD_ERR_AT;
 }
 
+uint16_t isbd_compute_checksum( const uint8_t *msg_buf, uint16_t msg_buf_len ) {
+  uint32_t sum = 0;
+  for ( uint16_t i = 0; i < msg_buf_len; i++ ) {
+    sum += msg_buf[ i ];
+  }  
+  return (sum & 0xFFFF);
+}
+
 isbd_err_t isbd_set_mo( const uint8_t *msg_buf, uint16_t msg_buf_len ) {
 
   // TODO: __data buffer is not mandatory and should be
@@ -197,18 +205,10 @@ isbd_err_t isbd_set_mo( const uint8_t *msg_buf, uint16_t msg_buf_len ) {
 
   if ( err == AT_UART_UNK 
       && streq( str_code, AT_READY_STR ) ) {
-
-    // compute message checksum
-    // TODO: see https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/12
-    uint32_t sum = 0;
+      
     uint8_t csum_buf[ 2 ];
-
-    for ( size_t i = 0; i < msg_buf_len; i++ ) {
-      sum += msg_buf[ i ];
-    }
-    
-    uint16_t *csum = (uint16_t*)&csum_buf[ 0 ];
-    *csum = htons( sum & 0xFFFF );
+    *( (uint16_t*)&csum_buf[ 0 ] ) = htons( 
+      isbd_compute_checksum( msg_buf, msg_buf_len ) );
 
     // finally write binary data to the ISU
     // MSG (N bytes) + CHECKSUM (2 bytes)
