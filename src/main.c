@@ -144,7 +144,7 @@ void main(void) {
     printk( "IMEI : %s", buf );
   }, {}, isbd_get_imei, buf, sizeof( buf ) );  
 
-  const char *msg = "This is a longer message, please try again";
+  const char *msg = "MIoT";
 
   TEST_AT_CMD({}, {}, isbd_set_mo, msg, strlen( msg ) );
 
