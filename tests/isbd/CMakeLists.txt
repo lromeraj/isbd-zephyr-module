@@ -5,7 +5,7 @@ if(QEMU_PIPE)
   # This flags will be passed to QEMU.
   # This is used to create a virtual PTY in order to communicate
   # with the virtual device
-  set(QEMU_TTY_PATH "${CMAKE_CURRENT_SOURCE_DIR}/ttyS0")
+  set(QEMU_TTY_PATH "/tmp/tests.isbd.ttyS0")
   set(TEST_SETUP_PATH "${CMAKE_CURRENT_SOURCE_DIR}/setup.sh")
 
   set(
@@ -13,7 +13,7 @@ if(QEMU_PIPE)
     "-chardev serial,id=con1,path=${QEMU_TTY_PATH} -serial chardev:con1" )
 
   execute_process(
-    COMMAND bash ${TEST_SETUP_PATH}
+    COMMAND bash ${TEST_SETUP_PATH} ${QEMU_TTY_PATH}
       INPUT_FILE /dev/null
       OUTPUT_FILE /dev/null
       ERROR_FILE /dev/null )

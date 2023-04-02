@@ -19,14 +19,15 @@
 
 /* change this to any other UART peripheral if desired */
 // #define UART_MASTER_DEVICE_NODE DT_NODELABEL(uart0)
-#define UART_SLAVE_DEVICE_NODE DT_NODELABEL(uart3)
+#define UART_SLAVE_DEVICE_NODE DT_NODELABEL( uart3 )
 
-static struct device *uart_slave_device = (struct device*)DEVICE_DT_GET(UART_SLAVE_DEVICE_NODE);
+static struct device *uart_slave_device = 
+  (struct device*)DEVICE_DT_GET( UART_SLAVE_DEVICE_NODE );
 
 /* The devicetree node identifier for the "led0" alias. */
-#define LED0_NODE DT_ALIAS(led0)
-#define LED1_NODE DT_ALIAS(led1)
-#define LED2_NODE DT_ALIAS(led2)
+#define LED0_NODE DT_ALIAS( led0 )
+#define LED1_NODE DT_ALIAS( led1 )
+#define LED2_NODE DT_ALIAS( led2 )
 
 static const struct gpio_dt_spec red_led = GPIO_DT_SPEC_GET( LED2_NODE, gpios );
 static const struct gpio_dt_spec blue_led = GPIO_DT_SPEC_GET( LED1_NODE, gpios );
@@ -35,7 +36,8 @@ static const struct gpio_dt_spec green_led = GPIO_DT_SPEC_GET( LED0_NODE, gpios 
 static void isbd_print_error( isbd_err_t err ) {
 
   if ( err == ISBD_ERR_AT ) {
-    printk( "(%03d) @ ISBD_ERR_AT (%s)", isbd_get_err(), at_uart_err_to_name( isbd_get_err() ) );
+    printk( "(%03d) @ ISBD_ERR_AT (%s)", 
+      isbd_get_err(), at_uart_err_to_name( isbd_get_err() ) );
   } else if ( err == ISBD_ERR ) {
     printk( "(%03d) @ ISBD_ERR", isbd_get_err() );
   } else {
@@ -142,7 +144,7 @@ void main(void) {
     printk( "IMEI : %s", buf );
   }, {}, isbd_get_imei, buf, sizeof( buf ) );  
 
-  const char *msg = "MIoT";
+  const char *msg = "This is a longer message, please try again";
 
   TEST_AT_CMD({}, {}, isbd_set_mo, msg, strlen( msg ) );
 
@@ -151,14 +153,14 @@ void main(void) {
   }, {}, isbd_mo_to_mt, buf, sizeof( buf ) );
 
   uint16_t csum;
-  size_t len = sizeof( buf );
+  uint16_t len = sizeof( buf );
   
   TEST_AT_CMD({
-    printk("msg=");
+    printk("msg=\"");
     for ( int i=0; i < len; i++ ) {
       printk( "%c", buf[ i ] );
     }
-    printk( ", len=%d, csum=%04X", len, csum );
+    printk( "\", len=%d, csum=%04X", len, csum );
   }, {}, isbd_get_mt, buf, &len, &csum );
 
   isbd_session_ext_t session;

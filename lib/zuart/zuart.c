@@ -130,7 +130,7 @@ uint16_t zuart_read(
 }
 
 uint16_t zuart_write_irq_proto(
-  zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms 
+  zuart_t *zuart, const uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms 
 ) {
   
   k_sem_reset( &zuart->tx_sem );
@@ -169,7 +169,7 @@ uint16_t zuart_write_irq_proto(
 }
 
 uint16_t zuart_write_poll_proto(
-  zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms 
+  zuart_t *zuart, const uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms 
 ) {
 
   uint16_t bytes_written = 0;
@@ -193,7 +193,7 @@ uint16_t zuart_write_poll_proto(
 
 
 uint16_t zuart_write( 
-  zuart_t *zuart, uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms 
+  zuart_t *zuart, const uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms 
 ) {
 
   if ( zuart->config.write_proto ) {

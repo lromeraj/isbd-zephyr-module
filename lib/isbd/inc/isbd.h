@@ -101,7 +101,7 @@
    * @param __out ISU string response. Use NULL to ignore the string response
    * @return int8_t 
    */
-  isbd_err_t isbd_mo_to_mt( char *__out, size_t out_len );
+  isbd_err_t isbd_mo_to_mt( char *out, uint16_t out_len );
 
   /**
    * @brief 
@@ -110,7 +110,7 @@
    * @param msg_len 
    * @return int8_t 
    */
-  isbd_err_t isbd_get_mt( uint8_t *__msg, size_t *msg_len, uint16_t *csum );
+  isbd_err_t isbd_get_mt( uint8_t *msg, uint16_t *msg_len, uint16_t *csum );
 
   /**
    * @brief 
@@ -119,7 +119,7 @@
    * @param msg_len 
    * @return int8_t 
    */
-  isbd_err_t isbd_set_mo( const uint8_t *__msg, size_t msg_len );
+  isbd_err_t isbd_set_mo( const uint8_t *msg, uint16_t msg_len );
 
   /**
    * @brief This command is used to transfer a text SBD message 

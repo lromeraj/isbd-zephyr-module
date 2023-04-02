@@ -36,10 +36,9 @@ static void* isbd_suite_setup(void) {
   uart_configure( ISBD_UART_DEVICE, &config );
 
   isbd_err_t ret;
-
   ret = isbd_setup( &isbd_config );
-  
-  zassert_equal( ret, ISBD_OK, "Could not talk to modem, probably busy ..." );
+
+  zassert_equal( ret, ISBD_OK, "Setup failed" );
 
   return NULL;
 }
@@ -58,17 +57,47 @@ ZTEST( isbd_suite, test_imei ) {
   
 }
 
-ZTEST( isbd_suite, test_mo ) {
+ZTEST( isbd_suite, test_mo_mt ) {
 
+
+  /**
+   * @brief Set mobile originated buffer with a
+   * sample message
+   */
   isbd_err_t ret;
-  const char msg[] = "HOLA";
+  const uint8_t msg[] = { 
+    0x34, 0x1E, 0x45, 0x23, 0x34, 0xBB, 0xCC, 0x54, 0x32, 0x13, 0x34, 0xA5
+  };
 
-  ret = isbd_set_mo( msg, strlen( msg ) );
-
+  ret = isbd_set_mo( msg, sizeof( msg ) );
   zassert_equal( ret, ISBD_OK, "Could not set MO buffer" );
 
-  const char msg2[] = ""; // not enough length
-  ret = isbd_set_mo( msg2, strlen( msg2 ) );
+  /**
+   * @brief Transfer mobile originated buffer to the
+   * mobile terminated buffer
+   */
+  ret = isbd_mo_to_mt( NULL, 0 );
+  zassert_equal( ret, ISBD_OK, "Could not transfer message from MO to MT" );
+
+  /**
+   * @brief Now we check if the mobile terminated buffer
+   * contains exactly the same as the original message
+  */
+  uint16_t mt_csum;
+  char mt_buf[ sizeof( msg ) + 2 ];
+  uint16_t mt_len = sizeof( mt_buf );
+
+  ret = isbd_get_mt( mt_buf, &mt_len, &mt_csum );
+  zassert_equal( ret, ISBD_OK, "Could not fetch MT buffer" );
+  zassert_equal( mt_len, sizeof( msg ), "MT message length mismatch" );
+  // TODO: checksum assert ...
+
+  /**
+   * @brief Here we try to send an empty message
+   * expecting an error result
+   */
+  const char empty_msg[] = {};
+  ret = isbd_set_mo( empty_msg, sizeof( empty_msg ) );
 
   zassert_equal( ret, ISBD_ERR );
   zassert_equal( isbd_get_err(), 3 );
