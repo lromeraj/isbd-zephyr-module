@@ -106,11 +106,13 @@ isbd_err_t isbd_init_session( isbd_session_ext_t *session ) {
       &session->mt_msn,
       &session->mt_len,
       &session->mt_queued );
+    
+    return read == 6 ? ISBD_OK : ISBD_ERR_UNK;
 
-    return read == 6 ? ISBD_OK : ISBD_ERR;
+  } else {
+    return ISBD_ERR_AT;
   } 
 
-  return ISBD_ERR_AT;
 }
 
 isbd_err_t isbd_clear_buffer( isbd_clear_buffer_t buffer ) {
@@ -133,7 +135,7 @@ isbd_err_t isbd_clear_buffer( isbd_clear_buffer_t buffer ) {
 
   if ( err == AT_UART_OK ) {
     g_isbd.err = code;
-    return g_isbd.err == 0 ? ISBD_OK : ISBD_ERR;
+    return g_isbd.err == 0 ? ISBD_OK : ISBD_ERR_CMD;
   } else {
     g_isbd.err = err;
     return ISBD_ERR_AT;
@@ -225,7 +227,7 @@ isbd_err_t isbd_set_mo( const uint8_t *msg_buf, uint16_t msg_buf_len ) {
 
   if ( err == AT_UART_OK ) {
     g_isbd.err = code;
-    return code == 0 ? ISBD_OK : ISBD_ERR;
+    return code == 0 ? ISBD_OK : ISBD_ERR_CMD;
   } else {
     g_isbd.err = err;
     return ISBD_ERR_AT;
@@ -281,7 +283,7 @@ isbd_err_t isbd_mo_to_mt( char *out, uint16_t out_len ) {
 // TODO: review and improve this function
 isbd_err_t isbd_get_mt_txt( char *__mt_buff, size_t mt_buff_len ) {
   
-  return ISBD_ERR;
+  return ISBD_ERR_UNK;
 
   // at_uart_err_t ret;
   // ISBD_SEND_TINY_CMD_OR_RET( AT_CMD_TMPL_EXEC, "+sbdrt" );
@@ -320,10 +322,8 @@ isbd_err_t isbd_get_sig_q( uint8_t *signal_q ) {
     &g_isbd.at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, LONG_TIMEOUT_RESPONSE );
 
   if ( err == AT_UART_OK ) {
-    
     int read = sscanf( buf, "+CSQ:%hhd", signal_q );
-    return read == 1 ? ISBD_OK : ISBD_ERR;
-
+    return read == 1 ? ISBD_OK : ISBD_ERR_UNK;
   } else {
     g_isbd.err = err;
     return ISBD_ERR_AT;
@@ -363,6 +363,66 @@ isbd_err_t isbd_set_evt_report( isbd_evt_report_t *evt_report ) {
   return g_isbd.err == AT_UART_OK ? ISBD_OK : ISBD_ERR_AT;
 
 }
+
+isbd_err_t isbd_set_mt_alert( isbd_mt_alert_t alert ) {
+
+  ISBD_SEND_TINY_CMD_OR_RET( 
+    AT_CMD_TMPL_SET_INT, "+sbdmta", alert );
+  
+  g_isbd.err = at_uart_skip_txt_resp( 
+    &g_isbd.at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
+
+  return g_isbd.err == AT_UART_OK ? ISBD_OK : ISBD_ERR_AT;
+}
+
+isbd_err_t isbd_get_mt_alert( isbd_mt_alert_t *alert ) {
+
+  ISBD_SEND_TINY_CMD_OR_RET( AT_CMD_TMPL_READ, "+sbdmta" );
+
+  char buf[ 32 ];
+  g_isbd.err = at_uart_pack_txt_resp( 
+    &g_isbd.at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
+
+  if ( g_isbd.err == AT_UART_OK ) {
+    int read = sscanf( buf, "+SBDMTA:%hhu", (uint8_t*)alert );
+    return read == 1 ? ISBD_OK : ISBD_ERR_UNK;
+  } else {
+    return ISBD_ERR_AT;
+  }
+
+}
+
+isbd_err_t isbd_net_reg( isbd_net_reg_sts_t *out_sts ) {
+
+  ISBD_SEND_TINY_CMD_OR_RET( AT_CMD_TMPL_EXEC, "+sbdreg" );
+
+  char buf[ 32 ];
+  g_isbd.err = at_uart_pack_txt_resp( 
+    &g_isbd.at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
+
+  if ( g_isbd.err == AT_UART_OK ) {
+
+    uint8_t status, code;
+    int read = sscanf( buf, "+SBDREG:%hhu,%hhu", &status, &code );
+
+    if ( read == 2 ) {
+
+      g_isbd.err = code;
+
+      if ( out_sts ) *out_sts = status;
+
+      return code == 0 ? ISBD_OK : ISBD_ERR_CMD;
+
+    } else {
+      return ISBD_ERR_UNK;
+    }
+
+  } else {
+    return ISBD_ERR_AT;
+  }
+
+}
+
 
 static at_uart_err_t _isbd_pack_bin_resp(
   uint8_t *msg_buf, uint16_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms

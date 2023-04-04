@@ -58,7 +58,6 @@ ZTEST( isbd_suite, test_imei ) {
 
 ZTEST( isbd_suite, test_mo_mt ) {
 
-
   /**
    * @brief Set mobile originated buffer with a
    * sample message
@@ -111,7 +110,7 @@ ZTEST( isbd_suite, test_mo_mt ) {
   const char empty_msg[] = {};
   ret = isbd_set_mo( empty_msg, sizeof( empty_msg ) );
 
-  zassert_equal( ret, ISBD_ERR );
+  zassert_equal( ret, ISBD_ERR_CMD );
   zassert_equal( isbd_get_err(), 3 );
 
   // - 0 - SBD message successfully written to the 9602.
@@ -122,6 +121,10 @@ ZTEST( isbd_suite, test_mo_mt ) {
   // - 3 - SBD message size is not correct. The maximum mobile originated SBD message length
   // is 340 bytes. The minimum mobile originated SBD message length is 1 byte.
 
+}
+
+ZTEST( isbd_suite, test_mt_ring ) {
+  // TODO: test MT ring setters and getters
 }
 
 // TODO: move this to a new AT-UART test module

@@ -6,9 +6,10 @@
   #include "at_uart.h"
 
   typedef enum isbd_err {
-    ISBD_OK               = 0,
-    ISBD_ERR,
+    ISBD_OK,
     ISBD_ERR_AT,
+    ISBD_ERR_UNK,
+    ISBD_ERR_CMD,
     ISBD_ERR_SETUP,
   } isbd_err_t;
 
@@ -31,6 +32,48 @@
 
   } isbd_clear_buffer_t;
 
+  typedef enum isbd_mt_alert {
+
+    /**
+     * @brief Enable SBD Ring Alert ring indication (default)
+     */
+    ISBD_MT_ALERT_ENABLED     = 1,
+
+    /**
+     * @brief Disable SBD Ring Alert indication
+     */
+    ISBD_MT_ALERT_DISABLED    = 0,
+    
+  } isbd_mt_alert_t;
+
+  typedef enum isbd_net_reg_sts {
+
+    /**
+     * @brief Transceiver is detached as a result of a successful 
+     * +SBDDET or +SBDI command.
+     */
+    ISBD_NET_REG_STS_DETACHED         = 0,
+
+    /**
+     * @brief Transceiver is attached but has 
+     * not provided a good location since it was last detached
+     */
+    ISBD_NET_REG_STS_NOT_REGISTERED   = 1,
+
+    /**
+     * @brief Transceiver is attached with a good location. 
+     * @note This may be the case even when the most recent 
+     * attempt did not provide a good location
+     */
+    ISBD_NET_REG_STS_REGISTERED       = 2,
+
+    /**
+     * @brief The gateway is denying service to the Transceiver
+     */
+    ISBD_NET_REG_STS_DENIED           = 3,
+
+  } isbd_net_reg_sts_t;
+
   struct isbd_config {
     struct at_uart_config at_uart;
   };
@@ -47,6 +90,7 @@
     uint8_t signal;
     uint8_t service;
   } isbd_evt_report_t;
+
 
 
   /**
@@ -169,15 +213,45 @@
   isbd_err_t isbd_clear_buffer( isbd_clear_buffer_t buffer );
 
   /**
-   * @brief Execution command returns the received signal strength indication <rssi> from the 9602. Response is in
-the form:
+   * @brief Execution command returns the received signal strength indication <rssi> from the 9602.
    * 
    * @param signal 
    * @return int8_t 
    */
   isbd_err_t isbd_get_sig_q( uint8_t *signal );
 
+  /**
+   * @brief Set indicator event reporting
+   * 
+   * @param evt_report Struct containing reporting configuration
+   * @return isbd_err_t 
+   */
   isbd_err_t isbd_set_evt_report( isbd_evt_report_t *evt_report );
+
+  /**
+   * @brief Enable or disable the ISU to listen for SBD Ring Alerts
+   *  
+   * @param alert 
+   * @return isbd_err_t 
+   */
+  isbd_err_t isbd_set_mt_alert( isbd_mt_alert_t alert );
+
+  /**
+   * @brief Query the current ring indication mode
+   * 
+   * @param alert 
+   * @return isbd_err_t 
+   */
+  isbd_err_t isbd_get_mt_alert( isbd_mt_alert_t *alert );
+
+  /**
+   * @brief Triggers an SBD session to perform a manual SBD Network Registration
+   * 
+   * @param status 
+   * @return isbd_err_t 
+   */
+  isbd_err_t isbd_net_reg( isbd_net_reg_sts_t *out_sts );
+
 
 
 #endif

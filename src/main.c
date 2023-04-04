@@ -36,12 +36,11 @@ static const struct gpio_dt_spec green_led = GPIO_DT_SPEC_GET( LED0_NODE, gpios 
 static void isbd_print_error( isbd_err_t err ) {
 
   if ( err == ISBD_ERR_AT ) {
-    printk( "(%03d) @ ISBD_ERR_AT (%s)", 
-      isbd_get_err(), at_uart_err_to_name( isbd_get_err() ) );
-  } else if ( err == ISBD_ERR ) {
-    printk( "(%03d) @ ISBD_ERR", isbd_get_err() );
+    printk( "(%03d) @ ISBD_ERR_AT", isbd_get_err() );
+  } else if ( err == ISBD_ERR_CMD ) {
+    printk( "(%03d) @ ISBD_ERR_CMD", isbd_get_err() );
   } else {
-    printk( "(\?\?\?) @ ISBD_ERR" );
+    printk( "(\?\?\?) @ ISBD_ERR_UNK" );
   }
 
 }
@@ -137,11 +136,19 @@ void main(void) {
   set_info_led();
 
   TEST_AT_CMD({
-    printk( "Revision : %s", buf );
-  }, {}, isbd_get_revision, buf, sizeof( buf ) );  
+    printk( "Revision: %s", buf );
+  }, {}, isbd_get_revision, buf, sizeof( buf ) );
+
+
+  TEST_AT_CMD({}, {}, isbd_set_mt_alert, ISBD_MT_ALERT_ENABLED );
+
+  isbd_mt_alert_t alert;
+  TEST_AT_CMD({
+    printk( "MT Alert: %d", alert );
+  }, {}, isbd_get_mt_alert, &alert );  
 
   TEST_AT_CMD({
-    printk( "IMEI : %s", buf );
+    printk( "IMEI: %s", buf );
   }, {}, isbd_get_imei, buf, sizeof( buf ) );  
 
   const char *msg = "MIoT";
@@ -163,34 +170,34 @@ void main(void) {
     printk( "\", len=%d, csum=%04X", len, csum );
   }, {}, isbd_get_mt, buf, &len, &csum );
 
-  isbd_session_ext_t session;
 
-  TEST_AT_CMD({ // success
+  // isbd_session_ext_t session;
+  // TEST_AT_CMD({ // success
 
-    printk( "mo_sts=%hhu, "
-            "mo_msn=%hu, "
-            "mt_sts=%hhu, "
-            "mt_msn=%hu, "
-            "mt_length=%hu, "
-            "mt_queued=%hu",
-    session.mo_sts,
-    session.mo_msn,
-    session.mt_sts,
-    session.mt_msn,
-    session.mt_len,
-    session.mt_queued );
+  //   printk( "mo_sts=%hhu, "
+  //           "mo_msn=%hu, "
+  //           "mt_sts=%hhu, "
+  //           "mt_msn=%hu, "
+  //           "mt_length=%hu, "
+  //           "mt_queued=%hu",
+  //   session.mo_sts,
+  //   session.mo_msn,
+  //   session.mt_sts,
+  //   session.mt_msn,
+  //   session.mt_len,
+  //   session.mt_queued );
 
-    if ( session.mo_sts < 3 ) {
-      set_success_led();
-    } else {
-      set_error_led();
-    }
+  //   if ( session.mo_sts < 3 ) {
+  //     set_success_led();
+  //   } else {
+  //     set_error_led();
+  //   }
 
-  }, { // AT command failed
-    set_error_led();
-  }, isbd_init_session, &session );
+  // }, { // AT command failed
+  //   set_error_led();
+  // }, isbd_init_session, &session );
 
-  TEST_AT_CMD({}, {}, isbd_clear_buffer, ISBD_CLEAR_MO_MT_BUFF );
+  // TEST_AT_CMD({}, {}, isbd_clear_buffer, ISBD_CLEAR_MO_MT_BUFF );
 
   /*
   isbd_evt_report_t evt_report = {
