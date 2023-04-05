@@ -11,7 +11,8 @@
 
 #include "inc/isbd.h"
 
-#define AT_READY_STR         "READY"
+#define AT_RING_STR           "SBDRING"
+#define AT_READY_STR          "READY"
 
 /**
  * @brief Short timeout for commands which usually take
@@ -88,9 +89,11 @@ isbd_err_t isbd_get_rtc( char *rtc_buf, size_t rtc_buf_len ) {
   return g_isbd.err == AT_UART_OK ? ISBD_OK : ISBD_ERR_AT;
 }
 
-isbd_err_t isbd_init_session( isbd_session_ext_t *session ) {
+// TODO: this hould be named isbd_init_session_ext()
+isbd_err_t isbd_init_session( isbd_session_ext_t *session, bool alert ) {
   
-  ISBD_SEND_TINY_CMD_OR_RET( AT_CMD_TMPL_EXEC, "+sbdix" );
+  ISBD_SEND_TINY_CMD_OR_RET( 
+    AT_CMD_TMPL_EXEC_STR, "+sbdix", alert ? "a" : "" );
 
   char buf[ 64 ];
   g_isbd.err = at_uart_pack_txt_resp(
@@ -417,6 +420,53 @@ isbd_err_t isbd_net_reg( isbd_net_reg_sts_t *out_sts ) {
       return ISBD_ERR_UNK;
     }
 
+  } else {
+    return ISBD_ERR_AT;
+  }
+
+}
+
+isbd_err_t isbd_get_ring_sts( isbd_ring_sts_t *ring_sts ) {
+
+  ISBD_SEND_TINY_CMD_OR_RET( AT_CMD_TMPL_EXEC, "+cris" );
+
+  uint8_t   tri, // indicates the telephony ring indication status
+            sri; // indicates the SBD ring indication status
+
+  char buf[ 32 ];
+  g_isbd.err = at_uart_pack_txt_resp( 
+    &g_isbd.at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
+
+  if ( g_isbd.err == AT_UART_OK ) {
+    int read = sscanf( buf, "+CRIS:%hhu,%hhu", &tri, &sri );
+
+    *ring_sts = sri;
+
+    return read == 2 ? ISBD_OK : ISBD_ERR_UNK;
+  } else {
+    return ISBD_ERR_AT;
+  }
+}
+
+isbd_err_t isbd_wait_ring( uint32_t timeout_ms ) {
+
+  char buf[ 16 ];
+
+  // TODO: purge reception buffer ???
+  g_isbd.err = at_uart_pack_txt_resp( 
+    &g_isbd.at_uart, buf, sizeof( buf ), AT_1_LINE_RESP, timeout_ms );
+
+  if ( g_isbd.err == AT_UART_UNK ) {
+    
+    const char *alert_str = g_isbd.at_uart.config.verbose 
+      ? "SBDREADY" 
+      : "126";
+
+    if ( streq( buf, alert_str ) ) {
+      return ISBD_OK;
+    } else {
+      return ISBD_ERR_UNK;
+    }
   } else {
     return ISBD_ERR_AT;
   }

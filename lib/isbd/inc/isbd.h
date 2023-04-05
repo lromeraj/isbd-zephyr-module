@@ -32,6 +32,21 @@
 
   } isbd_clear_buffer_t;
 
+
+  typedef enum isbd_ring_sts {
+
+    /**
+     * @brief  Clear the mobile originated buffer
+     */
+    ISBD_RING_STS_NOT_RECV   = 0,
+
+    /**
+     * @brief Clear the mobile terminated buffer
+     */
+    ISBD_RING_STS_RECV       = 1, 
+
+  } isbd_ring_sts_t;
+
   typedef enum isbd_mt_alert {
 
     /**
@@ -90,8 +105,6 @@
     uint8_t signal;
     uint8_t service;
   } isbd_evt_report_t;
-
-
 
   /**
    * @brief Retrieve last reported error. 
@@ -202,7 +215,7 @@
    * @param session 
    * @return int8_t 
    */
-  isbd_err_t isbd_init_session( isbd_session_ext_t *session );
+  isbd_err_t isbd_init_session( isbd_session_ext_t *session, bool alert );
 
   /**
    * @brief 
@@ -251,6 +264,18 @@
    * @return isbd_err_t 
    */
   isbd_err_t isbd_net_reg( isbd_net_reg_sts_t *out_sts );
+
+  /**
+   * @brief Query the ring indication status, returning the reason 
+   * for the most recent assertion of the Ring Indicator
+   * 
+   * @param ring_sts 
+   * @return isbd_err_t 
+   */
+  isbd_err_t isbd_get_ring_sts( isbd_ring_sts_t *ring_sts );
+
+
+  isbd_err_t isbd_wait_ring( uint32_t timeout_ms );
 
 
 

@@ -115,7 +115,7 @@ void main(void) {
   struct isbd_config isbd_config = {
     .at_uart = {
       .echo = true,
-      .verbose = true,
+      .verbose = false,
       // .zuart = ZUART_CONF_POLL( uart_slave_device ),
       .zuart = ZUART_CONF_IRQ( uart_slave_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
       // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( uart_slave_device, rx_buf, sizeof( rx_buf ) ),
@@ -139,7 +139,7 @@ void main(void) {
     printk( "Revision: %s", buf );
   }, {}, isbd_get_revision, buf, sizeof( buf ) );
 
-
+  // enable alerts
   TEST_AT_CMD({}, {}, isbd_set_mt_alert, ISBD_MT_ALERT_ENABLED );
 
   isbd_mt_alert_t alert;
@@ -170,22 +170,84 @@ void main(void) {
     printk( "\", len=%d, csum=%04X", len, csum );
   }, {}, isbd_get_mt, buf, &len, &csum );
 
+  isbd_ring_sts_t ring_sts;
+  TEST_AT_CMD({
+    printk( "Ring status: %d", ring_sts );
+  }, {}, isbd_get_ring_sts, &ring_sts );
+
+  uint32_t tick = 0;
+
+  while (1) { 
+
+    printk( "tick: %u\n", tick );
+
+    isbd_err_t ret = isbd_wait_ring( 2000 );
+    if ( ret == ISBD_OK || tick >= 15 ) {
+
+      tick = 0;
+
+      if ( ret == ISBD_OK ) {
+        printk( "Ring alert received !!!!!!\n" );
+      } else {
+        printk( "Tick triggered\n" );
+      }
+
+      isbd_session_ext_t session;
+
+      TEST_AT_CMD({ // success
+
+        printk( "mo_sts=%hhu, "
+                "mo_msn=%hu, "
+                "mt_sts=%hhu, "
+                "mt_msn=%hu, "
+                "mt_length=%hu, "
+                "mt_queued=%hu",
+        session.mo_sts,
+        session.mo_msn,
+        session.mt_sts,
+        session.mt_msn,
+        session.mt_len,
+        session.mt_queued );
+        
+        if ( session.mt_sts == 1 ) {
+          
+          printk( "Reading MT buffer ...\n" );
+
+          TEST_AT_CMD({
+            printk("msg=\"");
+            for ( int i=0; i < len; i++ ) {
+              printk( "%c", buf[ i ] );
+            }
+            printk( "\", len=%d, csum=%04X", len, csum );
+          }, {}, isbd_get_mt, buf, &len, &csum );
+
+        } else {
+          printk( "No MT message received\n" );
+        }
+ 
+      }, {}, isbd_init_session, &session, (ret == ISBD_OK) );
+
+    }
+
+    tick++;
+
+  }
 
   // isbd_session_ext_t session;
   // TEST_AT_CMD({ // success
 
-  //   printk( "mo_sts=%hhu, "
-  //           "mo_msn=%hu, "
-  //           "mt_sts=%hhu, "
-  //           "mt_msn=%hu, "
-  //           "mt_length=%hu, "
-  //           "mt_queued=%hu",
-  //   session.mo_sts,
-  //   session.mo_msn,
-  //   session.mt_sts,
-  //   session.mt_msn,
-  //   session.mt_len,
-  //   session.mt_queued );
+    // printk( "mo_sts=%hhu, "
+    //         "mo_msn=%hu, "
+    //         "mt_sts=%hhu, "
+    //         "mt_msn=%hu, "
+    //         "mt_length=%hu, "
+    //         "mt_queued=%hu",
+    // session.mo_sts,
+    // session.mo_msn,
+    // session.mt_sts,
+    // session.mt_msn,
+    // session.mt_len,
+    // session.mt_queued );
 
   //   if ( session.mo_sts < 3 ) {
   //     set_success_led();

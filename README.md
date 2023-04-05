@@ -75,7 +75,7 @@ The following table shows the current status of the library based on the differe
 | +SBDDET | Detach | :clock1: Planned |  |
 | +SBDDSC | Delivery Short Code | :clock1: Planned |  |
 | +SBDIX | Initiate an SBD Session Extended | :heavy_check_mark: Tested |  |
-| +SBDIXA | Initiate an SBD Session Extended | :clock1: Planned |  |
+| +SBDIXA | Initiate an SBD Session Extended | :heavy_check_mark: Tested |  |
 | +SBDMTA | Mobile-Terminated Alert | :heavy_check_mark: Tested |  |
 | +SBDREG | Network Registration | :hammer_and_pick: Implemented |  |
 | +SBDAREG | Automatic Registration  | :clock1: Planned |  |

@@ -16,4 +16,4 @@ fg_clear $PID_FILE_PATH # clear old pids
 fg_create_tty $PID_FILE_PATH $1 $TTY_S1_PATH
 
 fg_process $PID_FILE_PATH \
-  node $ISBD_EMULATOR_PATH/build/isbdemu.js --path $TTY_S1_PATH
+  node $ISBD_EMULATOR_PATH/build/emu.js --path $TTY_S1_PATH
