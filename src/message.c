@@ -5,6 +5,7 @@
 #include <zephyr/drivers/uart.h>
 
 #include "isbd.h"
+#include "isbd/evt.h"
 
 #include "message.h"
 
@@ -37,6 +38,7 @@ static char g_msgq_buf[ QUEUE_MAX_LEN * sizeof(struct msgq_item) ];
 static uint8_t rx_buf[ 512 ];
 static uint8_t tx_buf[ 512 ];
 
+static isbd_t g_isbd;
 
 void msg_destroy( struct msgq_item *msgq_item );
 void msg_requeue( struct msgq_item *msgq_item );
@@ -46,12 +48,12 @@ bool _send( const uint8_t *msg, uint16_t msg_len ) {
   printk( "Sending message #%hu ...\n", msg_len ); 
   
   isbd_err_t ret;
-  ret = isbd_set_mo( msg, msg_len );
+  ret = isbd_set_mo( &g_isbd, msg, msg_len );
 
   if ( ret == ISBD_OK ) {
 
     isbd_session_ext_t session;
-    ret = isbd_init_session( &session, false );
+    ret = isbd_init_session( &g_isbd, &session, false );
 
     if ( ret == ISBD_OK && session.mo_sts < 3 ) {
       return true;
@@ -82,7 +84,7 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
     }
   };
 
-  if ( isbd_setup( &isbd_config ) == ISBD_OK ) {
+  if ( isbd_setup( &g_isbd, &isbd_config ) == ISBD_OK ) {
     printk( "Modem OK\n" );
   } else {
     printk( "Could not talk to modem, probably busy ...\n" );
@@ -95,7 +97,7 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
     .signal = 1,
   };
 
-  isbd_set_evt_report( &evt_report );
+  isbd_set_evt_report( &g_isbd, &evt_report );
 
   while ( 1 ) {
 
@@ -111,10 +113,10 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
       }
     }
 
-    isbd_event_t evt;
+    isbd_evt_t evt;
 
     // printk( "Waiting for event ...\n" );
-    if ( isbd_wait_event( &evt, 1000 ) == ISBD_OK ) {
+    if ( isbd_evt_wait( &g_isbd, &evt, 1000 ) == ISBD_OK ) {
       printk( "Event (%03d) captured\n", evt.name );
     }
 

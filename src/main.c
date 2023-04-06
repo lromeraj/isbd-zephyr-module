@@ -34,12 +34,12 @@ static const struct gpio_dt_spec red_led    = GPIO_DT_SPEC_GET( LED2_NODE, gpios
 static const struct gpio_dt_spec blue_led   = GPIO_DT_SPEC_GET( LED1_NODE, gpios );
 static const struct gpio_dt_spec green_led  = GPIO_DT_SPEC_GET( LED0_NODE, gpios );
 
-static void isbd_print_error( isbd_err_t err ) {
+static void isbd_print_error( isbd_t *isbd, isbd_err_t err ) {
 
   if ( err == ISBD_ERR_AT ) {
-    printk( "(%03d) @ ISBD_ERR_AT", isbd_get_err() );
+    printk( "(%03d) @ ISBD_ERR_AT", isbd_get_err( isbd ) );
   } else if ( err == ISBD_ERR_CMD ) {
-    printk( "(%03d) @ ISBD_ERR_CMD", isbd_get_err() );
+    printk( "(%03d) @ ISBD_ERR_CMD", isbd_get_err( isbd ) );
   } else {
     printk( "(\?\?\?) @ ISBD_ERR_UNK" );
   }

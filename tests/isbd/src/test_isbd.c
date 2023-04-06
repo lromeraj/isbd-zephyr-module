@@ -26,6 +26,8 @@ static struct isbd_config isbd_config = {
   }
 };
 
+static isbd_t g_isbd;
+
 static void* isbd_suite_setup(void) {
   
   struct uart_config config;
@@ -35,7 +37,7 @@ static void* isbd_suite_setup(void) {
   uart_configure( ISBD_UART_DEVICE, &config );
 
   isbd_err_t ret;
-  ret = isbd_setup( &isbd_config );
+  ret = isbd_setup( &g_isbd, &isbd_config );
 
   zassert_equal( ret, ISBD_OK, "Setup failed" );
 
@@ -49,7 +51,7 @@ ZTEST( isbd_suite, test_imei ) {
   int16_t ret;
   char imei[ 16 ];
 
-  ret = isbd_get_imei( imei, sizeof( imei ) );
+  ret = isbd_get_imei( &g_isbd, imei, sizeof( imei ) );
   
   zassert_equal( ret, ISBD_OK, "Could not fetch IMEI" );
   zassert_equal( strlen( imei ), 15, "IMEI length mismatch" );
@@ -69,14 +71,14 @@ ZTEST( isbd_suite, test_mo_mt ) {
   const uint16_t msg_len = sizeof( msg );
   const uint16_t msg_csum = isbd_compute_checksum( msg, msg_len );
 
-  ret = isbd_set_mo( msg, sizeof( msg ) );
+  ret = isbd_set_mo( &g_isbd, msg, sizeof( msg ) );
   zassert_equal( ret, ISBD_OK, "Could not set MO buffer" );
 
   /**
    * @brief Transfer mobile originated buffer to the
    * mobile terminated buffer
    */
-  ret = isbd_mo_to_mt( NULL, 0 );
+  ret = isbd_mo_to_mt( &g_isbd, NULL, 0 );
   
   // check if the MT buffer was read successfully
   zassert_equal( ret, ISBD_OK, "Could not transfer message from MO to MT" );
@@ -89,29 +91,34 @@ ZTEST( isbd_suite, test_mo_mt ) {
   char mt_buf[ msg_len ];
   uint16_t mt_len = sizeof( mt_buf );
 
-  ret = isbd_get_mt( mt_buf, &mt_len, &mt_csum );
+  ret = isbd_get_mt( &g_isbd, mt_buf, &mt_len, &mt_csum );
 
   // check if MT buffer could be fetched
-  zassert_equal( ret, ISBD_OK, "Could not fetch MT buffer" );
-  zassert_equal( mt_len, msg_len, "MT message length mismatch" );
+  zassert_equal( ret, ISBD_OK, 
+    "Could not fetch MT buffer" );
+
+  zassert_equal( mt_len, msg_len, 
+    "MT message length mismatch" );
   
   // check if message content is exactly the same
   for ( uint16_t i=0; i < mt_len; i++ ) {
-    zassert_equal( mt_buf[ i ], msg[ i ], "MT message content mismatch" );
+    zassert_equal( mt_buf[ i ], msg[ i ], 
+      "MT message content mismatch" );
   }
 
   // compute checksum
-  zassert_equal( msg_csum, mt_csum , "MT checksum mismatch" );
+  zassert_equal( msg_csum, mt_csum, 
+    "MT checksum mismatch" );
 
   /**
    * @brief Here we try to send an empty message
    * expecting an error result
    */
   const char empty_msg[] = {};
-  ret = isbd_set_mo( empty_msg, sizeof( empty_msg ) );
+  ret = isbd_set_mo( &g_isbd, empty_msg, sizeof( empty_msg ) );
 
   zassert_equal( ret, ISBD_ERR_CMD );
-  zassert_equal( isbd_get_err(), 3 );
+  zassert_equal( isbd_get_err( &g_isbd ), 3 );
 
   // - 0 - SBD message successfully written to the 9602.
   // - 1 - SBD message write timeout. An insufficient number of bytes were transferred to 9602
@@ -135,9 +142,10 @@ ZTEST( isbd_suite, test_overflow ) {
 
   // this should trigger overflow error because
   // there is not enough space to write trailing \0
-  ret = isbd_get_imei( imei, sizeof( imei ) );
+  ret = isbd_get_imei( &g_isbd, imei, sizeof( imei ) );
   
   zassert_equal( ret, ISBD_ERR_AT );
-  zassert_equal( isbd_get_err(), AT_UART_OVERFLOW, "Overflow not triggered" );
+  zassert_equal( isbd_get_err( &g_isbd ), AT_UART_OVERFLOW, 
+    "Overflow not triggered" );
   
 }

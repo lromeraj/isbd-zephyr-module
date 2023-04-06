@@ -1,6 +1,7 @@
 #ifndef ISBD_H_
   #define ISBD_H_
 
+  // TODO: this module should be renamed to ISBD_CMD or ISBD_AT
   #include <stdint.h>
 
   #include "at_uart.h"
@@ -12,50 +13,6 @@
     ISBD_ERR_CMD,
     ISBD_ERR_SETUP,
   } isbd_err_t;
-
-  typedef enum isbd_event_name {
-
-    ISBD_EVENT_UNK,
-
-    /**
-     * @brief Ring alert
-    */
-    ISBD_EVENT_RING,
-
-    /**
-     * @brief Signal quality
-    */
-    ISBD_EVENT_SIGQ,
-
-    /**
-     * @brief Service availability
-     */
-    ISBD_EVENT_SVCA,
-
-    /**
-     * @brief Automatic registration
-     */
-    ISBD_EVENT_AREG,
-
-  } isbd_event_name_t;
-
-  typedef struct isbd_event {
-    
-    isbd_event_name_t name;
-    
-    union { 
-
-      uint8_t sigq;
-      uint8_t svca;
-
-      struct {
-        uint8_t evt; 
-        uint8_t err; 
-      } areg;
-
-    } data;
-
-  } isbd_event_t;
 
   typedef enum isbd_clear_buffer {
 
@@ -133,10 +90,6 @@
 
   } isbd_net_reg_sts_t;
 
-  struct isbd_config {
-    struct at_uart_config at_uart;
-  };
-
   typedef struct isbd_session_ext {
     uint8_t mo_sts, mt_sts;
     uint16_t mo_msn, mt_msn;
@@ -150,6 +103,16 @@
     uint8_t service;
   } isbd_evt_report_t;
 
+  typedef struct isbd_config {
+    struct at_uart_config at_uart;
+  } isbd_config_t;
+
+  typedef struct isbd {
+    int err;
+    struct at_uart at_uart;
+    struct isbd_config config;
+  } isbd_t;
+
   /**
    * @brief Retrieve last reported error. 
    * This function can be used to obtain a more detailed error
@@ -157,7 +120,7 @@
    * 
    * @return int Last reported error
    */
-  int isbd_get_err();
+  int isbd_get_err( isbd_t *isbd );
   
   /**
    * @brief Computes the checksum from the given message buffer
@@ -168,7 +131,7 @@
    */
   uint16_t isbd_compute_checksum( const uint8_t *msg_buf, uint16_t msg_buf_len );
 
-  isbd_err_t isbd_setup( struct isbd_config *config );
+  isbd_err_t isbd_setup( isbd_t *isbd, struct isbd_config *config );
 
   /**
    * @brief Query the device for Iridium system time if available
@@ -176,7 +139,7 @@
    * @param __rtc 
    * @return int8_t 
    */
-  isbd_err_t isbd_get_rtc( char *__rtc , size_t rtc_len );
+  isbd_err_t isbd_get_rtc( isbd_t *isbd, char *__rtc , size_t rtc_len );
 
   /**
    * @brief Query the device IMEI
@@ -184,7 +147,7 @@
    * @param __imei Resulting IMEI memory buffer
    * @return int8_t
    */          
-  isbd_err_t isbd_get_imei( char *__imei, size_t imei_len );
+  isbd_err_t isbd_get_imei( isbd_t *isbd, char *__imei, size_t imei_len );
 
   /**
    * @brief Query the device revision
@@ -192,7 +155,7 @@
    * @param __revision 
    * @return int8_t 
    */
-  isbd_err_t isbd_get_revision( char *__rev, size_t rev_len );
+  isbd_err_t isbd_get_revision( isbd_t *isbd, char *__rev, size_t rev_len );
 
   /**
    * @brief Transfer a SBD text message from the DTE 
@@ -201,7 +164,7 @@
    * @param txt SBD message with a maximum length of 120 bytes (excluding null char)
    * @return isbd_at_code_t 
    */
-  isbd_err_t isbd_set_mo_txt( const char *txt );
+  isbd_err_t isbd_set_mo_txt( isbd_t *isbd, const char *txt );
 
   /**
    * @brief Transfer a longer SBD text message from the DTE 
@@ -219,7 +182,7 @@
    * @param __out ISU string response. Use NULL to ignore the string response
    * @return int8_t 
    */
-  isbd_err_t isbd_mo_to_mt( char *out, uint16_t out_len );
+  isbd_err_t isbd_mo_to_mt( isbd_t *isbd, char *out, uint16_t out_len );
 
   /**
    * @brief 
@@ -229,7 +192,7 @@
    * @param csum 
    * @return isbd_err_t 
    */
-  isbd_err_t isbd_get_mt( uint8_t *msg, uint16_t *msg_len, uint16_t *csum );
+  isbd_err_t isbd_get_mt( isbd_t *isbd, uint8_t *msg, uint16_t *msg_len, uint16_t *csum );
 
   /**
    * @brief 
@@ -238,7 +201,7 @@
    * @param msg_len 
    * @return int8_t 
    */
-  isbd_err_t isbd_set_mo( const uint8_t *msg, uint16_t msg_len );
+  isbd_err_t isbd_set_mo( isbd_t *isbd, const uint8_t *msg, uint16_t msg_len );
 
   /**
    * @brief This command is used to transfer a text SBD message 
@@ -251,7 +214,7 @@
    * @param __mt_buff 
    * @return int8_t 
    */
-  isbd_err_t isbd_get_mt_txt( char *__mt_buff, size_t mt_buff_len );
+  isbd_err_t isbd_get_mt_txt( isbd_t *isbd, char *__mt_buff, size_t mt_buff_len );
 
   /**
    * @brief 
@@ -259,7 +222,7 @@
    * @param session 
    * @return int8_t 
    */
-  isbd_err_t isbd_init_session( isbd_session_ext_t *session, bool alert );
+  isbd_err_t isbd_init_session( isbd_t *isbd, isbd_session_ext_t *session, bool alert );
 
   /**
    * @brief 
@@ -267,7 +230,7 @@
    * @param session 
    * @return int8_t 
    */
-  isbd_err_t isbd_clear_buffer( isbd_clear_buffer_t buffer );
+  isbd_err_t isbd_clear_buffer( isbd_t *isbd, isbd_clear_buffer_t buffer );
 
   /**
    * @brief Execution command returns the received signal strength indication <rssi> from the 9602.
@@ -275,7 +238,7 @@
    * @param signal 
    * @return int8_t 
    */
-  isbd_err_t isbd_get_sig_q( uint8_t *signal );
+  isbd_err_t isbd_get_sig_q( isbd_t *isbd, uint8_t *signal );
 
   /**
    * @brief Set indicator event reporting
@@ -283,7 +246,7 @@
    * @param evt_report Struct containing reporting configuration
    * @return isbd_err_t 
    */
-  isbd_err_t isbd_set_evt_report( isbd_evt_report_t *evt_report );
+  isbd_err_t isbd_set_evt_report( isbd_t *isbd, isbd_evt_report_t *evt_report );
 
   /**
    * @brief Enable or disable the ISU to listen for SBD Ring Alerts
@@ -291,7 +254,7 @@
    * @param alert 
    * @return isbd_err_t 
    */
-  isbd_err_t isbd_set_mt_alert( isbd_mt_alert_t alert );
+  isbd_err_t isbd_set_mt_alert( isbd_t *isbd, isbd_mt_alert_t alert );
 
   /**
    * @brief Query the current ring indication mode
@@ -299,7 +262,7 @@
    * @param alert 
    * @return isbd_err_t 
    */
-  isbd_err_t isbd_get_mt_alert( isbd_mt_alert_t *alert );
+  isbd_err_t isbd_get_mt_alert( isbd_t *isbd, isbd_mt_alert_t *alert );
 
   /**
    * @brief Triggers an SBD session to perform a manual SBD Network Registration
@@ -307,7 +270,7 @@
    * @param reg_sts A pointer where the resulting registration status will be stored 
    * @return isbd_err_t 
    */
-  isbd_err_t isbd_net_reg( isbd_net_reg_sts_t *reg_sts );
+  isbd_err_t isbd_net_reg( isbd_t *isbd, isbd_net_reg_sts_t *reg_sts );
 
   /**
    * @brief Query the ring indication status, returning the reason 
@@ -316,16 +279,7 @@
    * @param ring_sts
    * @return isbd_err_t
    */
-  isbd_err_t isbd_get_ring_sts( isbd_ring_sts_t *ring_sts );
-
-  /**
-   * @brief Waits for any event triggered over DTE by the ISU 
-   * 
-   * @param event A pointer where the resulting event should be stored
-   * @param timeout_ms Maximum time to wait for 
-   * @return isbd_err_t 
-   */
-  isbd_err_t isbd_wait_event( isbd_event_t *event, uint32_t timeout_ms );
+  isbd_err_t isbd_get_ring_sts( isbd_t *isbd, isbd_ring_sts_t *ring_sts );
   
   // isbd_err_t isbd_wait_unblock();
 

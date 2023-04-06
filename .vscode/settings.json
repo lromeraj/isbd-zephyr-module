@@ -12,6 +12,7 @@
       "defs.h": "c",
       "at.h": "c",
       "type_traits": "c",
-      "printk.h": "c"
+      "printk.h": "c",
+      "at_uart.h": "c"
     }
 }
