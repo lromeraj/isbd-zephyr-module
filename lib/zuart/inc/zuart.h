@@ -136,10 +136,9 @@
   zuart_err_t zuart_setup( zuart_t *zuart, const zuart_config_t *zuart_config );
   
   /**
-   * @brief Allows to request a specific number of bytes from que reception buffer
-   * 
-   * @note Use timeout in order to decide if this call should wait 
-   * for all the requested bytes
+   * @brief Request a specific number of bytes from que reception buffer.
+   * Use timeout in order to decide if this call should wait before 
+   * receiving all requested bytes. This function is not thread safe
    * 
    * @param zuart zuart instance
    * @param bytes Output buffer
@@ -150,7 +149,8 @@
   uint16_t zuart_read( zuart_t *zuart, uint8_t *out_buffer, uint16_t n_bytes, uint32_t ms_timeout );
 
   /**
-   * @brief 
+   * @brief Write a given number of bytes into the transmission buffer.
+   * This function is not thread safe
    * 
    * @param zuart 
    * @param bytes 
@@ -207,5 +207,7 @@
   uint16_t zuart_write_irq_proto( zuart_t *zuart, const uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms );
   uint16_t zuart_write_poll_proto( zuart_t *zuart, const uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms );
 
+  void zuart_force_read_timeout( zuart_t *zuart );
+  void zuart_force_write_timeout( zuart_t *zuart );
   
 #endif

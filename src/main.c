@@ -14,6 +14,7 @@
 #include <stdbool.h>
 
 #include "isbd.h"
+#include "message.h"
 
 #define MSG_SIZE 32
 
@@ -29,9 +30,9 @@ static struct device *uart_slave_device =
 #define LED1_NODE DT_ALIAS( led1 )
 #define LED2_NODE DT_ALIAS( led2 )
 
-static const struct gpio_dt_spec red_led = GPIO_DT_SPEC_GET( LED2_NODE, gpios );
-static const struct gpio_dt_spec blue_led = GPIO_DT_SPEC_GET( LED1_NODE, gpios );
-static const struct gpio_dt_spec green_led = GPIO_DT_SPEC_GET( LED0_NODE, gpios );
+static const struct gpio_dt_spec red_led    = GPIO_DT_SPEC_GET( LED2_NODE, gpios );
+static const struct gpio_dt_spec blue_led   = GPIO_DT_SPEC_GET( LED1_NODE, gpios );
+static const struct gpio_dt_spec green_led  = GPIO_DT_SPEC_GET( LED0_NODE, gpios );
 
 static void isbd_print_error( isbd_err_t err ) {
 
@@ -58,7 +59,6 @@ do { \
   } \
   printk( "\n" ); \
 } while(0)
-
 
 void clear_leds() {
   gpio_pin_configure_dt( &blue_led, GPIO_OUTPUT_INACTIVE );
@@ -93,12 +93,20 @@ static uint8_t tx_buf[ 512 ];
 
 void main(void) {
 
+  msg_setup();
+  
   /*
   if ( !gpio_is_ready_dt(&led) ) {
     return;
   }
   */
 
+  const char *msg1 = "Hi Javier!";
+  const char *msg2 = "Hi Iridium!";
+
+  msg_enqueue( msg1, strlen( msg1 ) ); 
+
+  /*
   gpio_pin_configure_dt( &blue_led, GPIO_OUTPUT_ACTIVE );
 
 	if (!device_is_ready(uart_slave_device)) {
@@ -115,7 +123,7 @@ void main(void) {
   struct isbd_config isbd_config = {
     .at_uart = {
       .echo = true,
-      .verbose = false,
+      .verbose = true,
       // .zuart = ZUART_CONF_POLL( uart_slave_device ),
       .zuart = ZUART_CONF_IRQ( uart_slave_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
       // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( uart_slave_device, rx_buf, sizeof( rx_buf ) ),
@@ -175,63 +183,10 @@ void main(void) {
     printk( "Ring status: %d", ring_sts );
   }, {}, isbd_get_ring_sts, &ring_sts );
 
-  uint32_t tick = 0;
+  */
 
-  while (1) { 
+  
 
-    printk( "tick: %u\n", tick );
-
-    isbd_err_t ret = isbd_wait_ring( 2000 );
-    if ( ret == ISBD_OK || tick >= 15 ) {
-
-      tick = 0;
-
-      if ( ret == ISBD_OK ) {
-        printk( "Ring alert received !!!!!!\n" );
-      } else {
-        printk( "Tick triggered\n" );
-      }
-
-      isbd_session_ext_t session;
-
-      TEST_AT_CMD({ // success
-
-        printk( "mo_sts=%hhu, "
-                "mo_msn=%hu, "
-                "mt_sts=%hhu, "
-                "mt_msn=%hu, "
-                "mt_length=%hu, "
-                "mt_queued=%hu",
-        session.mo_sts,
-        session.mo_msn,
-        session.mt_sts,
-        session.mt_msn,
-        session.mt_len,
-        session.mt_queued );
-        
-        if ( session.mt_sts == 1 ) {
-          
-          printk( "Reading MT buffer ...\n" );
-
-          TEST_AT_CMD({
-            printk("msg=\"");
-            for ( int i=0; i < len; i++ ) {
-              printk( "%c", buf[ i ] );
-            }
-            printk( "\", len=%d, csum=%04X", len, csum );
-          }, {}, isbd_get_mt, buf, &len, &csum );
-
-        } else {
-          printk( "No MT message received\n" );
-        }
- 
-      }, {}, isbd_init_session, &session, (ret == ISBD_OK) );
-
-    }
-
-    tick++;
-
-  }
 
   // isbd_session_ext_t session;
   // TEST_AT_CMD({ // success

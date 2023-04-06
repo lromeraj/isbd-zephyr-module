@@ -244,7 +244,7 @@ zuart_err_t zuart_setup( zuart_t *zuart, const zuart_config_t *zuart_config ) {
     if ( zuart->config.rx_buf == NULL || zuart->config.rx_buf_size == 0 ) {
       return ZUART_ERR_SETUP;
     }
-
+    
     k_sem_init(
       &zuart->rx_sem, 0, 1 );
 
@@ -270,12 +270,17 @@ zuart_err_t zuart_setup( zuart_t *zuart, const zuart_config_t *zuart_config ) {
   return ZUART_OK;
 }
 
-static inline void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
+// TODO: think about polling, update zuart struct flag ???
+void zuart_force_read_timeout( zuart_t *zuart ) {
+  k_sem_reset( &zuart->rx_sem );
+}
 
-  // uint8_t *tx_buff = zuart->buf.tx;
-  // size_t *tx_buff_len = &zuart->buf.tx_len;
-  // size_t *tx_buff_idx = &zuart->buf.tx_idx;
-  
+// TODO: think about polling, update zuart struct flag ???
+void zuart_force_write_timeout( zuart_t *zuart ) {
+  k_sem_reset( &zuart->tx_sem );
+}
+
+static inline void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
 
   if ( ring_buf_size_get( &zuart->tx_rbuf ) > 0 ) {
     

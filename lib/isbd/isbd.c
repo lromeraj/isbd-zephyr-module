@@ -11,8 +11,13 @@
 
 #include "inc/isbd.h"
 
-#define AT_RING_STR           "SBDRING"
-#define AT_READY_STR          "READY"
+
+// codes prefixed with v means verbose version of the same code
+#define VCODE_RING_STR         "SBDRING"
+#define VCODE_READY_STR        "READY"
+
+#define CODE_RING_STR           "126"
+#define CODE_READY_STR          VCODE_READY_STR
 
 /**
  * @brief Short timeout for commands which usually take
@@ -202,7 +207,7 @@ isbd_err_t isbd_set_mo( const uint8_t *msg_buf, uint16_t msg_buf_len ) {
     &g_isbd.at_uart, str_code, sizeof( str_code ), &code, SHORT_TIMEOUT_RESPONSE );
 
   if ( err == AT_UART_UNK 
-      && streq( str_code, AT_READY_STR ) ) {
+      && streq( str_code, CODE_READY_STR ) ) {
       
     uint8_t csum_buf[ 2 ];
 
@@ -283,34 +288,50 @@ isbd_err_t isbd_mo_to_mt( char *out, uint16_t out_len ) {
   return g_isbd.err == AT_UART_OK ? ISBD_OK : ISBD_ERR_AT;
 }
 
-// TODO: review and improve this function
-isbd_err_t isbd_get_mt_txt( char *__mt_buff, size_t mt_buff_len ) {
+isbd_err_t isbd_get_mt_txt( char *mt_buf, size_t mt_buf_len ) {
   
-  return ISBD_ERR_UNK;
+  ISBD_SEND_TINY_CMD_OR_RET( AT_CMD_TMPL_EXEC, "+sbdrt" );
 
-  // at_uart_err_t ret;
-  // ISBD_SEND_TINY_CMD_OR_RET( AT_CMD_TMPL_EXEC, "+sbdrt" );
-  
-  // if ( g_isbd.config.at_uart.verbose ) {  
-  //   g_isbd.err = at_uart_pack_txt_resp( 
-  //     &g_isbd.at_uart,__mt_buff, mt_buff_len, AT_3_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
-  // } else {
+  at_uart_skip_txt_resp(
+    &g_isbd.at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
+
+  g_isbd.err = at_uart_pack_txt_resp( 
+    &g_isbd.at_uart, mt_buf, mt_buf_len, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
+
+  if ( g_isbd.config.at_uart.verbose ) {  
     
-  //   uint16_t len;
+    g_isbd.err = at_uart_skip_txt_resp( 
+      &g_isbd.at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
+
+  } else if ( g_isbd.err == AT_UART_UNK ) { 
     
-  //   at_uart_skip_txt_resp( 
-  //     &g_isbd.at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
-    
-  //   at_uart_pack_txt_resp( 
-  //     &g_isbd.at_uart, __mt_buff, mt_buff_len, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
-    
-  //   len = strlen( __mt_buff ) - 1;
-    
-  //   __mt_buff[ len ] = 0;
-  //   int8_t code = atoi( &__mt_buff[ len ] ); 
-    
-  //   return code;
-  // }
+    // This is necessary due to a Iridium implementation/design fault 
+    // (not following correctly AT standard) specifically for this command
+    // The problem consist in that when verbose mode is disabled
+    // the AT result code '0' is concatenated with the text itself
+    // so the response looks like the following:
+    // > +SBDRT:\r\n
+    // > My awesome message0\r
+    // When it should be:
+    // > +SBDRT:\r\n <-- This still conflicts with the specification in their manual
+    // > My awesome message\r0\r
+    // This behaviour is probably caused by the text nature of the command itself 
+    // The delimiter \n is used to indicate the end of message when using AT+SBDWT
+    // so the use of \r is theoretically valid as a value of the message itself
+    // but is conflicts with the AT standard
+
+    uint16_t len = strlen( mt_buf ) - 1;
+
+    if ( mt_buf[ len ] == '0' ) {
+      mt_buf[ len ] = 0;
+      g_isbd.err = AT_UART_OK;
+    }
+
+  }
+
+  return g_isbd.err == AT_UART_OK
+    ? ISBD_OK
+    : ISBD_ERR_AT;
 
 }
 
@@ -318,19 +339,17 @@ isbd_err_t isbd_get_sig_q( uint8_t *signal_q ) {
 
   ISBD_SEND_TINY_CMD_OR_RET( AT_CMD_TMPL_EXEC, "+csq" );
   
-  int err;
   char buf[ 16 ];
   
-  err = at_uart_pack_txt_resp(
+  g_isbd.err = at_uart_pack_txt_resp(
     &g_isbd.at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, LONG_TIMEOUT_RESPONSE );
 
-  if ( err == AT_UART_OK ) {
+  if ( g_isbd.err == AT_UART_OK ) {
     int read = sscanf( buf, "+CSQ:%hhd", signal_q );
     return read == 1 ? ISBD_OK : ISBD_ERR_UNK;
-  } else {
-    g_isbd.err = err;
-    return ISBD_ERR_AT;
   }
+
+  return ISBD_ERR_AT;
 
 }
 
@@ -343,25 +362,25 @@ isbd_err_t isbd_set_evt_report( isbd_evt_report_t *evt_report ) {
 
   ISBD_SEND_TINY_CMD_OR_RET( AT_CMD_TMPL_SET_STR, "+cier", buf );
 
+  g_isbd.err = at_uart_skip_txt_resp( 
+    &g_isbd.at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );  
+
   // ! This command has a peculiarity,
   // ! after the command is successfully executed, it returns an OK response,
   // ! but just after that it transmits the first indicator event
   // ! so we skip those lines
-  g_isbd.err = at_uart_skip_txt_resp( 
-    &g_isbd.at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );  
-
-  if ( g_isbd.err == AT_UART_OK ) {
+  // if ( g_isbd.err == AT_UART_OK ) {
     
-    uint8_t lines_to_skip = // [1,0] * ( [1,0] + [1,0] )
-      evt_report->mode * ( evt_report->service + evt_report->signal );
+  //   uint8_t lines_to_skip = // [1,0] * ( [1,0] + [1,0] )
+  //     evt_report->mode * ( evt_report->service + evt_report->signal );
 
-    // TODO: we could return the resulting values instead of ignoring them ...
-    if ( lines_to_skip > 0 ) {
-      at_uart_skip_txt_resp( 
-        &g_isbd.at_uart, lines_to_skip, SHORT_TIMEOUT_RESPONSE );
-    }
+  //   // TODO: we could return the resulting values instead of ignoring them ...
+  //   if ( lines_to_skip > 0 ) {
+  //     at_uart_skip_txt_resp( 
+  //       &g_isbd.at_uart, lines_to_skip, SHORT_TIMEOUT_RESPONSE );
+  //   }
 
-  }
+  // }
 
   return g_isbd.err == AT_UART_OK ? ISBD_OK : ISBD_ERR_AT;
 
@@ -441,38 +460,80 @@ isbd_err_t isbd_get_ring_sts( isbd_ring_sts_t *ring_sts ) {
     int read = sscanf( buf, "+CRIS:%hhu,%hhu", &tri, &sri );
 
     *ring_sts = sri;
-
     return read == 2 ? ISBD_OK : ISBD_ERR_UNK;
+
   } else {
     return ISBD_ERR_AT;
   }
 }
 
-isbd_err_t isbd_wait_ring( uint32_t timeout_ms ) {
+isbd_err_t isbd_wait_unblock() {
 
-  char buf[ 16 ];
+  // TODO: this should be at_uart_unblock_wait ...
+  zuart_force_read_timeout( &g_isbd.at_uart.zuart );
 
-  // TODO: purge reception buffer ???
-  g_isbd.err = at_uart_pack_txt_resp( 
+  return ISBD_OK;
+}
+
+
+static inline bool _isbd_parse_evt_ciev( const char *buf, isbd_event_t *evt ) {
+
+  uint8_t ciev_evt, ciev_val;
+
+  evt->name = ISBD_EVENT_UNK;
+
+  int ret = sscanf( buf, "+CIEV:%hhu,%hhu", 
+    &ciev_evt, &ciev_val );
+
+  if ( ret == 2 ) {
+    
+    if ( ciev_evt == 0 ) {
+      evt->name = ISBD_EVENT_SIGQ;
+      evt->data.sigq = ciev_val;
+    } else if ( ciev_evt == 1 ) {
+      evt->name = ISBD_EVENT_SVCA;
+      evt->data.svca = ciev_val;
+    }
+  
+  }
+
+  return evt->name != ISBD_EVENT_UNK;
+}
+
+isbd_err_t isbd_wait_event( isbd_event_t *event, uint32_t timeout_ms ) {
+
+  char buf[ 32 ];
+
+  event->name = ISBD_EVENT_UNK;
+
+  g_isbd.err = at_uart_pack_txt_resp(
     &g_isbd.at_uart, buf, sizeof( buf ), AT_1_LINE_RESP, timeout_ms );
 
   if ( g_isbd.err == AT_UART_UNK ) {
-    
-    const char *alert_str = g_isbd.at_uart.config.verbose 
-      ? "SBDREADY" 
-      : "126";
 
-    if ( streq( buf, alert_str ) ) {
-      return ISBD_OK;
-    } else {
-      return ISBD_ERR_UNK;
+    const char *ring_str = 
+      g_isbd.at_uart.config.verbose ? VCODE_RING_STR : CODE_RING_STR;
+    
+    if ( streq( buf, ring_str ) ) { // TODO: _isbd_parse_evt_ring()
+      event->name = ISBD_EVENT_RING;
+    } else if ( _isbd_parse_evt_ciev( buf, event ) ) {
+      // TODO: 
     }
-  } else {
-    return ISBD_ERR_AT;
+
+    return event->name == ISBD_EVENT_UNK
+      ? ISBD_ERR_UNK
+      : ISBD_OK;
+
   }
 
-}
+  // We expect AT to return unknown,
+  // if the result code is AT_UART_OK means that the response
+  // was a literal OK string and we are not expecting that ...
+  return g_isbd.err == AT_UART_OK
+    ? ISBD_ERR_UNK
+    : ISBD_ERR_AT;
 
+}
 
 static at_uart_err_t _isbd_pack_bin_resp(
   uint8_t *msg_buf, uint16_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms
@@ -511,6 +572,8 @@ static isbd_err_t _isbd_send_tiny_cmd( const char *at_cmd_tmpl, ... ) {
 
   return err == AT_UART_OK ? ISBD_OK : ISBD_ERR_AT;
 }
+
+
 
 int isbd_get_err() {
   return g_isbd.err;

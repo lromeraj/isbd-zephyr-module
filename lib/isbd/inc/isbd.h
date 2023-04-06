@@ -13,6 +13,50 @@
     ISBD_ERR_SETUP,
   } isbd_err_t;
 
+  typedef enum isbd_event_name {
+
+    ISBD_EVENT_UNK,
+
+    /**
+     * @brief Ring alert
+    */
+    ISBD_EVENT_RING,
+
+    /**
+     * @brief Signal quality
+    */
+    ISBD_EVENT_SIGQ,
+
+    /**
+     * @brief Service availability
+     */
+    ISBD_EVENT_SVCA,
+
+    /**
+     * @brief Automatic registration
+     */
+    ISBD_EVENT_AREG,
+
+  } isbd_event_name_t;
+
+  typedef struct isbd_event {
+    
+    isbd_event_name_t name;
+    
+    union { 
+
+      uint8_t sigq;
+      uint8_t svca;
+
+      struct {
+        uint8_t evt; 
+        uint8_t err; 
+      } areg;
+
+    } data;
+
+  } isbd_event_t;
+
   typedef enum isbd_clear_buffer {
 
     /**
@@ -260,23 +304,29 @@
   /**
    * @brief Triggers an SBD session to perform a manual SBD Network Registration
    * 
-   * @param status 
+   * @param reg_sts A pointer where the resulting registration status will be stored 
    * @return isbd_err_t 
    */
-  isbd_err_t isbd_net_reg( isbd_net_reg_sts_t *out_sts );
+  isbd_err_t isbd_net_reg( isbd_net_reg_sts_t *reg_sts );
 
   /**
    * @brief Query the ring indication status, returning the reason 
    * for the most recent assertion of the Ring Indicator
    * 
-   * @param ring_sts 
-   * @return isbd_err_t 
+   * @param ring_sts
+   * @return isbd_err_t
    */
   isbd_err_t isbd_get_ring_sts( isbd_ring_sts_t *ring_sts );
 
+  /**
+   * @brief Waits for any event triggered over DTE by the ISU 
+   * 
+   * @param event A pointer where the resulting event should be stored
+   * @param timeout_ms Maximum time to wait for 
+   * @return isbd_err_t 
+   */
+  isbd_err_t isbd_wait_event( isbd_event_t *event, uint32_t timeout_ms );
+  
+  // isbd_err_t isbd_wait_unblock();
 
-  isbd_err_t isbd_wait_ring( uint32_t timeout_ms );
-
-
-
-#endif
+#endif  

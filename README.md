@@ -79,7 +79,6 @@ The following table shows the current status of the library based on the differe
 | +SBDMTA | Mobile-Terminated Alert | :heavy_check_mark: Tested |  |
 | +SBDREG | Network Registration | :hammer_and_pick: Implemented |  |
 | +SBDAREG | Automatic Registration  | :clock1: Planned |  |
-| +SBDAREG | Automatic Registration  | :clock1: Planned |  |
 | +SBDD | Clear SBD Message Buffers | :heavy_check_mark: Tested | |
 | +SBDC | Clear SBD MOMSN | :clock1: Planned | |
 | +SBDS | Status | :clock1: Planned | |
