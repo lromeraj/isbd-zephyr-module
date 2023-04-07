@@ -121,8 +121,8 @@ ZTEST( isbd_suite, test_mo_mt ) {
   const char empty_msg[] = {};
   ret = isu_set_mo( &g_isu_dte, empty_msg, sizeof( empty_msg ) );
 
-  // zassert_equal( ret, ISU_DTE_ERR_CMD );
-  // zassert_equal( isu_dte_get_err( &g_isu_dte ), 3 );
+  zassert_equal( ret, ISU_DTE_ERR_CMD );
+  zassert_equal( isu_dte_get_err( &g_isu_dte ), 3 );
 
   // - 0 - SBD message successfully written to the 9602.
   // - 1 - SBD message write timeout. An insufficient number of bytes were transferred to 9602
@@ -132,6 +132,10 @@ ZTEST( isbd_suite, test_mo_mt ) {
   // - 3 - SBD message size is not correct. The maximum mobile originated SBD message length
   // is 340 bytes. The minimum mobile originated SBD message length is 1 byte.
 
+}
+
+ZTEST( isbd_suite, test_mt_ring ) {
+  // TODO: test MT ring setters and getters
 }
 
 // TODO: move this to a new AT-UART test module

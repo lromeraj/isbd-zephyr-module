@@ -156,8 +156,6 @@ isu_dte_err_t isu_set_mo_txt( isu_dte_t *dte, const char *txt ) {
   return dte->err == AT_UART_OK ? ISU_DTE_OK : ISU_DTE_ERR_AT;
 }
 
-
-
 isu_dte_err_t isu_set_mo( isu_dte_t *dte, const uint8_t *msg_buf, uint16_t msg_buf_len ) {
 
   SEND_TINY_CMD_OR_RET( 
@@ -213,13 +211,13 @@ isu_dte_err_t isu_set_mo( isu_dte_t *dte, const uint8_t *msg_buf, uint16_t msg_b
 
 }
 
-isu_dte_err_t isu_get_mt( isu_dte_t *dte, uint8_t *__msg, uint16_t *msg_len, uint16_t *csum ) {
+isu_dte_err_t isu_get_mt( isu_dte_t *dte, uint8_t *msg, uint16_t *msg_len, uint16_t *csum ) {
   
   SEND_TINY_CMD_OR_RET( 
     dte, AT_CMD_TMPL_EXEC, "+sbdrb" );
 
   dte->err = _pack_bin_resp(
-    dte, __msg, msg_len, csum, SHORT_TIMEOUT_RESPONSE );
+    dte, msg, msg_len, csum, SHORT_TIMEOUT_RESPONSE );
 
   return dte->err == AT_UART_OK ? ISU_DTE_OK : ISU_DTE_ERR_AT;
 }
