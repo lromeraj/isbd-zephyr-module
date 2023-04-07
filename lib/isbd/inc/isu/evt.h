@@ -3,6 +3,8 @@
 
   #include <stdint.h>
 
+  #include "dte.h"
+
   typedef enum isbd_evt_name {
 
     ISBD_EVENT_UNK,
@@ -55,6 +57,6 @@
    * @param timeout_ms Maximum time to wait for 
    * @return isbd_err_t
    */
-  isbd_err_t isbd_evt_wait( isbd_t *isbd, isbd_evt_t *event, uint32_t timeout_ms );
+  isu_dte_err_t isbd_evt_wait( isu_dte_t *isbd, isbd_evt_t *event, uint32_t timeout_ms );
 
 #endif

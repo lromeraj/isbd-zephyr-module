@@ -4,7 +4,8 @@
 #include <zephyr/drivers/uart.h>
 #include <zephyr/sys/multi_heap.h>
 
-#include "isbd.h"
+#include "isu.h"
+#include "isu/dte.h"
 
 #define RX_BUF_SIZE    256
 #define TX_BUF_SIZE    256
@@ -15,7 +16,7 @@
 static uint8_t rx_buf[ RX_BUF_SIZE ];
 static uint8_t tx_buf[ TX_BUF_SIZE ];
 
-static struct isbd_config isbd_config = {
+static isu_dte_config_t g_isu_dte_config = {
   .at_uart = {
     .echo = false,
     .verbose = false,
@@ -26,7 +27,7 @@ static struct isbd_config isbd_config = {
   }
 };
 
-static isbd_t g_isbd;
+static isu_dte_t g_isu_dte;
 
 static void* isbd_suite_setup(void) {
   
@@ -36,10 +37,10 @@ static void* isbd_suite_setup(void) {
   config.baudrate = 19200;
   uart_configure( ISBD_UART_DEVICE, &config );
 
-  isbd_err_t ret;
-  ret = isbd_setup( &g_isbd, &isbd_config );
+  isu_dte_err_t ret;
+  ret = isu_dte_setup( &g_isu_dte, &g_isu_dte_config );
 
-  zassert_equal( ret, ISBD_OK, "Setup failed" );
+  zassert_equal( ret, ISU_DTE_OK, "Setup failed" );
 
   return NULL;
 }
@@ -51,9 +52,9 @@ ZTEST( isbd_suite, test_imei ) {
   int16_t ret;
   char imei[ 16 ];
 
-  ret = isbd_get_imei( &g_isbd, imei, sizeof( imei ) );
+  ret = isu_get_imei( &g_isu_dte, imei, sizeof( imei ) );
   
-  zassert_equal( ret, ISBD_OK, "Could not fetch IMEI" );
+  zassert_equal( ret, ISU_DTE_OK, "Could not fetch IMEI" );
   zassert_equal( strlen( imei ), 15, "IMEI length mismatch" );
   
 }
@@ -64,24 +65,24 @@ ZTEST( isbd_suite, test_mo_mt ) {
    * @brief Set mobile originated buffer with a
    * sample message
    */
-  isbd_err_t ret;
+  isu_dte_err_t ret;
   const uint8_t msg[] = { 
     0x34, 0x1E, 0x45, 0x23, 0x34, 0xBB, 0xCC, 0x54, 0x32, 0x13, 0x34, 0xA5
   };
   const uint16_t msg_len = sizeof( msg );
   const uint16_t msg_csum = isbd_compute_checksum( msg, msg_len );
 
-  ret = isbd_set_mo( &g_isbd, msg, sizeof( msg ) );
-  zassert_equal( ret, ISBD_OK, "Could not set MO buffer" );
+  ret = isu_set_mo( &g_isu_dte, msg, sizeof( msg ) );
+  zassert_equal( ret, ISU_DTE_OK, "Could not set MO buffer" );
 
   /**
    * @brief Transfer mobile originated buffer to the
    * mobile terminated buffer
    */
-  ret = isbd_mo_to_mt( &g_isbd, NULL, 0 );
+  ret = isu_mo_to_mt( &g_isu_dte, NULL, 0 );
   
   // check if the MT buffer was read successfully
-  zassert_equal( ret, ISBD_OK, "Could not transfer message from MO to MT" );
+  zassert_equal( ret, ISU_DTE_OK, "Could not transfer message from MO to MT" );
 
   /**
    * @brief Now we check if the mobile terminated buffer
@@ -91,10 +92,10 @@ ZTEST( isbd_suite, test_mo_mt ) {
   char mt_buf[ msg_len ];
   uint16_t mt_len = sizeof( mt_buf );
 
-  ret = isbd_get_mt( &g_isbd, mt_buf, &mt_len, &mt_csum );
+  ret = isu_get_mt( &g_isu_dte, mt_buf, &mt_len, &mt_csum );
 
   // check if MT buffer could be fetched
-  zassert_equal( ret, ISBD_OK, 
+  zassert_equal( ret, ISU_DTE_OK, 
     "Could not fetch MT buffer" );
 
   zassert_equal( mt_len, msg_len, 
@@ -115,10 +116,10 @@ ZTEST( isbd_suite, test_mo_mt ) {
    * expecting an error result
    */
   const char empty_msg[] = {};
-  ret = isbd_set_mo( &g_isbd, empty_msg, sizeof( empty_msg ) );
+  ret = isu_set_mo( &g_isu_dte, empty_msg, sizeof( empty_msg ) );
 
-  zassert_equal( ret, ISBD_ERR_CMD );
-  zassert_equal( isbd_get_err( &g_isbd ), 3 );
+  zassert_equal( ret, ISU_DTE_ERR_CMD );
+  zassert_equal( isu_dte_get_err( &g_isu_dte ), 3 );
 
   // - 0 - SBD message successfully written to the 9602.
   // - 1 - SBD message write timeout. An insufficient number of bytes were transferred to 9602
@@ -130,10 +131,6 @@ ZTEST( isbd_suite, test_mo_mt ) {
 
 }
 
-ZTEST( isbd_suite, test_mt_ring ) {
-  // TODO: test MT ring setters and getters
-}
-
 // TODO: move this to a new AT-UART test module
 ZTEST( isbd_suite, test_overflow ) {
 
@@ -142,10 +139,10 @@ ZTEST( isbd_suite, test_overflow ) {
 
   // this should trigger overflow error because
   // there is not enough space to write trailing \0
-  ret = isbd_get_imei( &g_isbd, imei, sizeof( imei ) );
+  ret = isu_get_imei( &g_isu_dte, imei, sizeof( imei ) );
   
-  zassert_equal( ret, ISBD_ERR_AT );
-  zassert_equal( isbd_get_err( &g_isbd ), AT_UART_OVERFLOW, 
+  zassert_equal( ret, ISU_DTE_ERR_AT );
+  zassert_equal( isu_dte_get_err( &g_isu_dte ), AT_UART_OVERFLOW, 
     "Overflow not triggered" );
   
 }

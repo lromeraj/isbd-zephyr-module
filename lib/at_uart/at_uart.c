@@ -19,7 +19,8 @@
 // Default AT short response timeout
 #define AT_SHORT_TIMEOUT          1000 // ms
 
-// ------------- Private AT basic command methods ---------------
+// ------------- Private AT basic commands ---------------
+
 /**
  * @brief Enables or disables AT quiet mode. If enabled there will not be
  * AT command responses. 
@@ -66,10 +67,9 @@ static at_uart_err_t _at_uart_set_verbose( at_uart_t *at_uart, bool enable );
  */
 static at_uart_err_t _at_uart_enable_echo( at_uart_t *at_uart, bool enable );
 
-
 static at_uart_err_t _at_uart_three_wire_connection( at_uart_t *at_uart, bool using );
 
-// --------- End of private AT basic command methods ------------
+// --------- End of private AT basic commands ------------
 
 
 at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
@@ -79,7 +79,7 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
   }
 
   uint8_t byte;
-  uint16_t byte_i = 0;
+  // uint16_t byte_i = 0;
 
   // This flag is used to avoid rechecking echo for segmented responses
   at_uart->_echoed = true;
@@ -88,7 +88,7 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
 
   while( zuart_read( &at_uart->zuart, &byte, 1, AT_SHORT_TIMEOUT ) == 1 ) {
 
-    if ( byte_i == 0 && byte == '\n' ) continue;
+    // if ( byte_i == 0 && byte == '\n' ) continue;
 
     // ! When a mismatch is detected we have to drop all remaining chars
     // ! In case of electrical noise, the trailing char may be different
@@ -98,14 +98,14 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
     // TODO: Illegal private access, create a function inside zuart module
     // TODO: to retrieve specific transmission byte
 
-    // ! If we want to check echo like this we have an additional buffer
+    // ! If we want to check echo like this we need an additional buffer
     // ! to store the transmitted command, otherwise we can skip the command completely
     // if ( at_uart->zuart.buf.tx[ byte_i ] != byte ) {
     //   // Echoed command do not matches previously transmitted command
     //   at_code = AT_UART_ERR;
     // }
 
-    byte_i++;
+    // byte_i++;
 
     if ( byte == '\r' ) {
       return at_code;

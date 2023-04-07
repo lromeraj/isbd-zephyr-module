@@ -4,8 +4,8 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
 
-#include "isbd.h"
-#include "isbd/evt.h"
+#include "isu.h"
+#include "isu/evt.h"
 
 #include "message.h"
 
@@ -38,7 +38,7 @@ static char g_msgq_buf[ QUEUE_MAX_LEN * sizeof(struct msgq_item) ];
 static uint8_t rx_buf[ 512 ];
 static uint8_t tx_buf[ 512 ];
 
-static isbd_t g_isbd;
+static isu_dte_t g_isbd;
 
 void msg_destroy( struct msgq_item *msgq_item );
 void msg_requeue( struct msgq_item *msgq_item );
@@ -47,15 +47,15 @@ bool _send( const uint8_t *msg, uint16_t msg_len ) {
 
   printk( "Sending message #%hu ...\n", msg_len ); 
   
-  isbd_err_t ret;
-  ret = isbd_set_mo( &g_isbd, msg, msg_len );
+  isu_dte_err_t ret;
+  ret = isu_set_mo( &g_isbd, msg, msg_len );
 
-  if ( ret == ISBD_OK ) {
+  if ( ret == ISU_DTE_OK ) {
 
-    isbd_session_ext_t session;
-    ret = isbd_init_session( &g_isbd, &session, false );
+    isu_session_ext_t session;
+    ret = isu_init_session( &g_isbd, &session, false );
 
-    if ( ret == ISBD_OK && session.mo_sts < 3 ) {
+    if ( ret == ISU_DTE_OK && session.mo_sts < 3 ) {
       return true;
     }
 
@@ -73,7 +73,7 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
 	uart_config.baudrate = 19200;
 	uart_configure( uart_slave_device, &uart_config );
 
-  struct isbd_config isbd_config = {
+  struct isu_dte_config isu_dte_config = {
     .at_uart = {
       .echo = true,
       .verbose = true,
@@ -84,20 +84,20 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
     }
   };
 
-  if ( isbd_setup( &g_isbd, &isbd_config ) == ISBD_OK ) {
+  if ( isu_dte_setup( &g_isbd, &isu_dte_config ) == ISU_DTE_OK ) {
     printk( "Modem OK\n" );
   } else {
     printk( "Could not talk to modem, probably busy ...\n" );
     return;
   }
 
-  isbd_evt_report_t evt_report = {
+  isu_evt_report_t evt_report = {
     .mode = 1,
     .service = 1,
     .signal = 1,
   };
 
-  isbd_set_evt_report( &g_isbd, &evt_report );
+  isu_set_evt_report( &g_isbd, &evt_report );
 
   while ( 1 ) {
 
@@ -116,7 +116,7 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
     isbd_evt_t evt;
 
     // printk( "Waiting for event ...\n" );
-    if ( isbd_evt_wait( &g_isbd, &evt, 1000 ) == ISBD_OK ) {
+    if ( isbd_evt_wait( &g_isbd, &evt, 1000 ) == ISU_DTE_OK ) {
       printk( "Event (%03d) captured\n", evt.name );
     }
 

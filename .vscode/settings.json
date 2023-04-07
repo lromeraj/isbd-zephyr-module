@@ -13,6 +13,8 @@
       "at.h": "c",
       "type_traits": "c",
       "printk.h": "c",
-      "at_uart.h": "c"
+      "at_uart.h": "c",
+      "dte.h": "c",
+      "isbd.h": "c"
     }
 }

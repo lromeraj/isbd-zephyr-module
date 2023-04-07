@@ -1,9 +1,13 @@
-/*
- * Copyright (c) 2022 Libre Solar Technologies GmbH
- *
- * SPDX-License-Identifier: Apache-2.0
+/**
+ * @file main.c
+ * @author Javier Romera Llave (lromerajdev@gmail.com)
+ * @brief 
+ * @version 0.1
+ * @date 2023-04-07
+ * 
+ * @copyright Copyright (c) 2023
+ * 
  */
-
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
@@ -13,7 +17,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 
-#include "isbd.h"
+#include "isu.h"
 #include "message.h"
 
 #define MSG_SIZE 32
@@ -34,14 +38,14 @@ static const struct gpio_dt_spec red_led    = GPIO_DT_SPEC_GET( LED2_NODE, gpios
 static const struct gpio_dt_spec blue_led   = GPIO_DT_SPEC_GET( LED1_NODE, gpios );
 static const struct gpio_dt_spec green_led  = GPIO_DT_SPEC_GET( LED0_NODE, gpios );
 
-static void isbd_print_error( isbd_t *isbd, isbd_err_t err ) {
+static void isbd_print_error( isu_dte_t *isbd, isu_dte_err_t err ) {
 
-  if ( err == ISBD_ERR_AT ) {
-    printk( "(%03d) @ ISBD_ERR_AT", isbd_get_err( isbd ) );
-  } else if ( err == ISBD_ERR_CMD ) {
-    printk( "(%03d) @ ISBD_ERR_CMD", isbd_get_err( isbd ) );
+  if ( err == ISU_DTE_ERR_AT ) {
+    printk( "(%03d) @ ISU_DTE_ERR_AT", isu_dte_get_err( isbd ) );
+  } else if ( err == ISU_DTE_ERR_CMD ) {
+    printk( "(%03d) @ ISU_DTE_ERR_CMD", isu_dte_get_err( isbd ) );
   } else {
-    printk( "(\?\?\?) @ ISBD_ERR_UNK" );
+    printk( "(\?\?\?) @ ISU_DTE_ERR_UNK" );
   }
 
 }
@@ -50,7 +54,7 @@ static void isbd_print_error( isbd_t *isbd, isbd_err_t err ) {
 do { \
   printk( "%-20s() ", #f_name ); \
   int16_t M_g_code = f_name( __VA_ARGS__ ); \
-  if ( M_g_code == ISBD_OK ) { \
+  if ( M_g_code == ISU_DTE_OK ) { \
     printk( "OK; " ); \
     ok_block \
   } else { \
@@ -120,7 +124,7 @@ void main(void) {
 	uart_config.baudrate = 19200;
 	uart_configure( uart_slave_device, &uart_config );
 
-  struct isbd_config isbd_config = {
+  struct isu_dte_config isu_dte_config = {
     .at_uart = {
       .echo = true,
       .verbose = true,
@@ -133,7 +137,7 @@ void main(void) {
 
   char buf[ 256 ];
 
-  if ( isbd_setup( &isbd_config ) == ISBD_OK ) {
+  if ( isbd_setup( &isu_dte_config ) == ISU_DTE_OK ) {
     printk( "Modem OK\n" );
   } else {
     printk( "Could not talk to modem, probably busy ...\n" );
@@ -145,27 +149,27 @@ void main(void) {
 
   TEST_AT_CMD({
     printk( "Revision: %s", buf );
-  }, {}, isbd_get_revision, buf, sizeof( buf ) );
+  }, {}, isu_get_revision, buf, sizeof( buf ) );
 
   // enable alerts
-  TEST_AT_CMD({}, {}, isbd_set_mt_alert, ISBD_MT_ALERT_ENABLED );
+  TEST_AT_CMD({}, {}, isu_set_mt_alert, ISBD_MT_ALERT_ENABLED );
 
-  isbd_mt_alert_t alert;
+  isu_mt_alert_t alert;
   TEST_AT_CMD({
     printk( "MT Alert: %d", alert );
-  }, {}, isbd_get_mt_alert, &alert );  
+  }, {}, isu_get_mt_alert, &alert );  
 
   TEST_AT_CMD({
     printk( "IMEI: %s", buf );
-  }, {}, isbd_get_imei, buf, sizeof( buf ) );  
+  }, {}, isbd_960x_get_imei, buf, sizeof( buf ) );  
 
   const char *msg = "MIoT";
 
-  TEST_AT_CMD({}, {}, isbd_set_mo, msg, strlen( msg ) );
+  TEST_AT_CMD({}, {}, isu_set_mo, msg, strlen( msg ) );
 
   TEST_AT_CMD({
     printk( "%s", buf );
-  }, {}, isbd_mo_to_mt, buf, sizeof( buf ) );
+  }, {}, isu_mo_to_mt, buf, sizeof( buf ) );
 
   uint16_t csum;
   uint16_t len = sizeof( buf );
@@ -176,19 +180,16 @@ void main(void) {
       printk( "%c", buf[ i ] );
     }
     printk( "\", len=%d, csum=%04X", len, csum );
-  }, {}, isbd_get_mt, buf, &len, &csum );
+  }, {}, isu_get_mt, buf, &len, &csum );
 
-  isbd_ring_sts_t ring_sts;
+  isu_ring_sts_t ring_sts;
   TEST_AT_CMD({
     printk( "Ring status: %d", ring_sts );
   }, {}, isbd_get_ring_sts, &ring_sts );
 
   */
 
-  
-
-
-  // isbd_session_ext_t session;
+  // isu_session_ext_t session;
   // TEST_AT_CMD({ // success
 
     // printk( "mo_sts=%hhu, "
@@ -212,18 +213,18 @@ void main(void) {
 
   // }, { // AT command failed
   //   set_error_led();
-  // }, isbd_init_session, &session );
+  // }, isu_init_session, &session );
 
-  // TEST_AT_CMD({}, {}, isbd_clear_buffer, ISBD_CLEAR_MO_MT_BUFF );
+  // TEST_AT_CMD({}, {}, isu_clear_buffer, ISBD_CLEAR_MO_MT_BUFF );
 
   /*
-  isbd_evt_report_t evt_report = {
+  isu_evt_report_t evt_report = {
     .mode = 1,
     .service = 1,
     .signal = 1,
   };
 
-  TEST_AT_CMD( {}, {}, isbd_set_evt_report, &evt_report );
+  TEST_AT_CMD( {}, {}, isu_set_evt_report, &evt_report );
   */
 
   /*
@@ -244,13 +245,13 @@ void main(void) {
   uint8_t signal;
   TEST_AT_CMD({
     printk( "signal_quality=%d", signal );
-  }, isbd_get_sig_q, &signal );
+  }, isu_get_sig_q, &signal );
   */
 
   // code = isbd_set_mo_bin( msg, strlen( msg ) );
 
-  // code = isbd_clear_buffer( ISBD_CLEAR_MO_BUFF );
-  // printk( "isbd_clear_buffer() : %d\n", code );
+  // code = isu_clear_buffer( ISBD_CLEAR_MO_BUFF );
+  // printk( "isu_clear_buffer() : %d\n", code );
 
   /*
   uint16_t len, csum;
@@ -265,13 +266,13 @@ void main(void) {
   
 
 
-  // int8_t cmd_code = isbd_set_mo_txt( "hoooooo" );
+  // int8_t cmd_code = isu_set_mo_txt( "hoooooo" );
   // printk( "SBDWT    : %d\n", cmd_code );
 
-  // isbd_mo_to_mt( __buff );
+  // isu_mo_to_mt( __buff );
   // printk( "MO -> MT : %s\n", __buff );
 
-  // isbd_get_mt_txt( __buff );
+  // isu_get_mt_txt( __buff );
   // printk( "MT       : %s\n", __buff );
   
   /*
@@ -286,13 +287,13 @@ void main(void) {
 
 
   /*
-  isbd_set_mo_txt(
+  isu_set_mo_txt(
     "This is an example message. It has more than 64 bytes or I think so, we should type a little bit more abcdefghijklmnopqW" );
 
-  isbd_mo_to_mt( __buff );
+  isu_mo_to_mt( __buff );
   printk( "MO -> MT : %s\n", __buff );
 
-  isbd_get_mt_txt( __buff );
+  isu_get_mt_txt( __buff );
   printk( "MT       : %s\n", __buff );
  */
 

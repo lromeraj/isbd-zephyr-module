@@ -1,16 +1,16 @@
 #include "stru.h"
 
 #include "inc/isbd.h"
-#include "inc/isbd/evt.h"
+#include "inc/isu/evt.h"
 
 #define VCODE_RING_STR    "SBDRING"
 #define CODE_RING_STR     "126"
 
 static inline bool _evt_parse_areg( const char *buf, isbd_evt_t *evt );
 static inline bool _evt_parse_ciev( const char *buf, isbd_evt_t *evt );
-static inline bool _evt_parse_ring( isbd_t *isbd, const char *buf, isbd_evt_t *evt );
+static inline bool _evt_parse_ring( isu_dte_t *isbd, const char *buf, isbd_evt_t *evt );
 
-isbd_err_t isbd_evt_wait( isbd_t *isbd, isbd_evt_t *event, uint32_t timeout_ms ) {
+isu_dte_err_t isbd_evt_wait( isu_dte_t *isbd, isbd_evt_t *event, uint32_t timeout_ms ) {
 
   char buf[ 32 ];
   event->name = ISBD_EVENT_UNK;
@@ -24,18 +24,18 @@ isbd_err_t isbd_evt_wait( isbd_t *isbd, isbd_evt_t *event, uint32_t timeout_ms )
       || _evt_parse_areg( buf, event ) 
       || _evt_parse_ring( isbd, buf, event ) ) {
       
-      return ISBD_OK;
+      return ISU_DTE_OK;
     }
 
-    return ISBD_ERR_UNK;
+    return ISU_DTE_ERR_UNK;
   }
 
   // We expect AT to return unknown,
   // if the result code is AT_UART_OK means that the response
   // was a literal OK string and we are not expecting that ...
   return isbd->err == AT_UART_OK
-    ? ISBD_ERR_UNK
-    : ISBD_ERR_AT;
+    ? ISU_DTE_ERR_UNK
+    : ISU_DTE_ERR_AT;
 
 }
 
@@ -63,7 +63,7 @@ static inline bool _evt_parse_ciev( const char *buf, isbd_evt_t *evt ) {
   return evt->name != ISBD_EVENT_UNK;
 }
 
-static inline bool _evt_parse_ring( isbd_t *isbd, const char *buf, isbd_evt_t *evt ) {
+static inline bool _evt_parse_ring( isu_dte_t *isbd, const char *buf, isbd_evt_t *evt ) {
 
   evt->name = ISBD_EVENT_UNK;
   
