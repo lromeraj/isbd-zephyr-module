@@ -45,7 +45,6 @@ static void* isbd_suite_setup(void) {
   return NULL;
 }
 
-ZTEST_SUITE( isbd_suite, NULL, isbd_suite_setup, NULL, NULL, NULL );
 
 ZTEST( isbd_suite, test_imei ) {
 
@@ -134,10 +133,6 @@ ZTEST( isbd_suite, test_mo_mt ) {
 
 }
 
-ZTEST( isbd_suite, test_mt_ring ) {
-  // TODO: test MT ring setters and getters
-}
-
 // TODO: move this to a new AT-UART test module
 ZTEST( isbd_suite, test_overflow ) {
 
@@ -153,3 +148,5 @@ ZTEST( isbd_suite, test_overflow ) {
     "Overflow not triggered" );
   
 }
+
+ZTEST_SUITE( isbd_suite, NULL, isbd_suite_setup, NULL, NULL, NULL );
