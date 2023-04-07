@@ -73,7 +73,9 @@ ZTEST( isbd_suite, test_mo_mt ) {
   const uint16_t msg_csum = isbd_compute_checksum( msg, msg_len );
 
   ret = isu_set_mo( &g_isu_dte, msg, sizeof( msg ) );
-  zassert_equal( ret, ISU_DTE_OK, "Could not set MO buffer" );
+  
+  zassert_equal( ret, ISU_DTE_OK, 
+    "Could not set MO buffer" );
 
   /**
    * @brief Transfer mobile originated buffer to the
@@ -81,8 +83,9 @@ ZTEST( isbd_suite, test_mo_mt ) {
    */
   ret = isu_mo_to_mt( &g_isu_dte, NULL, 0 );
   
-  // check if the MT buffer was read successfully
-  zassert_equal( ret, ISU_DTE_OK, "Could not transfer message from MO to MT" );
+  // check if the MT buffer was successfully read
+  zassert_equal( ret, ISU_DTE_OK, 
+    "Could not transfer message from MO to MT" );
 
   /**
    * @brief Now we check if the mobile terminated buffer
