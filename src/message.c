@@ -116,7 +116,7 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
     isbd_evt_t evt;
 
     // printk( "Waiting for event ...\n" );
-    if ( isbd_evt_wait( &g_isbd, &evt, 1000 ) == ISU_DTE_OK ) {
+    if ( isu_evt_wait( &g_isbd, &evt, 1000 ) == ISU_DTE_OK ) {
       printk( "Event (%03d) captured\n", evt.name );
     }
 

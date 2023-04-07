@@ -8,21 +8,23 @@
 
 static inline bool _evt_parse_areg( const char *buf, isbd_evt_t *evt );
 static inline bool _evt_parse_ciev( const char *buf, isbd_evt_t *evt );
-static inline bool _evt_parse_ring( isu_dte_t *isbd, const char *buf, isbd_evt_t *evt );
+static inline bool _evt_parse_ring( const char *buf, isbd_evt_t *evt, bool verbose );
 
-isu_dte_err_t isbd_evt_wait( isu_dte_t *isbd, isbd_evt_t *event, uint32_t timeout_ms ) {
+isu_dte_err_t isu_evt_wait( isu_dte_t *dte, isbd_evt_t *event, uint32_t timeout_ms ) {
 
   char buf[ 32 ];
   event->name = ISBD_EVENT_UNK;
 
-  isbd->err = at_uart_pack_txt_resp(
-    &isbd->at_uart, buf, sizeof( buf ), AT_1_LINE_RESP, timeout_ms );
+  dte->err = at_uart_pack_txt_resp(
+    &dte->at_uart, buf, sizeof( buf ), AT_1_LINE_RESP, timeout_ms );
 
-  if ( isbd->err == AT_UART_UNK ) {
+  bool verbose = dte->at_uart.config.verbose;
+
+  if ( dte->err == AT_UART_UNK ) {
 
     if ( _evt_parse_ciev( buf, event )
       || _evt_parse_areg( buf, event ) 
-      || _evt_parse_ring( isbd, buf, event ) ) {
+      || _evt_parse_ring( buf, event, verbose ) ) {
       
       return ISU_DTE_OK;
     }
@@ -33,7 +35,7 @@ isu_dte_err_t isbd_evt_wait( isu_dte_t *isbd, isbd_evt_t *event, uint32_t timeou
   // We expect AT to return unknown,
   // if the result code is AT_UART_OK means that the response
   // was a literal OK string and we are not expecting that ...
-  return isbd->err == AT_UART_OK
+  return dte->err == AT_UART_OK
     ? ISU_DTE_ERR_UNK
     : ISU_DTE_ERR_AT;
 
@@ -63,13 +65,12 @@ static inline bool _evt_parse_ciev( const char *buf, isbd_evt_t *evt ) {
   return evt->name != ISBD_EVENT_UNK;
 }
 
-static inline bool _evt_parse_ring( isu_dte_t *isbd, const char *buf, isbd_evt_t *evt ) {
+static inline bool _evt_parse_ring( const char *buf, isbd_evt_t *evt, bool verbose ) {
 
   evt->name = ISBD_EVENT_UNK;
   
-  const char *ring_str = isbd->at_uart.config.verbose 
-    ? VCODE_RING_STR 
-    : CODE_RING_STR;
+  const char *ring_str = 
+    verbose ? VCODE_RING_STR : CODE_RING_STR;
   
   if ( streq( buf, ring_str ) ) {
     evt->name = ISBD_EVENT_RING;
