@@ -166,20 +166,21 @@ isu_dte_err_t isu_set_mo( isu_dte_t *dte, const uint8_t *msg_buf, uint16_t msg_b
   // the resulting value will be a code corresponding to 
   // the command context and not to the AT command interface itself
   
-  int err;
+  int at_err;
   uint8_t code;
   char str_code[ 16 ];
 
-  err = at_uart_get_resp_code( 
+  at_err = at_uart_get_resp_code( 
     &dte->at_uart, str_code, sizeof( str_code ), &code, SHORT_TIMEOUT_RESPONSE );
 
-  if ( err == AT_UART_UNK 
+  if ( at_err == AT_UART_UNK 
       && streq( str_code, CODE_READY_STR ) ) {
+
       
     uint8_t csum_buf[ 2 ];
 
-    *( (uint16_t*)&csum_buf[ 0 ] ) = htons( 
-      isbd_compute_checksum( msg_buf, msg_buf_len ) );
+    *( (uint16_t*)&csum_buf[ 0 ] ) = 
+      htons( isbd_compute_checksum( msg_buf, msg_buf_len ) );
 
     // finally write binary data to the ISU
     // MSG (N bytes) + CHECKSUM (2 bytes)
@@ -189,22 +190,22 @@ isu_dte_err_t isu_set_mo( isu_dte_t *dte, const uint8_t *msg_buf, uint16_t msg_b
     at_uart_write( // TODO: if write fails return immediately
       &dte->at_uart, csum_buf, sizeof( csum_buf ), SHORT_TIMEOUT_RESPONSE );
 
-    // due to AT nature it is not strictly necessary to check this result
-    // this is will be done in the last call of at_uart_skip_txt_resp()
+    // Due to AT nature it is not strictly necessary to check this result.
+    // This is will be done in the last call of at_uart_skip_txt_resp()
     at_uart_get_resp_code(
       &dte->at_uart, str_code, sizeof( str_code ), &code, SHORT_TIMEOUT_RESPONSE );
 
   }
 
   // fetch last AT code ( OK / ERR )
-  err = at_uart_skip_txt_resp(
+  at_err = at_uart_skip_txt_resp(
     &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
-  if ( err == AT_UART_OK ) {
+  if ( at_err == AT_UART_OK ) {
     dte->err = code;
     return code == 0 ? ISU_DTE_OK : ISU_DTE_ERR_CMD;
   } else {
-    dte->err = err;
+    dte->err = at_err;
     return ISU_DTE_ERR_AT;
   }
 

@@ -118,13 +118,13 @@
    * @return at_uart_code_t 
    */
   at_uart_err_t at_uart_write_cmd(
-    at_uart_t *at_uart, char *cmd, size_t cmd_len );
+    at_uart_t *at_uart, char *cmd, uint16_t cmd_len );
 
   at_uart_err_t at_uart_check_echo( at_uart_t *at_uart );
 
   at_uart_err_t at_uart_pack_txt_resp( 
     at_uart_t *at_uart, 
-    char *str_resp, size_t str_resp_len, 
+    char *str_resp, uint16_t str_resp_len, 
     uint8_t lines, uint16_t timeout_ms );
   
   at_uart_err_t at_uart_get_resp_code( 

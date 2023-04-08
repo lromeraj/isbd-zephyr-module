@@ -118,10 +118,10 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
 
 
 at_uart_err_t at_uart_pack_txt_resp(
-  at_uart_t *at_uart, char *buf, size_t buf_size, uint8_t lines, uint16_t timeout_ms 
+  at_uart_t *at_uart, char *buf, uint16_t buf_size, uint8_t lines, uint16_t timeout_ms 
 ) {
   
-  uint8_t line_i = 0;
+  uint8_t line_n = 1;
   unsigned char byte;
 
   uint16_t buf_i = 0;
@@ -142,12 +142,10 @@ at_uart_err_t at_uart_pack_txt_resp(
 
     if ( at_buf_i > 0 && trail_char == at_uart->eol ) { // new line detected
 
-      line_i++;
-
       if ( lines == AT_UNK_LINE_RESP 
-          || line_i == lines
-          || line_i == 1 ) {
-
+          || line_n == lines
+          || line_n == 1 ) {
+        
         at_code = at_uart_get_str_code( at_uart, at_buf );
 
         if ( at_code != AT_UART_UNK ) {
@@ -155,8 +153,9 @@ at_uart_err_t at_uart_pack_txt_resp(
         }
       }
 
+      line_n++;
 
-      if ( lines > 0 && line_i >= lines ) {
+      if ( lines > 0 && line_n > lines ) {
         return AT_UART_UNK;
       }
 
@@ -167,29 +166,34 @@ at_uart_err_t at_uart_pack_txt_resp(
 
     if ( !trail_char ) {
       
-      if ( buf && ( lines == AT_UNK_LINE_RESP || line_i < lines) ) {
+      if ( buf && ( 
+          lines == AT_UNK_LINE_RESP 
+          || line_n == AT_1_LINE_RESP 
+          || line_n < lines ) ) {
 
-          if ( buf_i >= buf_size - 1 ) {
+        if ( buf_i >= buf_size - 1 ) {
 
-            // ! We are leaving all pending chars in the ring buffer
-            // ! so it is very important to clear reception buffer before
-            // ! sending a new command 
-            // TODO: Despite of clearing reception buffer the device 
-            // TODO: can continue sending data, so the next commands will
-            // TODO: fail anyway, maybe we should keep track of overflow flag
-            // TODO: but continue processing AT response
-            // TODO: see: 
-            return AT_UART_OVERFLOW;
+          // ! We are leaving all pending chars in the ring buffer
+          // ! so it is very important to clear reception buffer before
+          // ! sending a new command 
+          // TODO: Despite of clearing reception buffer the device 
+          // TODO: can continue sending data, so the next commands will
+          // TODO: fail anyway, maybe we should keep track of overflow flag
+          // TODO: but continue processing AT response
+          // TODO: see: 
+          return AT_UART_OVERFLOW;
 
-          } else {
+        } else {
 
-            // TODO: We should append trailing chars to source buf 
-            // TODO: if response string has multiple lines
-            buf[ buf_i ] = byte;
+          // TODO: We should append trailing chars to source buf 
+          // TODO: if response string has multiple lines
+          buf[ buf_i ] = byte;
 
-            // TODO: Put this char only when buffer is terminated
-            buf[ buf_i + 1 ] = '\0';
-          }
+          // TODO: Put this char only when buffer is terminated
+          buf[ buf_i + 1 ] = '\0';
+          buf_i++;
+
+        }
 
       }
 
@@ -197,10 +201,9 @@ at_uart_err_t at_uart_pack_txt_resp(
       if ( at_buf_i < sizeof( at_buf ) - 1 ) {
         at_buf[ at_buf_i ] = byte;
         at_buf[ at_buf_i + 1 ] = '\0';
+        at_buf_i++;
       }
 
-      buf_i++;
-      at_buf_i++;
 
     }
 
@@ -278,7 +281,7 @@ at_uart_err_t at_uart_read(
 }
 
 at_uart_err_t at_uart_write_cmd( 
-  at_uart_t *at_uart, char *cmd_buf, size_t cmd_len
+  at_uart_t *at_uart, char *cmd_buf, uint16_t cmd_len
 ) {
 
   at_uart->_echoed = false;

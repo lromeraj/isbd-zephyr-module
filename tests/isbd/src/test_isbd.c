@@ -5,6 +5,7 @@
 #include <zephyr/sys/multi_heap.h>
 
 #include "isu.h"
+#include "isbd.h"
 #include "isu/dte.h"
 
 #define RX_BUF_SIZE    256
