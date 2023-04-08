@@ -9,9 +9,10 @@
   #include "zuart.h"
 
   // Expected AT command response lines
-  #define AT_1_LINE_RESP    1
-  #define AT_2_LINE_RESP    2
-  #define AT_3_LINE_RESP    3
+  #define AT_1_LINE_RESP      1
+  #define AT_2_LINE_RESP      2
+  #define AT_3_LINE_RESP      3
+  #define AT_UNK_LINE_RESP    0
   
   #define AT_UART_RET_IF_ERR( r ) \
     if ( r != AT_UART_OK ) { return r; }

@@ -54,8 +54,7 @@ isu_dte_err_t isu_get_revision( isu_dte_t *dte, char *rev_buf, size_t rev_buf_le
   SEND_TINY_CMD_OR_RET( dte,  AT_CMD_TMPL_EXEC, "+cgmr" );
 
   dte->err = at_uart_pack_txt_resp( 
-    // TODO: Measure exact lines from AT+CGMR
-    &dte->at_uart, rev_buf, rev_buf_len, 10, SHORT_TIMEOUT_RESPONSE );
+    &dte->at_uart, rev_buf, rev_buf_len, AT_UNK_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   return dte->err == AT_UART_OK ? ISU_DTE_OK : ISU_DTE_ERR_AT;
 }
@@ -420,7 +419,7 @@ isu_dte_err_t isu_net_reg( isu_dte_t *dte, isu_net_reg_sts_t *out_sts ) {
 
 }
 
-isu_dte_err_t isbd_get_ring_sts( isu_dte_t *dte, isu_ring_sts_t *ring_sts ) {
+isu_dte_err_t isu_get_ring_sts( isu_dte_t *dte, isu_ring_sts_t *ring_sts ) {
 
   SEND_TINY_CMD_OR_RET( 
     dte, AT_CMD_TMPL_EXEC, "+cris" );

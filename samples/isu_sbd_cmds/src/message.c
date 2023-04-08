@@ -14,9 +14,8 @@
 #define THREAD_PRIORITY     0
 #define THREAD_STACK_SIZE   4096
 
-/* change this to any other UART peripheral if desired */
-// #define UART_MASTER_DEVICE_NODE DT_NODELABEL(uart0)
-#define UART_SLAVE_DEVICE_NODE DT_NODELABEL( uart3 )
+// #define UART_MASTER_DEVICE_NODE DT_NODELABEL( uart0 )
+#define UART_SLAVE_DEVICE_NODE  DT_NODELABEL( uart3 )
 
 static struct device *uart_slave_device = 
   (struct device*)DEVICE_DT_GET( UART_SLAVE_DEVICE_NODE );
