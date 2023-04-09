@@ -43,8 +43,12 @@ uint16_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byte
       if ( sem_ret < 0 ) break;
     }
 
+    uint8_t *out_buf_offset = out_buf
+      ? out_buf + total_bytes_read
+      : NULL;
+
     total_bytes_read += ring_buf_get(
-      &zuart->rx_rbuf, out_buf + total_bytes_read, n_bytes - total_bytes_read );
+      &zuart->rx_rbuf, out_buf_offset, n_bytes - total_bytes_read );
 
   }
 
@@ -81,8 +85,11 @@ uint16_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byt
 
     while ( total_bytes_read < n_bytes 
       && uart_poll_in( zuart->dev, &byte ) == 0 ) {
+      
+      if ( out_buf ) {
+        out_buf[ total_bytes_read ] = byte;
+      }
 
-      out_buf[ total_bytes_read ] = byte;
       total_bytes_read++;
     }
 
@@ -102,7 +109,9 @@ uint16_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byt
       int ret = uart_poll_in( zuart->dev, &byte );
 
       if ( ret == 0 ) {
-        out_buf[ total_bytes_read ] = byte;
+        if ( out_buf ) {
+          out_buf[ total_bytes_read ] = byte;
+        }
         total_bytes_read++;
       } else if ( ret == -1 ) {
         k_yield();

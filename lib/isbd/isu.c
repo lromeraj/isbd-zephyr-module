@@ -443,33 +443,48 @@ isu_dte_err_t isu_get_ring_sts( isu_dte_t *dte, isu_ring_sts_t *ring_sts ) {
   }
 }
 
-isu_dte_err_t isbd_wait_unblock( isu_dte_t *dte ) {
-
-  // TODO: this should be at_uart_unblock_wait ...
-  zuart_force_read_timeout( &dte->at_uart.zuart );
-
-  return ISU_DTE_OK;
-}
-
 static at_uart_err_t _pack_bin_resp(
   isu_dte_t *dte, uint8_t *msg_buf, uint16_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms
 ) {
 
-  at_uart_read( // TODO: if read fails return immediately 
-    &dte->at_uart, (uint8_t*)msg_buf_len, 2, timeout_ms ); // message length
+  uint16_t msg_len;
+  at_uart_err_t ret = AT_UART_OK;
   
-  *msg_buf_len = ntohs( *msg_buf_len );
+  // flag used to detect if the given buffer is smaller than necessary
+  bool overflowed = false;
 
-  at_uart_read( // TODO: if read fails return immediately
-    &dte->at_uart, msg_buf, *msg_buf_len, timeout_ms );
+  ret = at_uart_read( 
+    &dte->at_uart, (uint8_t*)&msg_len, 2, timeout_ms ); // message length
 
-  at_uart_read( // TODO: if read fails return immediately
-    &dte->at_uart, (uint8_t*)csum, 2, timeout_ms );
-  
-  *csum = ntohs( *csum );
+  if ( ret == AT_UART_OK ) {
 
-  return at_uart_skip_txt_resp( 
-    &dte->at_uart, AT_1_LINE_RESP, timeout_ms );
+    msg_len = ntohs( msg_len );
+
+    if ( msg_len > *msg_buf_len ) {
+      msg_buf = NULL; // skip data
+      overflowed = true;
+    } else {
+      *msg_buf_len = msg_len;
+    }
+
+    ret = at_uart_read(
+      &dte->at_uart, msg_buf, msg_len, timeout_ms );
+
+  }  
+
+  if ( ret == AT_UART_OK ) {
+    ret = at_uart_read( 
+      &dte->at_uart, (uint8_t*)csum, 2, timeout_ms );
+  }
+
+  if ( ret == AT_UART_OK ) {
+    *csum = ntohs( *csum );
+    
+    ret = at_uart_skip_txt_resp( 
+      &dte->at_uart, AT_1_LINE_RESP, timeout_ms );
+  }
+
+  return overflowed ? AT_UART_OVERFLOW : ret;
 }
 
 

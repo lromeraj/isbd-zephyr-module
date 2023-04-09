@@ -116,27 +116,34 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
   return AT_UART_TIMEOUT;
 }
 
-
 at_uart_err_t at_uart_pack_txt_resp(
-  at_uart_t *at_uart, char *buf, uint16_t buf_size, uint8_t lines, uint16_t timeout_ms 
+  at_uart_t *at_uart, 
+  char *buf, uint16_t buf_size, 
+  uint8_t lines, uint16_t timeout_ms
 ) {
   
-  uint8_t line_n = 1;
-  unsigned char byte;
+  uint8_t line_n = 1; // current line number
 
-  uint16_t buf_i = 0;
-  uint16_t at_buf_i = 0;
-
-  at_uart_err_t at_code;
+  uint16_t buf_i = 0; // buffer current index
+  uint16_t buf_li = 0; // buffer last line end index
+  uint16_t at_buf_i = 0; // auxiliary buffer index
 
   // this little buffer is used to parse AT status codes like ERROR, OK, ...
   char at_buf[ AT_MIN_BUFF_SIZE ] = "";
 
+  unsigned char byte;
+
   while ( zuart_read( &at_uart->zuart, &byte, 1, timeout_ms ) == 1 ) {
 
-    unsigned char trail_char = 0;
+    // Used to add or not the current byte to the output buffer
+    unsigned char add_char = byte;
 
+    // Used to know if the current char is a trailing char or not
+    // Also known as EOL (end of line) 
+    unsigned char trail_char = 0;
+    
     if ( byte == '\r' || byte == '\n' ) {
+      add_char = 0;
       trail_char = byte;
     }
 
@@ -146,9 +153,19 @@ at_uart_err_t at_uart_pack_txt_resp(
           || line_n == lines
           || line_n == 1 ) {
         
-        at_code = at_uart_get_str_code( at_uart, at_buf );
+        at_uart_err_t at_code = at_uart_get_str_code( at_uart, at_buf );
 
         if ( at_code != AT_UART_UNK ) {
+          
+          if ( buf ) {
+
+            if ( buf_li >= buf_size ) {
+              return AT_UART_OVERFLOW;
+            } else {
+              buf[ buf_li ] = '\0';
+            }
+          }
+
           return at_code;
         }
       }
@@ -156,55 +173,36 @@ at_uart_err_t at_uart_pack_txt_resp(
       line_n++;
 
       if ( lines > 0 && line_n > lines ) {
-        return AT_UART_UNK;
-      }
 
-      at_buf_i = 0;
-      at_buf[ 0 ] = '\0';
-
-    }
-
-    if ( !trail_char ) {
-      
-      if ( buf && ( 
-          lines == AT_UNK_LINE_RESP 
-          || line_n == AT_1_LINE_RESP 
-          || line_n < lines ) ) {
-
-        if ( buf_i >= buf_size - 1 ) {
-
-          // ! We are leaving all pending chars in the ring buffer
-          // ! so it is very important to clear reception buffer before
-          // ! sending a new command 
-          // TODO: Despite of clearing reception buffer the device 
-          // TODO: can continue sending data, so the next commands will
-          // TODO: fail anyway, maybe we should keep track of overflow flag
-          // TODO: but continue processing AT response
-          // TODO: see: 
+        if ( buf && buf_i > buf_size ) {
           return AT_UART_OVERFLOW;
-
         } else {
-
-          // TODO: We should append trailing chars to source buf 
-          // TODO: if response string has multiple lines
-          buf[ buf_i ] = byte;
-
-          // TODO: Put this char only when buffer is terminated
-          buf[ buf_i + 1 ] = '\0';
-          buf_i++;
-
+          return AT_UART_UNK;
         }
 
       }
 
-      // at buff is only used for AT command responses
-      if ( at_buf_i < sizeof( at_buf ) - 1 ) {
-        at_buf[ at_buf_i ] = byte;
-        at_buf[ at_buf_i + 1 ] = '\0';
-        at_buf_i++;
+      buf_li = buf_i;
+
+      at_buf_i = 0;
+      at_buf[ 0 ] = '\0';
+
+      add_char = '\n';
+    }
+
+    if ( buf && add_char ) {
+      if ( buf_i < buf_size - 1 ) {
+        buf[ buf_i ] = add_char;
+        buf[ buf_i + 1 ] = '\0';
       }
+      buf_i++;
+    }
 
-
+    // at buff is only used for AT command responses
+    if ( !trail_char && at_buf_i < sizeof( at_buf ) - 1 ) {
+      at_buf[ at_buf_i ] = byte;
+      at_buf[ at_buf_i + 1 ] = '\0';
+      at_buf_i++;
     }
 
   }

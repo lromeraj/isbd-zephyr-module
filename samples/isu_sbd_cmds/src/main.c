@@ -103,7 +103,7 @@ static uint8_t tx_buf[ 512 ];
 
 void main(void) {
 
-  if (   !gpio_is_ready_dt( &red_led )
+  if ( !gpio_is_ready_dt( &red_led )
       || !gpio_is_ready_dt( &blue_led )
       || !gpio_is_ready_dt( &green_led ) ) {
     
@@ -133,7 +133,7 @@ void main(void) {
     }
   };
 
-  char buf[ 512 ]; // buffer used to parse AT responses
+  char buf[ 256 ]; // buffer used to parse AT responses
 
   if ( isu_dte_setup( &g_isu_dte, &isu_dte_config ) == ISU_DTE_OK ) {
     printk( "Modem OK\n" );
