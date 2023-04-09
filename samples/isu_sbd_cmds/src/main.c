@@ -186,7 +186,6 @@ void main(void) {
     printk( "Ring status: %d", ring_sts );
   }, {}, isu_get_ring_sts, &ring_sts );
 
-
   isu_session_ext_t session;
 
   TEST_ISU_CMD({ // success

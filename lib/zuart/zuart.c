@@ -232,19 +232,20 @@ zuart_err_t zuart_setup( zuart_t *zuart, const zuart_config_t *zuart_config ) {
   zuart->config = *zuart_config;
 
   if ( zuart_config->mode == ZUART_MODE_IRQ ) {
-
+    
     zuart->config.read_proto = zuart_read_irq_proto;
     zuart->config.write_proto = zuart_write_irq_proto;
-
+  
   } else if ( zuart_config->mode == ZUART_MODE_POLL ) {
 
     zuart->config.read_proto = zuart_read_poll_proto;
     zuart->config.write_proto = zuart_write_poll_proto;
+  
   }
 
   if ( zuart->config.read_proto == zuart_read_irq_proto 
       || zuart->config.write_proto == zuart_write_irq_proto ) {
-    
+
     uart_irq_callback_user_data_set( zuart->dev, _uart_isr, zuart );
   }
 
@@ -281,12 +282,16 @@ zuart_err_t zuart_setup( zuart_t *zuart, const zuart_config_t *zuart_config ) {
 
 // TODO: think about polling, update zuart struct flag ???
 void zuart_force_read_timeout( zuart_t *zuart ) {
-  k_sem_reset( &zuart->rx_sem );
+  if ( zuart->config.read_proto == zuart_read_irq_proto ) {
+    k_sem_reset( &zuart->rx_sem );
+  }
 }
 
 // TODO: think about polling, update zuart struct flag ???
 void zuart_force_write_timeout( zuart_t *zuart ) {
-  k_sem_reset( &zuart->tx_sem );
+  if ( zuart->config.write_proto == zuart_write_irq_proto ) {
+    k_sem_reset( &zuart->tx_sem );
+  }
 }
 
 static inline void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
@@ -310,7 +315,7 @@ static inline void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
     
     // TODO: we could add extra logic here and give semaphore only if
     // TODO: there are at least N bytes of free space in the ring buffer
-    // the semaphore will be given anyway to allow writing bytes
+    // the semaphore will be given anyway to allow writing
     k_sem_give( &zuart->tx_sem );
 
   } else {
@@ -349,7 +354,7 @@ static inline void _uart_rx_isr( const struct device *dev, zuart_t *zuart ) {
     // TODO: we could give semaphore depending on some additional logic
     k_sem_give( &zuart->rx_sem );
   }
-  
+
 }
 
 static void _uart_isr( const struct device *dev, void *user_data ) {

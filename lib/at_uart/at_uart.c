@@ -116,6 +116,7 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
   return AT_UART_TIMEOUT;
 }
 
+// TODO: https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/24
 at_uart_err_t at_uart_pack_txt_resp(
   at_uart_t *at_uart, 
   char *buf, uint16_t buf_size, 
@@ -171,7 +172,8 @@ at_uart_err_t at_uart_pack_txt_resp(
       }
 
       line_n++;
-
+      
+       // TODO: recheck this
       if ( lines > 0 && line_n > lines ) {
 
         if ( buf && buf_i > buf_size ) {
@@ -187,6 +189,7 @@ at_uart_err_t at_uart_pack_txt_resp(
       at_buf_i = 0;
       at_buf[ 0 ] = '\0';
 
+      // this char is used to split multiline responses
       add_char = '\n';
     }
 
