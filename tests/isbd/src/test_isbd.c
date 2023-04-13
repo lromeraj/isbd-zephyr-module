@@ -21,10 +21,10 @@ static isu_dte_config_t g_isu_dte_config = {
   .at_uart = {
     .echo = false,
     .verbose = false,
-    // .zuart = ZUART_CONF_POLL( uart_slave_device ),
+    // .zuart = ZUART_CONF_POLL( (struct device*)ISBD_UART_DEVICE ),
     .zuart = ZUART_CONF_IRQ( (struct device*)ISBD_UART_DEVICE, rx_buf, RX_BUF_SIZE, tx_buf, TX_BUF_SIZE ),
-    // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( uart_slave_device, rx_buf, sizeof( rx_buf ) ),
-    // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( uart_slave_device, tx_buf, sizeof( tx_buf ) ),
+    // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( (struct device*)ISBD_UART_DEVICE, rx_buf, sizeof( rx_buf ) ),
+    // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( (struct device*)ISBD_UART_DEVICE, tx_buf, sizeof( tx_buf ) ),
   }
 };
 
