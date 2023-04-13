@@ -59,6 +59,7 @@ ZTEST( isbd_suite, test_imei ) {
   
 }
 
+
 ZTEST( isbd_suite, test_mo_mt ) {
 
   /**
@@ -123,6 +124,9 @@ ZTEST( isbd_suite, test_mo_mt ) {
 
   zassert_equal( ret, ISU_DTE_ERR_CMD );
   zassert_equal( isu_dte_get_err( &g_isu_dte ), 3 );
+
+  ret = isu_clear_buffer( &g_isu_dte, ISU_CLEAR_MO_MT_BUFF );
+  zassert_equal( ret, ISU_DTE_OK );
 
   // - 0 - SBD message successfully written to the 9602.
   // - 1 - SBD message write timeout. An insufficient number of bytes were transferred to 9602
