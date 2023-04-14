@@ -9,13 +9,13 @@ function wait_for_str {
 function fg_process {
   out="/tmp/`basename $2`_${RANDOM}${RANDOM}.out"
   ${@:2} &> $out &
-  echo $! >> $1
+  echo "$!" >> $1
   echo $out
 }
 
 function fg_clear {
   if [ -e $1 ]; then
-    pkill -SIGTERM -F $1
+    kill -SIGTERM `cat $1`
     rm -f $1
   fi
 }
