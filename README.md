@@ -1,22 +1,28 @@
 # Iridium SBD Library for Zephyr OS
+This library has been implemented in order to give support to the *Iridium 9602 SBD Transceiver* in Zephyr projects. 
+This implementation should work too for modern transceivers like *9603*, and also for modems which share similar AT commands.
 
-This library has been implemented in order to give support for the *Iridium 9602 SBD Transceiver*, but it should work too for modern transceivers like *9603*, nad also for modems which share similar AT commands.
+# Wiki
+This _README_ is used for general information and overall project status, all the detailed documentation related to this library can be found in the [wiki of this repository](https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/wikis/home).
 
-At the moment this library has been implemented in order to work with blocking function calls, this is because the transceiver only processes one command at a time and implementing an asynchronous model out of the box may not be the best solution in all scenarios, the idea for this library is to be used in a different thread in order to avoid blocking other important tasks of your application, as *Zephyr* and many other *RTOS* offer the possibility of "emulating" multitask processing on single core processor, this should be something trivial to implement. The recommendations while using this library are:
+# Architecture
+The architecture of this library is quite simple, but if you want to see in more detail how does it work under the hood please refer to [this section](https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/wikis/Architecture) in the wiki.
 
-1. Create an independent thread where you'll invoke the blocking functions of this library.
-2. Create a queue in order to synchronize your main application logic with the library thread.
+# Cloning the repository
 
-Below, you can see an example of a "send and forgive" concept:
-``` txt
-      Main thread                 ISBD library thread 
-           |                                | <------------ IDLE
-           |     Send message "HOLA"        |
-           |------------------------------> |
-           |                                | OK. Sending message ...
-           |                 
+Remember to clone this repository using the `--recursive` flag to fill the directories of submodule dependencies automatically:
+
+``` bash
+git clone git@glab.lromeraj.net:ucm/miot/tfm/iridium-sbd-library.git --recursive
 ```
-This is a quite simple example, but tries to show a basic concept while using this library. In general you should consider to check the status codes returned by the different functions, so in this case you could implement a callback in order to receive resulting status codes.
+
+In case you have cloned it without `--recursive` flag, use the following command:
+``` bash
+git submodule update --init
+```
+
+
+
 
 # AT command status tables
 The following table shows the current status of the library based on the different AT commands available in the Iridium 9602 SBD Transceiver:
@@ -47,7 +53,6 @@ The following table shows the current status of the library based on the differe
 | %R | Display registers | :x: | |
 | *F | Flush to EEPROM | :hammer_and_pick: Implemented | |
 | *R | Radio Activity | :clock1: Planned |  |
-
 
 ## Proprietary AT extended commands
 | AT | Command | Status | Observations |
