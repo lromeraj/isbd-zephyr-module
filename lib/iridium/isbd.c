@@ -81,6 +81,7 @@ void _init_session( struct mo_msg *mo_msg ) {
     printk( "Sending message #%hu ...\n", mo_msg->len );
     ret = isu_set_mo( ISBD_DTE, mo_msg->data, mo_msg->len );
   } else {
+    printk( "Trying session ...\n" );
     ret = isu_clear_buffer( ISBD_DTE, ISU_CLEAR_MO_BUFF );
   }
 
@@ -130,7 +131,12 @@ void _init_session( struct mo_msg *mo_msg ) {
         evt.mt.msg = (uint8_t*) k_malloc( sizeof( uint8_t ) * session.mt_len );
 
         if ( _read_mt( evt.mt.msg, &evt.mt.len ) ) {
-          k_msgq_put( ISBD_EVT_Q, &evt, K_NO_WAIT );
+
+          if ( k_msgq_put( ISBD_EVT_Q, &evt, K_NO_WAIT ) != 0 ) {
+            // TODO: isbd_destroy_mt_msg() ...
+            k_free( evt.mt.msg ); 
+          }
+          
         }
 
       }

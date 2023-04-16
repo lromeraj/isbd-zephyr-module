@@ -178,6 +178,16 @@ static void _isbd_evt_handler( isbd_evt_t *evt ) {
 
     case ISBD_EVT_MT:
       printk( "MT message received, sn=%u\n", evt->mt.sn );
+
+      for ( int i=0; i < evt->mt.len; i++ ) {
+        printk( "%02X ", evt->mt.msg[ i ] );
+      }
+      printk( "\n" );
+
+      // TODO: create a function named isbd_free_mt_msg()
+      // TODO: to free resources
+      k_free( evt->mt.msg );
+
       break;
 
     case ISBD_EVT_DTE:
