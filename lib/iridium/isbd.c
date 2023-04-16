@@ -44,14 +44,18 @@ static struct k_thread g_thread_data;
 
 K_THREAD_STACK_DEFINE( g_thread_stack_area, THREAD_STACK_SIZE );
 
-
 bool _send( const uint8_t *msg, uint16_t msg_len ) {
 
   bool sent = false;
   printk( "Sending message #%hu ...\n", msg_len ); 
   
   isu_dte_err_t ret;
-  ret = isu_set_mo( ISBD_DTE, msg, msg_len );
+
+  if ( msg_len > 0 ) {
+    ret = isu_set_mo( ISBD_DTE, msg, msg_len );
+  } else {
+    ret = isu_clear_buffer( ISBD_DTE, ISU_CLEAR_MO_BUFF );
+  }
 
   if ( ret == ISU_DTE_OK ) {
 
@@ -71,8 +75,6 @@ bool _send( const uint8_t *msg, uint16_t msg_len ) {
 
     }
 
-  } else {
-    printk( "FAILED %d\n", ret );
   }
   
   return sent;
@@ -113,7 +115,6 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
 
       }
     }
-
 
     isbd_evt_t evt;
 

@@ -23,13 +23,13 @@
 
 #include "isbd.h"
 
-#define MSG_SIZE 32
+#define MO_MSG_RETRIES 16
 
 /* change this to any other UART peripheral if desired */
 // #define UART_MASTER_DEVICE_NODE DT_NODELABEL(uart0)
 #define UART_SLAVE_DEVICE_NODE DT_NODELABEL( uart3 )
 
-static struct device *uart_slave_device = 
+static struct device *uart_slave_device =
   (struct device*)DEVICE_DT_GET( UART_SLAVE_DEVICE_NODE );
 
 /* The devicetree node identifier for the "led0" alias. */
@@ -115,19 +115,18 @@ void main(void) {
     return;
   }
 
-
   isbd_config_t isbd_config = {
     .dte            = &g_isu_dte,
-    .priority       = 0, 
+    .priority       = 0,
     .mo_queue_len   = 4,
     .mt_queue_len   = 4,
   };
-  const char *msg = "HOLA";
 
   isbd_setup( &isbd_config );
 
-  // k_msleep( 5000 );
+  const char *msg = "HOLA";
+  isbd_msg_enqueue( msg, strlen( msg ), MO_MSG_RETRIES );
 
-  isbd_msg_enqueue( msg, 2, 4 ); 
+
 
 }
