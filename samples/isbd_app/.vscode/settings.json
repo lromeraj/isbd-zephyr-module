@@ -1,0 +1,11 @@
+{
+  "files.associations": {
+    "*.ejs": "html",
+    "stdint.h": "c",
+    "msg.h": "c",
+    "evt.h": "c",
+    "isu.h": "c",
+    "isbd.h": "c",
+    "typeinfo": "c"
+  }
+}

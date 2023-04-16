@@ -3,9 +3,9 @@
 
   #include <stdint.h>
 
-  #include "dte.h"
+  #include "../isu/dte.h"
 
-  typedef enum isbd_evt_name {
+  typedef enum isbd_evt_id {
 
     ISBD_EVENT_UNK,
 
@@ -29,11 +29,11 @@
      */
     ISBD_EVENT_AREG,
 
-  } isbd_evt_name_t;
+  } isbd_evt_id_t;
 
   typedef struct isbd_evt {
     
-    isbd_evt_name_t name;
+    isbd_evt_id_t id;
     
     union { 
 
@@ -52,11 +52,11 @@
   /**
    * @brief Waits for any event triggered over DTE by the ISU 
    * 
-   * @param isbd Iridium SBD instance
+   * @param dte ISU Data Terminal Equipment
    * @param event A pointer where the resulting event should be stored
    * @param timeout_ms Maximum time to wait for 
    * @return isbd_err_t
    */
-  isu_dte_err_t isu_evt_wait( isu_dte_t *isbd, isbd_evt_t *event, uint32_t timeout_ms );
+  isu_dte_err_t isbd_evt_wait( isu_dte_t *dte, isbd_evt_t *event, uint32_t timeout_ms );
 
 #endif

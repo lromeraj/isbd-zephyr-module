@@ -1,7 +1,7 @@
 add_subdirectory( zuart )
 add_subdirectory( at_uart )
 add_subdirectory( stru )
-add_subdirectory( isbd )
+add_subdirectory( iridium )
 
 # # str-ing u-tils library
 # add_library( stru STATIC

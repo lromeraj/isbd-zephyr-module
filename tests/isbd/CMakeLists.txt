@@ -31,7 +31,7 @@ target_sources(
 add_subdirectory(
   ../../lib ${CMAKE_CURRENT_BINARY_DIR}/lib )
 
-target_link_libraries( app PRIVATE isbd )
+target_link_libraries( app PRIVATE iridium )
 
 # ../boards/arm/qemu_cortex_m3/qemu_cortex_m3.dts
 

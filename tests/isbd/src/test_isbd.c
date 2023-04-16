@@ -5,8 +5,9 @@
 #include <zephyr/sys/multi_heap.h>
 
 #include "isu.h"
-#include "isbd.h"
 #include "isu/dte.h"
+
+#include "isbd/util.h"
 
 #define RX_BUF_SIZE    256
 #define TX_BUF_SIZE    256
@@ -71,7 +72,7 @@ ZTEST( isbd_suite, test_mo_mt ) {
     0x34, 0x1E, 0x45, 0x23, 0x34, 0xBB, 0xCC, 0x54, 0x32, 0x13, 0x34, 0xA5
   };
   const uint16_t msg_len = sizeof( msg );
-  const uint16_t msg_csum = isbd_compute_checksum( msg, msg_len );
+  const uint16_t msg_csum = isbd_util_compute_checksum( msg, msg_len );
 
   ret = isu_set_mo( &g_isu_dte, msg, sizeof( msg ) );
   

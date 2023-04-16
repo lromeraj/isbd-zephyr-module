@@ -9,9 +9,10 @@
 #include "stru.h"
 #include "at_uart.h"
 
-#include "inc/isbd.h"
-#include "inc/isu/dte.h"
-#include "inc/isu.h"
+#include "isbd/util.h"
+
+#include "isu.h"
+#include "isu/dte.h"
 
 // codes prefixed with v means verbose version of the same code
 #define VCODE_READY_STR        "READY"
@@ -180,7 +181,7 @@ isu_dte_err_t isu_set_mo( isu_dte_t *dte, const uint8_t *msg_buf, uint16_t msg_b
     uint8_t csum_buf[ 2 ];
 
     *( (uint16_t*)&csum_buf[ 0 ] ) = 
-      htons( isbd_compute_checksum( msg_buf, msg_buf_len ) );
+      htons( isbd_util_compute_checksum( msg_buf, msg_buf_len ) );
 
     // finally write binary data to the ISU
     // MSG (N bytes) + CHECKSUM (2 bytes)
@@ -342,18 +343,18 @@ isu_dte_err_t isu_set_evt_report( isu_dte_t *dte, isu_evt_report_t *evt_report )
   // ! after the command is successfully executed, it returns an OK response,
   // ! but just after that it transmits the first indicator event
   // ! so we skip those lines
-  // if ( dte->err == AT_UART_OK ) {
+  if ( dte->err == AT_UART_OK ) {
     
-  //   uint8_t lines_to_skip = // [1,0] * ( [1,0] + [1,0] )
-  //     evt_report->mode * ( evt_report->service + evt_report->signal );
+    uint8_t lines_to_skip = // [1,0] * ( [1,0] + [1,0] )
+      evt_report->mode * ( evt_report->service + evt_report->signal );
 
-  //   // TODO: we could return the resulting values instead of ignoring them ...
-  //   if ( lines_to_skip > 0 ) {
-  //     at_uart_skip_txt_resp( 
-  //       &dte->at_uart, lines_to_skip, SHORT_TIMEOUT_RESPONSE );
-  //   }
+    // TODO: we could return the resulting values instead of ignoring them ...
+    if ( lines_to_skip > 0 ) {
+      at_uart_skip_txt_resp( 
+        &dte->at_uart, lines_to_skip, SHORT_TIMEOUT_RESPONSE );
+    }
 
-  // }
+  }
 
   return dte->err == AT_UART_OK ? ISU_DTE_OK : ISU_DTE_ERR_AT;
 
