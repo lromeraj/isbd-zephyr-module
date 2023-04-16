@@ -1,1 +1,1 @@
-add_subdirectory( lib ${CMAKE_CURRENT_BINARY_DIR}/iridium )
+add_subdirectory( lib )
