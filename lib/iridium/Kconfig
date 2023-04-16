@@ -1,10 +1,9 @@
-menuconfig MAGTAG_COMMON
-    bool "Common helper code for Golioth MagTag Demo"
-    help
-      Build and link common code that is shared across MagTag samples.
+menu "Iridium Library"
 
-#config ISBD_THREAD_STACK_SIZE
-#	int "Iridium SBD service thread stack size"
-#	default 4096
-#	help
-#	  Sets the stack size for the thread created while using Iridium SBD messages
+  config ISBD_THREAD_STACK_SIZE
+    int "Iridium SBD service thread stack size"
+    default 4096
+    help 
+      "Configures the thread stack size for Iridium SBD service"
+
+endmenu

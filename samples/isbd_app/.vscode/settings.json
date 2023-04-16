@@ -6,6 +6,7 @@
     "evt.h": "c",
     "isu.h": "c",
     "isbd.h": "c",
-    "typeinfo": "c"
+    "typeinfo": "c",
+    "stdbool.h": "c"
   }
 }

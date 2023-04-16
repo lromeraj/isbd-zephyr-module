@@ -22,8 +22,6 @@ git submodule update --init
 ```
 
 
-
-
 # AT command status tables
 The following table shows the current status of the library based on the different AT commands available in the Iridium 9602 SBD Transceiver:
 
@@ -98,11 +96,20 @@ The following table shows the current status of the library based on the differe
 
 ## Example program output
 ``` txt
-isbd_get_revision   () OK; Revision: Call Processor Version: TA21004Modem DSP ...
-isbd_set_mt_alert   () OK; 
-isbd_get_mt_alert   () OK; MT Alert: 1
-isbd_get_imei       () OK; IMEI: 300534063281170
-isbd_set_mo         () OK; 
-isbd_mo_to_mt       () OK; SBDTC: Outbound SBD Copied to Inbound SBD: size = 4
-isbd_get_mt         () OK; msg="MIoT", len=4, csum=0159
+isu_get_revision    () OK; Revision: Call Processor Version: TA21004
+Modem DSP Version: 1.7 svn: 2358
+DBB Version: 0x0001 (ASIC)
+RFA Version: 0x0007 (SRFA2)
+NVM Version: KVS
+Hardware Version: BOOT07d4/9602NrvA-D/04/RAW0d
+BOOT Version: 2004 TD2-BLB960X-27 R4710
+isu_set_mt_alert    () OK; MT Alert successfully enabled
+isu_get_mt_alert    () OK; MT Alert: 1
+isu_get_imei        () OK; IMEI: 300534063281170
+isu_set_mo          () OK; 
+isu_mo_to_mt        () OK; SBDTC: Outbound SBD Copied to Inbound SBD: size = 4
+isu_get_mt          () OK; msg="MIoT", len=4, csum=0159
+isu_get_ring_sts    () OK; Ring status: 0
+isu_init_session    () OK; mo_sts=32, mo_msn=56, mt_sts=2, mt_msn=0, mt_length=0, mt_queued=0
+isu_clear_buffer    () OK; Mobile buffers cleared
 ```

@@ -20,6 +20,11 @@ if(QEMU_PIPE)
 
 endif()
 
+get_filename_component(
+  IRIDIUM_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/../../ REALPATH )
+
+list( APPEND ZEPHYR_EXTRA_MODULES ${IRIDIUM_MODULE_PATH} )
+
 find_package(
   Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
@@ -27,9 +32,6 @@ project( isbd_test )
 
 target_sources(
   app PRIVATE src/test_isbd.c)
-
-add_subdirectory(
-  ../../lib ${CMAKE_CURRENT_BINARY_DIR}/lib )
 
 target_link_libraries( app PRIVATE iridium )
 

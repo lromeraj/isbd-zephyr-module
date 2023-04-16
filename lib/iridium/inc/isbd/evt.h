@@ -5,35 +5,35 @@
 
   #include "../isu/dte.h"
 
-  typedef enum isbd_evt_id {
+  typedef enum isbd_dte_evt_id {
 
-    ISBD_EVENT_UNK,
+    ISBD_DTE_EVT_UNK,
 
     /**
      * @brief Ring alert
     */
-    ISBD_EVENT_RING,
+    ISBD_DTE_EVT_RING,
 
     /**
      * @brief Signal quality
     */
-    ISBD_EVENT_SIGQ,
+    ISBD_DTE_EVT_SIGQ,
 
     /**
      * @brief Service availability
      */
-    ISBD_EVENT_SVCA,
+    ISBD_DTE_EVT_SVCA,
 
     /**
      * @brief Automatic registration
      */
-    ISBD_EVENT_AREG,
+    ISBD_DTE_EVT_AREG,
 
-  } isbd_evt_id_t;
+  } isbd_dte_evt_id_t;
 
-  typedef struct isbd_evt {
+  typedef struct isbd_dte_evt {
     
-    isbd_evt_id_t id;
+    isbd_dte_evt_id_t id;
     
     union { 
 
@@ -45,9 +45,9 @@
         uint8_t err; 
       } areg;
 
-    } data;
+    };
 
-  } isbd_evt_t;
+  } isbd_dte_evt_t; // TODO: rename this again to isu_dte_evt_t :)
 
   /**
    * @brief Waits for any event triggered over DTE by the ISU 
@@ -57,6 +57,6 @@
    * @param timeout_ms Maximum time to wait for 
    * @return isbd_err_t
    */
-  isu_dte_err_t isbd_evt_wait( isu_dte_t *dte, isbd_evt_t *event, uint32_t timeout_ms );
+  isu_dte_err_t isbd_dte_evt_wait( isu_dte_t *dte, isbd_dte_evt_t *event, uint32_t timeout_ms );
 
 #endif

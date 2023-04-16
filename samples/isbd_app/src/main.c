@@ -23,7 +23,9 @@
 
 #include "isbd.h"
 
-#define MO_MSG_RETRIES 16
+#define DO_FOREVER while (1)
+
+#define MO_MSG_RETRIES 4
 
 /* change this to any other UART peripheral if desired */
 // #define UART_MASTER_DEVICE_NODE DT_NODELABEL(uart0)
@@ -40,6 +42,7 @@ static struct device *uart_slave_device =
 static const struct gpio_dt_spec red_led    = GPIO_DT_SPEC_GET( LED2_NODE, gpios );
 static const struct gpio_dt_spec blue_led   = GPIO_DT_SPEC_GET( LED1_NODE, gpios );
 static const struct gpio_dt_spec green_led  = GPIO_DT_SPEC_GET( LED0_NODE, gpios );
+
 
 static isu_dte_t g_isu_dte;
 
@@ -71,8 +74,11 @@ void set_info_led() {
   gpio_pin_configure_dt( &blue_led, GPIO_OUTPUT_ACTIVE );
 }
 
+static void _isbd_evt_handler( isbd_evt_t *evt );
+
 static uint8_t rx_buf[ 512 ];
 static uint8_t tx_buf[ 512 ];
+
 
 void main(void) {
 
@@ -119,14 +125,68 @@ void main(void) {
     .dte            = &g_isu_dte,
     .priority       = 0,
     .mo_queue_len   = 4,
-    .mt_queue_len   = 4,
+    .evt_queue_len  = 8,
   };
 
   isbd_setup( &isbd_config );
 
-  const char *msg = "HOLA";
-  isbd_msg_enqueue( msg, strlen( msg ), MO_MSG_RETRIES );
+  const char *msg = "MIoT";
+  isbd_enqueue_mo_msg( msg, strlen( msg ), MO_MSG_RETRIES );
+  
+  DO_FOREVER {
 
+    isbd_evt_t isbd_evt;
 
+    if ( isbd_evt_wait( &isbd_evt, 5000 ) ) {
+      _isbd_evt_handler( &isbd_evt );
+    }
+
+  }
+
+}
+
+static void _dte_evt_handler( isbd_dte_evt_t *evt ) {
+
+  switch ( evt->id ) {
+
+    case ISBD_DTE_EVT_RING:
+      printk( "Ring alert received\n" );
+      isbd_request_mt_msg();
+      break;
+      
+    case ISBD_DTE_EVT_SIGQ:
+      printk( "Signal strength: %d\n", evt->sigq );
+      break;
+
+    case ISBD_DTE_EVT_SVCA:
+      printk( "Service availability: %d\n", evt->svca );
+      break;
+
+    default:
+      break;
+  }
+
+}
+
+static void _isbd_evt_handler( isbd_evt_t *evt ) {
+
+  switch ( evt->id ) {
+
+    case ISBD_EVT_MO:
+      printk( "MO message sent, sn=%u\n", evt->mo.sn );
+      break;
+
+    case ISBD_EVT_MT:
+      printk( "MT message received, sn=%u\n", evt->mt.sn );
+      break;
+
+    case ISBD_EVT_DTE:
+      _dte_evt_handler( &evt->dte );
+      break;
+    
+    default:
+      printk( "Unknown event (%03d)\n", evt->id );
+      break;
+  }
 
 }

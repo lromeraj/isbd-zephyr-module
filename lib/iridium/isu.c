@@ -81,7 +81,7 @@ isu_dte_err_t isu_init_session( isu_dte_t *dte, isu_session_ext_t *session, bool
     &dte->at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, LONG_TIMEOUT_RESPONSE );
   
   if ( dte->err == AT_UART_OK ) {
-
+    
     // TODO: implement optimized function instead of using sscanf
     int read = sscanf( buf, "+SBDIX:%hhu,%hu,%hhu,%hu,%hu,%hhu",
       &session->mo_sts,
