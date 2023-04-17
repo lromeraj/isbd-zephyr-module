@@ -145,20 +145,20 @@ void main(void) {
 
 }
 
-static void _dte_evt_handler( isbd_dte_evt_t *evt ) {
+static void _dte_evt_handler( isu_dte_evt_t *evt ) {
 
   switch ( evt->id ) {
 
-    case ISBD_DTE_EVT_RING:
+    case ISU_DTE_EVT_RING:
       printk( "Ring alert received\n" );
       isbd_request_mt_msg();
       break;
       
-    case ISBD_DTE_EVT_SIGQ:
+    case ISU_DTE_EVT_SIGQ:
       printk( "Signal strength: %d\n", evt->sigq );
       break;
 
-    case ISBD_DTE_EVT_SVCA:
+    case ISU_DTE_EVT_SVCA:
       printk( "Service availability: %d\n", evt->svca );
       break;
 

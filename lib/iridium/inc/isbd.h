@@ -2,9 +2,9 @@
   #define ISBD_MSG_H_
 
   #include <stdint.h>
-  
+
   #include "isu/dte.h"
-  #include "isbd/evt.h"
+  #include "isu/evt.h"
 
   typedef enum isbd_evt_id {
     ISBD_EVT_MT,
@@ -29,7 +29,7 @@
         uint16_t len;
       } mo;
 
-      isbd_dte_evt_t dte;
+      isu_dte_evt_t dte;
 
     };
 
