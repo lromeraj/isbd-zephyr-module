@@ -13,6 +13,7 @@
 
 #include "isu.h"
 #include "isu/dte.h"
+#include "isu/evt.h"
 
 // codes prefixed with v means verbose version of the same code
 #define VCODE_READY_STR        "READY"
@@ -326,7 +327,9 @@ isu_dte_err_t isu_get_sig_q( isu_dte_t *dte, uint8_t *signal_q ) {
 
 }
 
-isu_dte_err_t isu_set_evt_report( isu_dte_t *dte, isu_evt_report_t *evt_report ) {
+isu_dte_err_t isu_set_evt_report( 
+  isu_dte_t *dte, isu_evt_report_t *evt_report, uint8_t *sigq, uint8_t *svca
+) {
 
   char buf[ 16 ];
 
@@ -337,21 +340,35 @@ isu_dte_err_t isu_set_evt_report( isu_dte_t *dte, isu_evt_report_t *evt_report )
     dte, AT_CMD_TMPL_SET_STR, "+CIER", buf );
 
   dte->err = at_uart_skip_txt_resp( 
-    &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );  
+    &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   // ! This command has a peculiarity,
   // ! after the command is successfully executed, it returns an OK response,
-  // ! but just after that it transmits the first indicator event
-  // ! Currently we ignore those values but we could keep those values
+  // ! but just after that it transmits the first indicator events
   if ( dte->err == AT_UART_OK ) {
     
-    uint8_t lines_to_skip = // [1,0] * ( [1,0] + [1,0] )
+    uint8_t events = // [1, 0] * ( [1, 0] + [1, 0] )
       evt_report->mode * ( evt_report->service + evt_report->signal );
+    
+    while ( events ) {
 
-    // TODO: we could return the resulting values instead of ignoring them ...
-    if ( lines_to_skip > 0 ) {
-      at_uart_skip_txt_resp( 
-        &dte->at_uart, lines_to_skip, SHORT_TIMEOUT_RESPONSE );
+      isu_dte_evt_t evt;
+      isu_dte_err_t err = isu_dte_evt_wait( dte, &evt, SHORT_TIMEOUT_RESPONSE );
+
+      if ( err == ISU_DTE_OK ) {
+        
+        if ( evt.id == ISU_DTE_EVT_SIGQ && sigq ) {
+          *sigq = evt.sigq;
+        } else if ( evt.id == ISU_DTE_EVT_SVCA && svca ) {
+          *svca = evt.svca;
+        }
+
+        events--;
+
+      } else {
+        return err;
+      }
+
     }
 
   }

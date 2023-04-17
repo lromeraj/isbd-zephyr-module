@@ -201,10 +201,15 @@
   /**
    * @brief Set indicator event reporting
    * 
-   * @param evt_report Struct containing reporting configuration
-   * @return dte_err_t 
+   * @param dte Data Terminal Equipment instance
+   * @param evt_report Event report configuration struct
+   * @param sigq Current service status
+   * @param svca Current service availability
+   * @return isu_dte_err_t 
    */
-  isu_dte_err_t isu_set_evt_report( isu_dte_t *dte, isu_evt_report_t *evt_report );
+  isu_dte_err_t isu_set_evt_report( 
+    isu_dte_t *dte, isu_evt_report_t *evt_report, uint8_t *sigq, uint8_t *svca
+  );
 
   /**
    * @brief Enable or disable the ISU to listen for SBD Ring Alerts

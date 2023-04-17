@@ -85,11 +85,11 @@ uint16_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byt
 
     while ( total_bytes_read < n_bytes 
       && uart_poll_in( zuart->dev, &byte ) == 0 ) {
-      
+
       if ( out_buf ) {
         out_buf[ total_bytes_read ] = byte;
       }
-
+      
       total_bytes_read++;
     }
 

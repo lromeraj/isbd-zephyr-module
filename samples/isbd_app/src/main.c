@@ -79,7 +79,6 @@ static inline void _isbd_evt_handler( isbd_evt_t *evt );
 static uint8_t rx_buf[ 512 ];
 static uint8_t tx_buf[ 512 ];
 
-
 void main(void) {
 
   if ( !gpio_is_ready_dt( &red_led )
@@ -168,9 +167,7 @@ static void _dte_evt_handler( isu_dte_evt_t *evt ) {
 
 }
 
-
 static void _isbd_evt_handler( isbd_evt_t *evt ) {
-
   
   switch ( evt->id ) {
 
@@ -179,12 +176,14 @@ static void _isbd_evt_handler( isbd_evt_t *evt ) {
       break;
 
     case ISBD_EVT_MT:
+      
       printk( "MT message received, sn=%u\n", evt->mt.sn );
 
       for ( int i=0; i < evt->mt.len; i++ ) {
         printk( "%02X ", evt->mt.data[ i ] );
       }
       printk( "\n" );
+
       break;
 
     case ISBD_EVT_DTE:
@@ -200,7 +199,8 @@ static void _isbd_evt_handler( isbd_evt_t *evt ) {
       break;
   }
   
-  // ! Free event resources
+  // ! The user is obliged to call this function,
+  // ! otherwise memory leaks are a possibility
   isbd_destroy_evt( evt );
 
 }

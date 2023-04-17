@@ -10,7 +10,7 @@
 #include "isbd.h"
 #include "isbd/util.h"
 
-#define DTE_EVT_WAIT_TIMEOUT    1000
+#define DTE_EVT_WAIT_TIMEOUT    5000
 
 #define DO_FOREVER while( 1 )
 
@@ -27,6 +27,7 @@
   &g_isbd.evt_msgq
 
 typedef struct isbd {
+  uint8_t svca; // service availability
   char *mo_msgq_buf;
   char *mt_msgq_buf;
   char *evt_msgq_buf;
@@ -200,25 +201,34 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
     .service  = 1,
   };
 
-  // ! This function traps the first two immediate events
-  // TODO: create an issue or Wiki entry to explain this "problem"
-  isu_set_evt_report( ISBD_DTE, &evt_report );
-  
+  isu_dte_err_t dte_err;
+
+  isu_set_evt_report( 
+    ISBD_DTE, &evt_report, NULL, &g_isbd.svca );
+
   isu_set_mt_alert( ISBD_DTE, ISU_MT_ALERT_ENABLED );
 
   DO_FOREVER {
 
     struct isbd_mo_msg mo_msg;
-
-    if ( k_msgq_get( ISBD_MO_Q, &mo_msg, K_NO_WAIT ) == 0 ) {
-      _init_session( &mo_msg );
+    
+    // sessions will be sent only if the service is currently available
+    if ( g_isbd.svca ) {
+      if ( k_msgq_get( ISBD_MO_Q, &mo_msg, K_NO_WAIT ) == 0 ) {
+        _init_session( &mo_msg );
+      }
     }
 
     isu_dte_evt_t dte_evt;
-    isu_dte_err_t dte_err = isu_dte_evt_wait(
+
+    dte_err = isu_dte_evt_wait(
       ISBD_DTE, &dte_evt, DTE_EVT_WAIT_TIMEOUT );
 
     if ( dte_err == ISU_DTE_OK ) {
+      
+      if ( dte_evt.id == ISU_DTE_EVT_SVCA ) {
+        g_isbd.svca = dte_evt.svca;
+      }
 
       isbd_evt_t isbd_evt;
 
@@ -305,6 +315,8 @@ void isbd_request_mt_msg() {
 }
 
 void isbd_setup( isbd_config_t *isbd_conf ) {
+
+  g_isbd.svca = 0;
 
   g_isbd.cnf = *isbd_conf;
 
