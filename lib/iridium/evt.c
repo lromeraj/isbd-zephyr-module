@@ -10,7 +10,7 @@ static inline bool _evt_parse_areg( const char *buf, isu_dte_evt_t *evt );
 static inline bool _evt_parse_ciev( const char *buf, isu_dte_evt_t *evt );
 static inline bool _evt_parse_ring( const char *buf, isu_dte_evt_t *evt, bool verbose );
 
-isu_dte_err_t isbd_dte_evt_wait( isu_dte_t *dte, isu_dte_evt_t *event, uint32_t timeout_ms ) {
+isu_dte_err_t isu_dte_evt_wait( isu_dte_t *dte, isu_dte_evt_t *event, uint32_t timeout_ms ) {
 
   char buf[ 32 ];
   event->id = ISU_DTE_EVT_UNK;

@@ -74,7 +74,7 @@ void set_info_led() {
   gpio_pin_configure_dt( &blue_led, GPIO_OUTPUT_ACTIVE );
 }
 
-static void _isbd_evt_handler( isbd_evt_t *evt );
+static inline void _isbd_evt_handler( isbd_evt_t *evt );
 
 static uint8_t rx_buf[ 512 ];
 static uint8_t tx_buf[ 512 ];
@@ -131,13 +131,13 @@ void main(void) {
   isbd_setup( &isbd_config );
 
   const char *msg = "MIoT";
-  isbd_enqueue_mo_msg( msg, strlen( msg ), MO_MSG_RETRIES );
+  // isbd_enqueue_mo_msg( msg, strlen( msg ), MO_MSG_RETRIES );
   
   DO_FOREVER {
 
     isbd_evt_t isbd_evt;
 
-    if ( isbd_evt_wait( &isbd_evt, 5000 ) ) {
+    if ( isbd_wait_evt( &isbd_evt, 5000 ) ) {
       _isbd_evt_handler( &isbd_evt );
     }
 
@@ -168,8 +168,10 @@ static void _dte_evt_handler( isu_dte_evt_t *evt ) {
 
 }
 
+
 static void _isbd_evt_handler( isbd_evt_t *evt ) {
 
+  
   switch ( evt->id ) {
 
     case ISBD_EVT_MO:
@@ -180,23 +182,25 @@ static void _isbd_evt_handler( isbd_evt_t *evt ) {
       printk( "MT message received, sn=%u\n", evt->mt.sn );
 
       for ( int i=0; i < evt->mt.len; i++ ) {
-        printk( "%02X ", evt->mt.msg[ i ] );
+        printk( "%02X ", evt->mt.data[ i ] );
       }
       printk( "\n" );
-
-      // TODO: create a function named isbd_free_mt_msg()
-      // TODO: to free resources
-      k_free( evt->mt.msg );
-
       break;
 
     case ISBD_EVT_DTE:
       _dte_evt_handler( &evt->dte );
       break;
     
+    case ISBD_EVT_ERR:
+      printk( "Error (%03d) %s\n", evt->err, isbd_err_name( evt->err ) );
+      break;
+
     default:
       printk( "Unknown event (%03d)\n", evt->id );
       break;
   }
+  
+  // ! Free event resources
+  isbd_destroy_evt( evt );
 
 }

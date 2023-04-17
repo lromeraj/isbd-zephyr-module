@@ -42,7 +42,7 @@ static at_uart_err_t _pack_bin_resp(
 
 isu_dte_err_t isu_get_imei( isu_dte_t *dte, char *imei_buf, size_t imei_buf_len ) {
   
-  SEND_TINY_CMD_OR_RET( dte, AT_CMD_TMPL_EXEC, "+cgsn" );
+  SEND_TINY_CMD_OR_RET( dte, AT_CMD_TMPL_EXEC, "+CGSN" );
 
   dte->err = at_uart_pack_txt_resp(
     &dte->at_uart, imei_buf, imei_buf_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
@@ -52,7 +52,7 @@ isu_dte_err_t isu_get_imei( isu_dte_t *dte, char *imei_buf, size_t imei_buf_len 
 
 isu_dte_err_t isu_get_revision( isu_dte_t *dte, char *rev_buf, size_t rev_buf_len ) {
   
-  SEND_TINY_CMD_OR_RET( dte,  AT_CMD_TMPL_EXEC, "+cgmr" );
+  SEND_TINY_CMD_OR_RET( dte,  AT_CMD_TMPL_EXEC, "+CGMR" );
 
   dte->err = at_uart_pack_txt_resp( 
     &dte->at_uart, rev_buf, rev_buf_len, AT_UNK_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
@@ -62,7 +62,7 @@ isu_dte_err_t isu_get_revision( isu_dte_t *dte, char *rev_buf, size_t rev_buf_le
 
 isu_dte_err_t isu_get_rtc( isu_dte_t *dte, char *rtc_buf, size_t rtc_buf_len ) {
   
-  SEND_TINY_CMD_OR_RET( dte, AT_CMD_TMPL_EXEC, "+cclk" );
+  SEND_TINY_CMD_OR_RET( dte, AT_CMD_TMPL_EXEC, "+CCLK" );
 
   dte->err = at_uart_pack_txt_resp( 
     &dte->at_uart, rtc_buf, rtc_buf_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
@@ -74,7 +74,7 @@ isu_dte_err_t isu_get_rtc( isu_dte_t *dte, char *rtc_buf, size_t rtc_buf_len ) {
 isu_dte_err_t isu_init_session( isu_dte_t *dte, isu_session_ext_t *session, bool alert ) {
   
   SEND_TINY_CMD_OR_RET( 
-    dte, AT_CMD_TMPL_EXEC_STR, "+sbdix", alert ? "a" : "" );
+    dte, AT_CMD_TMPL_EXEC_STR, "+SBDIX", alert ? "A" : "" );
 
   char buf[ 64 ];
   dte->err = at_uart_pack_txt_resp(
@@ -101,7 +101,7 @@ isu_dte_err_t isu_init_session( isu_dte_t *dte, isu_session_ext_t *session, bool
 
 isu_dte_err_t isu_clear_buffer( isu_dte_t *dte, isu_clear_buffer_t buffer ) {
 
-  SEND_TINY_CMD_OR_RET( dte, AT_CMD_TMPL_EXEC_INT, "+sbdd", buffer );
+  SEND_TINY_CMD_OR_RET( dte, AT_CMD_TMPL_EXEC_INT, "+SBDD", buffer );
 
   int err;
   uint8_t code;
@@ -148,7 +148,7 @@ isu_dte_err_t isu_set_mo_txt( isu_dte_t *dte, const char *txt ) {
   */
  
   SEND_TINY_CMD_OR_RET( 
-    dte, AT_CMD_TMPL_SET_STR, "+sbdwt", txt );
+    dte, AT_CMD_TMPL_SET_STR, "+SBDWT", txt );
 
   dte->err = at_uart_skip_txt_resp( 
     &dte->at_uart, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
@@ -159,7 +159,7 @@ isu_dte_err_t isu_set_mo_txt( isu_dte_t *dte, const char *txt ) {
 isu_dte_err_t isu_set_mo( isu_dte_t *dte, const uint8_t *msg_buf, uint16_t msg_buf_len ) {
 
   SEND_TINY_CMD_OR_RET( 
-    dte, AT_CMD_TMPL_SET_INT, "+sbdwb", msg_buf_len );
+    dte, AT_CMD_TMPL_SET_INT, "+SBDWB", msg_buf_len );
   
   // After the initial AT+SBDWB command
   // the ISU should answer with a READY string
@@ -215,7 +215,7 @@ isu_dte_err_t isu_set_mo( isu_dte_t *dte, const uint8_t *msg_buf, uint16_t msg_b
 isu_dte_err_t isu_get_mt( isu_dte_t *dte, uint8_t *msg, uint16_t *msg_len, uint16_t *csum ) {
   
   SEND_TINY_CMD_OR_RET( 
-    dte, AT_CMD_TMPL_EXEC, "+sbdrb" );
+    dte, AT_CMD_TMPL_EXEC, "+SBDRB" );
 
   dte->err = _pack_bin_resp(
     dte, msg, msg_len, csum, SHORT_TIMEOUT_RESPONSE );
@@ -251,7 +251,7 @@ int8_t isbd_set_mo_txt_l( char *__txt ) {
 isu_dte_err_t isu_mo_to_mt( isu_dte_t *dte, char *out, uint16_t out_len ) {
   
   SEND_TINY_CMD_OR_RET( 
-    dte, AT_CMD_TMPL_EXEC, "+sbdtc" );
+    dte, AT_CMD_TMPL_EXEC, "+SBDTC" );
   
   dte->err = at_uart_pack_txt_resp(
     &dte->at_uart, out, out_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
@@ -262,7 +262,7 @@ isu_dte_err_t isu_mo_to_mt( isu_dte_t *dte, char *out, uint16_t out_len ) {
 isu_dte_err_t isu_get_mt_txt( isu_dte_t *dte, char *mt_buf, size_t mt_buf_len ) {
   
   SEND_TINY_CMD_OR_RET( 
-    dte, AT_CMD_TMPL_EXEC, "+sbdrt" );
+    dte, AT_CMD_TMPL_EXEC, "+SBDRT" );
 
   at_uart_skip_txt_resp(
     &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
@@ -310,7 +310,7 @@ isu_dte_err_t isu_get_mt_txt( isu_dte_t *dte, char *mt_buf, size_t mt_buf_len ) 
 isu_dte_err_t isu_get_sig_q( isu_dte_t *dte, uint8_t *signal_q ) {
 
   SEND_TINY_CMD_OR_RET( 
-    dte, AT_CMD_TMPL_EXEC, "+csq" );
+    dte, AT_CMD_TMPL_EXEC, "+CSQ" );
   
   char buf[ 16 ];
   
@@ -334,7 +334,7 @@ isu_dte_err_t isu_set_evt_report( isu_dte_t *dte, isu_evt_report_t *evt_report )
     evt_report->mode, evt_report->signal, evt_report->service );
 
   SEND_TINY_CMD_OR_RET( 
-    dte, AT_CMD_TMPL_SET_STR, "+cier", buf );
+    dte, AT_CMD_TMPL_SET_STR, "+CIER", buf );
 
   dte->err = at_uart_skip_txt_resp( 
     &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );  
@@ -342,7 +342,7 @@ isu_dte_err_t isu_set_evt_report( isu_dte_t *dte, isu_evt_report_t *evt_report )
   // ! This command has a peculiarity,
   // ! after the command is successfully executed, it returns an OK response,
   // ! but just after that it transmits the first indicator event
-  // ! so we skip those lines
+  // ! Currently we ignore those values but we could keep those values
   if ( dte->err == AT_UART_OK ) {
     
     uint8_t lines_to_skip = // [1,0] * ( [1,0] + [1,0] )
@@ -363,7 +363,7 @@ isu_dte_err_t isu_set_evt_report( isu_dte_t *dte, isu_evt_report_t *evt_report )
 isu_dte_err_t isu_set_mt_alert( isu_dte_t *dte, isu_mt_alert_t alert ) {
 
   SEND_TINY_CMD_OR_RET( 
-    dte, AT_CMD_TMPL_SET_INT, "+sbdmta", alert );
+    dte, AT_CMD_TMPL_SET_INT, "+SBDMTA", alert );
   
   dte->err = at_uart_skip_txt_resp( 
     &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
@@ -374,7 +374,7 @@ isu_dte_err_t isu_set_mt_alert( isu_dte_t *dte, isu_mt_alert_t alert ) {
 isu_dte_err_t isu_get_mt_alert( isu_dte_t *dte, isu_mt_alert_t *alert ) {
 
   SEND_TINY_CMD_OR_RET( 
-    dte, AT_CMD_TMPL_READ, "+sbdmta" );
+    dte, AT_CMD_TMPL_READ, "+SBDMTA" );
 
   char buf[ 32 ];
   dte->err = at_uart_pack_txt_resp( 
@@ -392,9 +392,10 @@ isu_dte_err_t isu_get_mt_alert( isu_dte_t *dte, isu_mt_alert_t *alert ) {
 isu_dte_err_t isu_net_reg( isu_dte_t *dte, isu_net_reg_sts_t *out_sts ) {
 
   SEND_TINY_CMD_OR_RET( 
-    dte, AT_CMD_TMPL_EXEC, "+sbdreg" );
+    dte, AT_CMD_TMPL_EXEC, "+SBDREG" );
 
   char buf[ 32 ];
+
   dte->err = at_uart_pack_txt_resp( 
     &dte->at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
@@ -424,7 +425,7 @@ isu_dte_err_t isu_net_reg( isu_dte_t *dte, isu_net_reg_sts_t *out_sts ) {
 isu_dte_err_t isu_get_ring_sts( isu_dte_t *dte, isu_ring_sts_t *ring_sts ) {
 
   SEND_TINY_CMD_OR_RET( 
-    dte, AT_CMD_TMPL_EXEC, "+cris" );
+    dte, AT_CMD_TMPL_EXEC, "+CRIS" );
 
   uint8_t   tri, // indicates the telephony ring indication status
             sri; // indicates the SBD ring indication status
@@ -454,8 +455,8 @@ static at_uart_err_t _pack_bin_resp(
   // flag used to detect if the given buffer is smaller than necessary
   bool overflowed = false;
 
-  ret = at_uart_read( 
-    &dte->at_uart, (uint8_t*)&msg_len, 2, timeout_ms ); // message length
+  ret = at_uart_read(
+    &dte->at_uart, (uint8_t*) &msg_len, 2, timeout_ms ); // message length
 
   if ( ret == AT_UART_OK ) {
 
@@ -474,7 +475,7 @@ static at_uart_err_t _pack_bin_resp(
   }  
 
   if ( ret == AT_UART_OK ) {
-    ret = at_uart_read( 
+    ret = at_uart_read(
       &dte->at_uart, (uint8_t*)csum, 2, timeout_ms );
   }
 
@@ -487,5 +488,3 @@ static at_uart_err_t _pack_bin_resp(
 
   return overflowed ? AT_UART_OVERFLOW : ret;
 }
-
-
