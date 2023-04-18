@@ -21,11 +21,11 @@ isu_dte_err_t isu_dte_evt_wait( isu_dte_t *dte, isu_dte_evt_t *event, uint32_t t
   bool verbose = dte->at_uart.config.verbose;
 
   if ( dte->err == AT_UART_UNK ) {
-
+    
     if ( _evt_parse_ciev( buf, event )
       || _evt_parse_areg( buf, event )
       || _evt_parse_ring( buf, event, verbose ) ) {
-
+      
       return ISU_DTE_OK;
     }
 

@@ -81,6 +81,7 @@ uint16_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byt
   uint8_t byte;
   uint16_t total_bytes_read = 0;
 
+  
   if ( timeout_ms == 0 ) {
 
     while ( total_bytes_read < n_bytes 
@@ -94,11 +95,11 @@ uint16_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byt
     }
 
   } else {
-
+    
     uint64_t ts_old = k_uptime_get();
 
     while ( total_bytes_read < n_bytes ) {
-      
+
       uint64_t ts_now = k_uptime_get();
 
       if ( ts_now - ts_old >= timeout_ms ) {
@@ -107,7 +108,7 @@ uint16_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byt
       }
 
       int ret = uart_poll_in( zuart->dev, &byte );
-
+      
       if ( ret == 0 ) {
         if ( out_buf ) {
           out_buf[ total_bytes_read ] = byte;
@@ -193,7 +194,9 @@ uint16_t zuart_write_poll_proto(
     }
 
     uint8_t byte = src_buf[ bytes_written ];
+
     uart_poll_out( zuart->dev, byte );
+
     bytes_written++;
   }
 
@@ -214,13 +217,22 @@ uint16_t zuart_write(
 
 }
 
+uint16_t zuart_available( zuart_t *zuart ) {
+  if ( zuart->config.read_proto == zuart_read_irq_proto ) {
+    return ring_buf_size_get( &zuart->rx_rbuf );
+  }
+  return 0;
+}
+
 // TODO: https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/10
-void zuart_drain( zuart_t *zuart ) {
+uint32_t zuart_drain( zuart_t *zuart ) {
 
   uint32_t size = ring_buf_size_get( &zuart->rx_rbuf );
   
   // purge ring buffer
   ring_buf_get( &zuart->rx_rbuf, NULL, size );
+
+  return size;
 }
 
 zuart_err_t zuart_setup( zuart_t *zuart, const zuart_config_t *zuart_config ) {
@@ -240,7 +252,7 @@ zuart_err_t zuart_setup( zuart_t *zuart, const zuart_config_t *zuart_config ) {
 
     zuart->config.read_proto = zuart_read_poll_proto;
     zuart->config.write_proto = zuart_write_poll_proto;
-  
+
   }
 
   if ( zuart->config.read_proto == zuart_read_irq_proto 

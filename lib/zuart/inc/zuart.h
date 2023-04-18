@@ -161,11 +161,12 @@
   uint16_t zuart_write( zuart_t *zuart, const uint8_t *src_buffer, uint16_t n_bytes, uint32_t ms_timeout );
 
   /**
-   * @brief
+   * @brief Purges UART reception buffer
    * 
-   * @param zuart 
+   * @param zuart instance
+   * @return uint32_t Number of purged bytes
    */
-  void zuart_drain( zuart_t *zuart );
+  uint32_t zuart_drain( zuart_t *zuart );
 
   /**
    * @brief Read from serial port using interrupt technique
@@ -209,5 +210,15 @@
 
   void zuart_force_read_timeout( zuart_t *zuart );
   void zuart_force_write_timeout( zuart_t *zuart );
+
+  /**
+   * @brief Number of characters available in the reception buffer
+   * 
+   * @note Only works for interrupt mode, otherwise 0 is always returned
+   * 
+   * @param zuart 
+   * @return uint16_t 
+   */
+  uint16_t zuart_available( zuart_t *zuart );
   
 #endif

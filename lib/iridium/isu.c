@@ -345,23 +345,24 @@ isu_dte_err_t isu_set_evt_report(
   SEND_TINY_CMD_OR_RET( 
     dte, AT_CMD_TMPL_SET_STR, "+CIER", buf );
 
-  dte->err = at_uart_skip_txt_resp( 
+  at_uart_err_t at_err = at_uart_skip_txt_resp( 
     &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   // ! This command has a peculiarity,
   // ! after the command is successfully executed, it returns an OK response,
   // ! but just after that it transmits the first indicator events
-  if ( dte->err == AT_UART_OK ) {
-    
+  if ( at_err == AT_UART_OK ) {
+      
     uint8_t events = // [1, 0] * ( [1, 0] + [1, 0] )
       evt_report->mode * ( evt_report->service + evt_report->signal );
     
-    while ( events ) {
+    while ( events > 0 ) {
 
       isu_dte_evt_t evt;
-      isu_dte_err_t err = isu_dte_evt_wait( dte, &evt, SHORT_TIMEOUT_RESPONSE );
+      isu_dte_err_t dte_err = isu_dte_evt_wait(
+        dte, &evt, SHORT_TIMEOUT_RESPONSE );
 
-      if ( err == ISU_DTE_OK ) {
+      if ( dte_err == ISU_DTE_OK ) {
         
         if ( evt.id == ISU_DTE_EVT_SIGQ && sigq ) {
           *sigq = evt.sigq;
@@ -372,14 +373,18 @@ isu_dte_err_t isu_set_evt_report(
         events--;
 
       } else {
-        return err;
+        return dte_err;
       }
 
     }
 
-  }
+    return ISU_DTE_OK;
 
-  return dte->err == AT_UART_OK ? ISU_DTE_OK : ISU_DTE_ERR_AT;
+  } else {
+
+    dte->err = at_err;
+    return ISU_DTE_ERR_AT;
+  }
 
 }
 
@@ -486,17 +491,17 @@ static at_uart_err_t _pack_bin_resp(
     msg_len = ntohs( msg_len );
 
     if ( msg_len > *msg_buf_len ) {
-      msg_buf = NULL; // skip data
+      // msg_buf = NULL; // skip data
       overflowed = true;
-      LOG_ERR( "_pack_bin_resp() - Overflow %hu > %hu\n", msg_len, *msg_buf_len );
+      LOG_ERR( "Overflow %hu > %hu\n", msg_len, *msg_buf_len );
     } else {
       *msg_buf_len = msg_len;
     }
     
     // ! This will probably block if received length is not valid
-    // ! dou to remanent chars or electrical noise ... 
+    // ! due to remanent chars or electrical noise ... 
     ret = at_uart_read(
-      &dte->at_uart, msg_buf, msg_len, timeout_ms );
+      &dte->at_uart, msg_buf, *msg_buf_len, timeout_ms );
 
   }  
 

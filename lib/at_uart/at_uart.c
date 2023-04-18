@@ -138,7 +138,7 @@ at_uart_err_t at_uart_pack_txt_resp(
   unsigned char byte;
 
   while ( zuart_read( &at_uart->zuart, &byte, 1, timeout_ms ) == 1 ) {
-
+    
     // Used to add or not the current byte to the output buffer
     unsigned char add_char = byte;
 
@@ -152,7 +152,7 @@ at_uart_err_t at_uart_pack_txt_resp(
     }
 
     if ( at_buf_i > 0 && trail_char == at_uart->eol ) { // new line detected
-
+      
       if ( lines == AT_UNK_LINE_RESP 
           || line_n == lines
           || line_n == 1 ) {
@@ -290,8 +290,8 @@ at_uart_err_t at_uart_write_cmd(
 
   at_uart->_echoed = false;
   
-  // ! Clear reception buffer to clear data remnants
-  zuart_drain( &at_uart->zuart );
+  uint32_t purged = zuart_drain( &at_uart->zuart );
+  LOG_DBG( "%u ~ %s", purged, cmd_buf );
 
   at_uart_err_t err = at_uart_write(
     at_uart, cmd_buf, cmd_len, AT_SHORT_TIMEOUT );
@@ -313,10 +313,9 @@ at_uart_err_t at_uart_send_cmd(
   va_list args;
   va_start( args, at_cmd_tmpl );
 
-  at_uart_err_t ret = 
+  at_uart_err_t ret =
     at_uart_send_vcmd( at_uart, at_cmd_buf, at_cmd_buf_len, at_cmd_tmpl, args ); 
 
-  LOG_DBG( "%s", at_cmd_buf );
 
   va_end( args );
   
@@ -373,14 +372,12 @@ at_uart_err_t at_uart_setup(
   } else {
     at_uart->eol = '\r';
   }
-
   
   // setup underlying uart
   zuart_setup( &at_uart->zuart, &at_uart_config->zuart );
 
   // ! Disable quiet mode in order to parse command results
   _at_uart_set_quiet( at_uart, false );
-
 
   // ! The response code of this commands
   // ! are not checked due to the possibility of 

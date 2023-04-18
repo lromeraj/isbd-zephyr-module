@@ -41,7 +41,8 @@ typedef struct isbd {
 } isbd_t;
 
 extern void _entry_point( void *, void *, void * );
-static inline void _requeue_mo_msg( struct isbd_mo_msg *mo_msg );
+static void _wait_for_dte_events( uint32_t timeout_ms );
+void _enqueue_mo_msg( struct isbd_mo_msg *mo_msg );
 
 K_THREAD_STACK_DEFINE(
   g_thread_stack_area, CONFIG_ISBD_THREAD_STACK_SIZE );
@@ -79,7 +80,6 @@ static inline void _notify_err( isbd_err_t err ) {
   evt.err = err;
 
   k_msgq_put( ISBD_EVT_Q, &evt, K_NO_WAIT );
-
 }
 
 static inline void _notify_mt_msg( struct isbd_mt_msg *mt_msg ) {
@@ -88,7 +88,6 @@ static inline void _notify_mt_msg( struct isbd_mt_msg *mt_msg ) {
   
   evt.id = ISBD_EVT_MT;
   evt.mt = *mt_msg;
-
 
   if ( k_msgq_put( ISBD_EVT_Q, &evt, K_NO_WAIT ) != 0 ) {
     isbd_destroy_mt_msg( mt_msg );
@@ -124,7 +123,7 @@ static inline void _handle_session_mo_msg(
 
       if ( mo_msg->retries > 0 ) {
         mo_msg->retries--;
-        _requeue_mo_msg( mo_msg );
+        _enqueue_mo_msg( mo_msg );
       } else {
         _notify_err( ISBD_ERR_MO );
         isbd_destroy_mo_msg( mo_msg );
@@ -175,17 +174,20 @@ void _init_session( struct isbd_mo_msg *mo_msg ) {
   isu_dte_err_t ret;
 
   if ( mo_msg->data && mo_msg->len > 0 ) {
-    LOG_DBG( "_init_session() - Setting MO message len=%hu", mo_msg->len );
+    LOG_DBG( "Setting MO message len=%hu", mo_msg->len );
     ret = isu_set_mo( ISBD_DTE, mo_msg->data, mo_msg->len );
   } else {
-    LOG_DBG( "_init_session() - Clearing MO message" );
+    LOG_DBG( "Clearing MO message" );
     ret = isu_clear_buffer( ISBD_DTE, ISU_CLEAR_MO_BUFF );
   }
 
   if ( ret == ISU_DTE_OK ) {
 
     isu_session_ext_t session;
-    ret = isu_init_session( ISBD_DTE, &session, false );
+    ret = isu_init_session( ISBD_DTE, &session, mo_msg->alert );
+
+    // Fixes: https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/27
+    _wait_for_dte_events( 100 );
 
     if ( ret == ISU_DTE_OK ) {
       _handle_session_mo_msg( &session, mo_msg );
@@ -213,10 +215,26 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
 
   isu_dte_err_t dte_err;
 
-  isu_set_evt_report(
+  dte_err = isu_set_evt_report(
     ISBD_DTE, &evt_report, NULL, &g_isbd.svca );
 
-  isu_set_mt_alert( ISBD_DTE, ISU_MT_ALERT_ENABLED );
+  if ( dte_err == ISU_DTE_OK ) {
+    if ( g_isbd.svca ) {
+      LOG_INF( "Service currently available" );
+    } else {
+      LOG_INF( "Service currently not available" );
+    }
+  } else {
+    LOG_ERR( "Could not set event reporting" );
+  }
+
+  dte_err = isu_set_mt_alert( ISBD_DTE, ISU_MT_ALERT_ENABLED );
+
+  if ( dte_err == ISU_DTE_OK ) {
+    LOG_INF( "Ring alerts enabled" );
+  } else {
+    LOG_ERR( "Could not enable ring alerts" );
+  }
 
   DO_FOREVER {
 
@@ -229,6 +247,15 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
       }
     }
 
+    _wait_for_dte_events( DTE_EVT_WAIT_TIMEOUT );
+
+  }
+
+}
+
+static void _wait_for_dte_events( uint32_t timeout_ms ) {
+    
+    isu_dte_err_t dte_err;
     isu_dte_evt_t dte_evt;
 
     dte_err = isu_dte_evt_wait(
@@ -246,11 +273,11 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
       isbd_evt.dte = dte_evt;
 
       k_msgq_put( ISBD_EVT_Q, &isbd_evt, K_NO_WAIT );
+    } else {
+      // No event detected
     }
 
-  }
-
-}
+} 
 
 void isbd_destroy_mo_msg( struct isbd_mo_msg *mo_msg ) {
 
@@ -280,47 +307,47 @@ void isbd_destroy_evt( isbd_evt_t *evt ) {
 
 }
 
-void _requeue_mo_msg( struct isbd_mo_msg *mo_msg ) {
-  if ( k_msgq_put( ISBD_MO_Q, mo_msg, K_NO_WAIT ) == 0 ) {
-    LOG_DBG( "MO message requeued" ); 
-  }
-}
-
 /**
- * @brief Enqueues a message to be sent.
+ * @brief Enqueues an MO message
  * 
  * @param msg Message buffer
  * @param msg_len Message buffer length
  */
-void isbd_enqueue_mo_msg( const uint8_t *msg, uint16_t msg_len, uint8_t retries ) {
+void _enqueue_mo_msg( struct isbd_mo_msg *mo_msg ) {
+  if ( k_msgq_put( ISBD_MO_Q, &mo_msg, K_NO_WAIT ) == 0 ) {
+    LOG_DBG( "MO message enqueued, len=%hu", mo_msg->len );
+  }
+}
+
+void isbd_send_mo_msg( const uint8_t *msg, uint16_t msg_len, uint8_t retries ) {
 
   struct isbd_mo_msg mo_msg;
   
-  // TODO: generate message id or let the user give an identifier
+  mo_msg.len = msg_len;
+  mo_msg.alert = false;
   mo_msg.retries = retries;
-
-  if ( msg && msg_len > 0 ) {
-    mo_msg.len = msg_len;
-    mo_msg.data = (uint8_t*)k_malloc( sizeof(uint8_t) * msg_len );
-    // TODO: check malloc
-    memcpy( mo_msg.data, msg, msg_len );
-  } else {
-    mo_msg.len = 0;
-    mo_msg.data = NULL;
-  }
-
-  if ( k_msgq_put( ISBD_MO_Q, &mo_msg, K_NO_WAIT ) == 0 ) {
-    LOG_DBG( "MO message enqueued, len=%hu", msg_len );
-  }
   
+  // TODO: check malloc
+  mo_msg.data = (uint8_t*)k_malloc( sizeof(uint8_t) * msg_len );
+  
+  memcpy( mo_msg.data, msg, msg_len );
+
+  _enqueue_mo_msg( &mo_msg );
+
 }
 
-void isbd_request_mt_msg() {
+void isbd_request_mt_msg( bool alert ) {
+
+  struct isbd_mo_msg mo_msg;
+  
+  mo_msg.len = 0;
+  mo_msg.data = NULL;
+  mo_msg.alert = alert;
 
   // if the queue already has pending session requests
   // there is no need to push a new one
   if ( k_msgq_num_used_get( ISBD_MO_Q ) == 0 ) {
-    isbd_enqueue_mo_msg( NULL, 0, 0 );
+    _enqueue_mo_msg( &mo_msg );
   }
 
 }

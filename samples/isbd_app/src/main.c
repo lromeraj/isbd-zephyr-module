@@ -84,7 +84,7 @@ static uint8_t rx_buf[ 512 ];
 static uint8_t tx_buf[ 512 ];
 
 void main(void) {
-
+  
   if ( !gpio_is_ready_dt( &red_led )
       || !gpio_is_ready_dt( &blue_led )
       || !gpio_is_ready_dt( &green_led ) ) {
@@ -136,7 +136,7 @@ void main(void) {
   isbd_setup( &isbd_config );
 
   const char *msg = "I";
-  isbd_enqueue_mo_msg( msg, strlen( msg ), MO_MSG_RETRIES );
+  isbd_send_mo_msg( msg, strlen( msg ), MO_MSG_RETRIES );
 
   DO_FOREVER {
 
@@ -155,19 +155,20 @@ static void _dte_evt_handler( isu_dte_evt_t *evt ) {
   switch ( evt->id ) {
 
     case ISU_DTE_EVT_RING:
-      printk( "Ring alert received\n" );
-      isbd_request_mt_msg();
+      LOG_INF( "Ring alert received" );
+      isbd_request_mt_msg( true );
       break;
       
     case ISU_DTE_EVT_SIGQ:
-      printk( "Signal strength: %d\n", evt->sigq );
+      LOG_INF( "Signal strength: %d", evt->sigq );
       break;
 
     case ISU_DTE_EVT_SVCA:
-      printk( "Service availability: %d\n", evt->svca );
+      LOG_INF( "Service availability: %d", evt->svca );
       break;
 
     default:
+      LOG_WRN( "DTE event: (%03d)", evt->svca );
       break;
   }
 
@@ -178,17 +179,21 @@ static void _isbd_evt_handler( isbd_evt_t *evt ) {
   switch ( evt->id ) {
 
     case ISBD_EVT_MO:
-      printk( "MO message sent, sn=%u\n", evt->mo.sn );
+      LOG_INF( "MO message sent, sn=%u", evt->mo.sn );
       break;
 
     case ISBD_EVT_MT:
       
-      printk( "MT message received, sn=%u\n", evt->mt.sn );
-
+      LOG_INF( "MT message received, sn=%u", evt->mt.sn );
+      
+      LOG_HEXDUMP_INF( evt->mt.data, evt->mt.len, "MT Payload" );
+      
+      /*
       for ( int i=0; i < evt->mt.len; i++ ) {
         printk( "%02X ", evt->mt.data[ i ] );
       }
       printk( "\n" );
+      */
 
       break;
 
@@ -197,11 +202,11 @@ static void _isbd_evt_handler( isbd_evt_t *evt ) {
       break;
     
     case ISBD_EVT_ERR:
-      printk( "Error (%03d) %s\n", evt->err, isbd_err_name( evt->err ) );
+      LOG_ERR( "Error (%03d) %s", evt->err, isbd_err_name( evt->err ) );
       break;
 
     default:
-      printk( "Unknown event (%03d)\n", evt->id );
+      LOG_WRN( "Unknown event (%03d)", evt->id );
       break;
   }
   

@@ -10,7 +10,7 @@ list( APPEND ZEPHYR_EXTRA_MODULES ${IRIDIUM_MODULE_PATH} )
 
 if( "${DEBUG}" STREQUAL "yes" )
 	#message( WARN "Logging mode has been enabled" )
-	list(APPEND OVERLAY_CONFIG "prj-log.conf")
+	list(APPEND OVERLAY_CONFIG "dbg.conf")
 endif()
 
 # Look up Zephyr package using ZEPHYR_BASE

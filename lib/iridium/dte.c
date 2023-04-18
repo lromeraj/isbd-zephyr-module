@@ -15,7 +15,7 @@ isu_dte_err_t isu_dte_setup( isu_dte_t *isbd, isu_dte_config_t *isu_dte_config )
 }
 
 isu_dte_err_t isu_dte_send_tiny_cmd( isu_dte_t *isbd, const char *at_cmd_tmpl, ... ) {
-
+  
   va_list args;
   va_start( args, at_cmd_tmpl );
 
