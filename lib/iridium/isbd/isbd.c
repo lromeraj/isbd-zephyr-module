@@ -1,4 +1,3 @@
-
 #include <stdbool.h>
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
@@ -174,10 +173,17 @@ void _init_session( struct isbd_mo_msg *mo_msg ) {
   isu_dte_err_t ret;
 
   if ( mo_msg->data && mo_msg->len > 0 ) {
-    LOG_DBG( "Setting MO message len=%hu", mo_msg->len );
+    
+    LOG_DBG( "Setting MO buffer, len=%hu", mo_msg->len );
     ret = isu_set_mo( ISBD_DTE, mo_msg->data, mo_msg->len );
+
+    if ( ret != ISU_DTE_OK ) {
+      isbd_destroy_mo_msg( mo_msg );
+      LOG_ERR( "Could not set MO buffer" );
+    }
+
   } else {
-    LOG_DBG( "Clearing MO message" );
+    LOG_DBG( "Clearing MO buffer" );
     ret = isu_clear_buffer( ISBD_DTE, ISU_CLEAR_MO_BUFF );
   }
 
@@ -248,7 +254,6 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
     }
 
     _wait_for_dte_events( DTE_EVT_WAIT_TIMEOUT );
-
   }
 
 }
@@ -259,7 +264,7 @@ static void _wait_for_dte_events( uint32_t timeout_ms ) {
     isu_dte_evt_t dte_evt;
 
     dte_err = isu_dte_evt_wait(
-      ISBD_DTE, &dte_evt, DTE_EVT_WAIT_TIMEOUT );
+      ISBD_DTE, &dte_evt, timeout_ms );
 
     if ( dte_err == ISU_DTE_OK ) {
       
@@ -360,9 +365,6 @@ void isbd_setup( isbd_config_t *isbd_conf ) {
   g_isbd.mo_msgq_buf = 
     (char*) k_malloc( sizeof( struct isbd_mo_msg ) * g_isbd.cnf.mo_queue_len );
 
-  // g_isbd.mt_msgq_buf = 
-  //   (char*) k_malloc( sizeof( struct msgq_item ) * g_isbd.cnf.mt_queue_len );
-
   g_isbd.evt_msgq_buf = 
     (char*) k_malloc( sizeof( struct isbd_evt ) * g_isbd.cnf.evt_queue_len );
 
@@ -371,12 +373,6 @@ void isbd_setup( isbd_config_t *isbd_conf ) {
     g_isbd.mo_msgq_buf, 
     sizeof( struct isbd_mo_msg ), 
     g_isbd.cnf.mo_queue_len );
-
-  // k_msgq_init( 
-  //   ISBD_MT_Q, 
-  //   g_isbd.mt_msgq_buf, 
-  //   sizeof( struct msgq_item ), 
-  //   g_isbd.cnf.mt_queue_len );
 
   k_msgq_init(
     ISBD_EVT_Q,
@@ -398,6 +394,8 @@ bool isbd_wait_evt( isbd_evt_t *isbd_evt, uint32_t timeout_ms ) {
   return k_msgq_get( ISBD_EVT_Q, isbd_evt, K_MSEC( timeout_ms ) ) == 0;
 }
 
+
+
 #define ISBD_ERR_CASE_RET_NAME( err ) \
   case err: \
     return #err;
@@ -410,7 +408,7 @@ const char* isbd_err_name( isbd_err_t err ) {
     ISBD_ERR_CASE_RET_NAME( ISBD_ERR_MO );
     ISBD_ERR_CASE_RET_NAME( ISBD_ERR_MT );
     ISBD_ERR_CASE_RET_NAME( ISBD_ERR_SPACE );
-    
+
     default:
       return "ISBD_ERR_UNKNOWN";
 

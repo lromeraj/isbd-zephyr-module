@@ -183,18 +183,8 @@ static void _isbd_evt_handler( isbd_evt_t *evt ) {
       break;
 
     case ISBD_EVT_MT:
-      
       LOG_INF( "MT message received, sn=%u", evt->mt.sn );
-      
       LOG_HEXDUMP_INF( evt->mt.data, evt->mt.len, "MT Payload" );
-      
-      /*
-      for ( int i=0; i < evt->mt.len; i++ ) {
-        printk( "%02X ", evt->mt.data[ i ] );
-      }
-      printk( "\n" );
-      */
-
       break;
 
     case ISBD_EVT_DTE:
