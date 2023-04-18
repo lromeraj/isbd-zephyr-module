@@ -1,0 +1,8 @@
+menu "AT-UART"
+	
+	config AT_UART
+		bool "Build AT-UART library"
+		select Z_UART
+		select STR_UTILS
+
+endmenu

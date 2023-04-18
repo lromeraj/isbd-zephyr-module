@@ -3,12 +3,15 @@
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
+#include <zephyr/logging/log.h>
 
 #include "isu.h"
 #include "isu/evt.h"
 
 #include "isbd.h"
 #include "isbd/util.h"
+
+LOG_MODULE_REGISTER( isbd );
 
 #define DTE_EVT_WAIT_TIMEOUT    5000
 
@@ -57,8 +60,12 @@ static inline bool _read_mt_msg( uint8_t *buf, uint16_t *buf_len ) {
     
     uint16_t host_csum =
       isbd_util_compute_checksum( buf, *buf_len );
-
+    
     return recv_csum == host_csum;
+
+  } else {
+    LOG_DBG( "Could not get MT message (%03d) -> (%03d)", 
+      ret, isu_dte_get_err( ISBD_DTE ) );
   }
 
   return false;
@@ -81,6 +88,7 @@ static inline void _notify_mt_msg( struct isbd_mt_msg *mt_msg ) {
   
   evt.id = ISBD_EVT_MT;
   evt.mt = *mt_msg;
+
 
   if ( k_msgq_put( ISBD_EVT_Q, &evt, K_NO_WAIT ) != 0 ) {
     isbd_destroy_mt_msg( mt_msg );
@@ -142,6 +150,8 @@ static inline void _handle_session_mt_msg(
     
     if ( mt_msg.data ) {
 
+      LOG_DBG( "Reading MT message, len=%hu", mt_msg.len );
+
       bool msg_read = 
         _read_mt_msg( mt_msg.data, &mt_msg.len );
 
@@ -165,10 +175,10 @@ void _init_session( struct isbd_mo_msg *mo_msg ) {
   isu_dte_err_t ret;
 
   if ( mo_msg->data && mo_msg->len > 0 ) {
-    printk( "Sending message #%hu ...\n", mo_msg->len );
+    LOG_DBG( "_init_session() - Setting MO message len=%hu", mo_msg->len );
     ret = isu_set_mo( ISBD_DTE, mo_msg->data, mo_msg->len );
   } else {
-    printk( "Trying session ...\n" );
+    LOG_DBG( "_init_session() - Clearing MO message" );
     ret = isu_clear_buffer( ISBD_DTE, ISU_CLEAR_MO_BUFF );
   }
 
@@ -203,7 +213,7 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
 
   isu_dte_err_t dte_err;
 
-  isu_set_evt_report( 
+  isu_set_evt_report(
     ISBD_DTE, &evt_report, NULL, &g_isbd.svca );
 
   isu_set_mt_alert( ISBD_DTE, ISU_MT_ALERT_ENABLED );
@@ -272,7 +282,7 @@ void isbd_destroy_evt( isbd_evt_t *evt ) {
 
 void _requeue_mo_msg( struct isbd_mo_msg *mo_msg ) {
   if ( k_msgq_put( ISBD_MO_Q, mo_msg, K_NO_WAIT ) == 0 ) {
-    printk( "Message #%hu was re-enqueued\n", mo_msg->len );
+    LOG_DBG( "MO message requeued" ); 
   }
 }
 
@@ -286,9 +296,10 @@ void isbd_enqueue_mo_msg( const uint8_t *msg, uint16_t msg_len, uint8_t retries 
 
   struct isbd_mo_msg mo_msg;
   
+  // TODO: generate message id or let the user give an identifier
   mo_msg.retries = retries;
 
-  if ( msg_len > 0 && msg ) {
+  if ( msg && msg_len > 0 ) {
     mo_msg.len = msg_len;
     mo_msg.data = (uint8_t*)k_malloc( sizeof(uint8_t) * msg_len );
     // TODO: check malloc
@@ -299,7 +310,7 @@ void isbd_enqueue_mo_msg( const uint8_t *msg, uint16_t msg_len, uint8_t retries 
   }
 
   if ( k_msgq_put( ISBD_MO_Q, &mo_msg, K_NO_WAIT ) == 0 ) {
-    printk( "Message #%hu was enqueued\n", msg_len );
+    LOG_DBG( "MO message enqueued, len=%hu", msg_len );
   }
   
 }
@@ -317,7 +328,6 @@ void isbd_request_mt_msg() {
 void isbd_setup( isbd_config_t *isbd_conf ) {
 
   g_isbd.svca = 0;
-
   g_isbd.cnf = *isbd_conf;
 
   g_isbd.mo_msgq_buf = 

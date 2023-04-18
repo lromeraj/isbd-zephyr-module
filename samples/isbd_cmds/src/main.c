@@ -23,6 +23,7 @@ LOG_MODULE_REGISTER(isu_sbd_cmds, LOG_LEVEL_DBG );
 
 #include "isu.h"
 #include "isu/dte.h"
+#include "isbd/util.h"
 
 #define MSG_SIZE 32
 
@@ -178,8 +179,10 @@ void main(void) {
     for ( int i=0; i < len; i++ ) {
       printk( "%c", buf[ i ] );
     }
-    printk( "\", len=%d, csum=%04X", len, csum );
+    printk( "\", len=%d, csum=%04X == %04X", 
+      len, csum, isbd_util_compute_checksum( buf, len ) );
   }, {}, isu_get_mt, buf, &len, &csum );
+
 
   isu_ring_sts_t ring_sts;
   TEST_ISU_CMD({
@@ -208,6 +211,9 @@ void main(void) {
     } else {
       set_error_led();
     }
+
+
+
 
   }, { // AT command failed
     set_error_led();

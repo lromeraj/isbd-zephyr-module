@@ -5,6 +5,7 @@
 // #include <zephyr/device.h>
 #include <zephyr/net/net_ip.h>
 // #include <zephyr/drivers/uart.h>
+#include <zephyr/logging/log.h>
 
 #include "stru.h"
 #include "at_uart.h"
@@ -14,6 +15,8 @@
 #include "isu.h"
 #include "isu/dte.h"
 #include "isu/evt.h"
+
+LOG_MODULE_REGISTER( isu );
 
 // codes prefixed with v means verbose version of the same code
 #define VCODE_READY_STR        "READY"
@@ -81,6 +84,8 @@ isu_dte_err_t isu_init_session( isu_dte_t *dte, isu_session_ext_t *session, bool
   dte->err = at_uart_pack_txt_resp(
     &dte->at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, LONG_TIMEOUT_RESPONSE );
   
+  LOG_DBG( "%s", buf );
+
   if ( dte->err == AT_UART_OK ) {
     
     // TODO: implement optimized function instead of using sscanf
@@ -177,7 +182,6 @@ isu_dte_err_t isu_set_mo( isu_dte_t *dte, const uint8_t *msg_buf, uint16_t msg_b
 
   if ( at_err == AT_UART_UNK 
       && streq( str_code, CODE_READY_STR ) ) {
-
       
     uint8_t csum_buf[ 2 ];
 
@@ -220,8 +224,10 @@ isu_dte_err_t isu_get_mt( isu_dte_t *dte, uint8_t *msg, uint16_t *msg_len, uint1
 
   dte->err = _pack_bin_resp(
     dte, msg, msg_len, csum, SHORT_TIMEOUT_RESPONSE );
-
-  return dte->err == AT_UART_OK ? ISU_DTE_OK : ISU_DTE_ERR_AT;
+  
+  return dte->err == AT_UART_OK 
+    ? ISU_DTE_OK 
+    : ISU_DTE_ERR_AT;
 }
 
 /*
@@ -476,16 +482,19 @@ static at_uart_err_t _pack_bin_resp(
     &dte->at_uart, (uint8_t*) &msg_len, 2, timeout_ms ); // message length
 
   if ( ret == AT_UART_OK ) {
-
+    
     msg_len = ntohs( msg_len );
 
     if ( msg_len > *msg_buf_len ) {
       msg_buf = NULL; // skip data
       overflowed = true;
+      LOG_ERR( "_pack_bin_resp() - Overflow %hu > %hu\n", msg_len, *msg_buf_len );
     } else {
       *msg_buf_len = msg_len;
     }
-
+    
+    // ! This will probably block if received length is not valid
+    // ! dou to remanent chars or electrical noise ... 
     ret = at_uart_read(
       &dte->at_uart, msg_buf, msg_len, timeout_ms );
 
@@ -497,10 +506,14 @@ static at_uart_err_t _pack_bin_resp(
   }
 
   if ( ret == AT_UART_OK ) {
+
     *csum = ntohs( *csum );
     
     ret = at_uart_skip_txt_resp( 
       &dte->at_uart, AT_1_LINE_RESP, timeout_ms );
+
+    // LOG_DBG( "MT message len=%hu, checksum=%hu", msg_len, *csum );
+
   }
 
   return overflowed ? AT_UART_OVERFLOW : ret;

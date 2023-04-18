@@ -4,11 +4,14 @@
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
+#include <zephyr/logging/log.h>
 
 #include "stru.h"
 
 #include "at.h"
 #include "at_uart.h"
+
+LOG_MODULE_REGISTER( at_uart );
 
 // For reference: https://www.etsi.org/deliver/etsi_ts/127000_127099/127007/10.03.00_60/ts_127007v100300p.pdf
 
@@ -312,7 +315,9 @@ at_uart_err_t at_uart_send_cmd(
 
   at_uart_err_t ret = 
     at_uart_send_vcmd( at_uart, at_cmd_buf, at_cmd_buf_len, at_cmd_tmpl, args ); 
-  
+
+  LOG_DBG( "%s", at_cmd_buf );
+
   va_end( args );
   
   return ret;
@@ -369,11 +374,13 @@ at_uart_err_t at_uart_setup(
     at_uart->eol = '\r';
   }
 
+  
   // setup underlying uart
   zuart_setup( &at_uart->zuart, &at_uart_config->zuart );
 
   // ! Disable quiet mode in order to parse command results
   _at_uart_set_quiet( at_uart, false );
+
 
   // ! The response code of this commands
   // ! are not checked due to the possibility of 

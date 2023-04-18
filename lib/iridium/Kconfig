@@ -1,9 +1,17 @@
-menu "Iridium Library"
+menu "Iridium"
+	
+	config IRIDIUM
+		bool "Build Iridium library"
+		select AT_UART
+		select STR_UTILS
 
-  config ISBD_THREAD_STACK_SIZE
-    int "Iridium SBD service thread stack size"
-    default 4096
-    help 
-      "Configures the thread stack size for Iridium SBD service"
+	if IRIDIUM
+		config ISBD_THREAD_STACK_SIZE
+		int "Iridium SBD service thread stack size"
+		default 4096
+		help 
+			"Configures the thread stack size for Iridium SBD service"
+
+	endif
 
 endmenu

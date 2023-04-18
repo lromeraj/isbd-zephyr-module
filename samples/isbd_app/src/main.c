@@ -9,6 +9,8 @@
  * 
  */
 
+// https://community.nxp.com/t5/Kinetis-Microcontrollers/My-k64F-board-just-has-a-bootloader-on-it-now-I-cant-find-a-mbed/m-p/619471
+
 #include <string.h>
 #include <stdio.h>
 #include <stdbool.h>
@@ -18,6 +20,8 @@
 #include <zephyr/drivers/uart.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
+
+LOG_MODULE_REGISTER( app );
 
 // LOG_MODULE_REGISTER( isu_sbd_cmds, LOG_LEVEL_DBG );
 
@@ -85,12 +89,12 @@ void main(void) {
       || !gpio_is_ready_dt( &blue_led )
       || !gpio_is_ready_dt( &green_led ) ) {
     
-    printk( "LED device not found\n" );
+    LOG_ERR( "LED device not found\n" );
     return;
   }
 
 	if ( !device_is_ready( uart_slave_device ) ) {
-		printk( "UART device not found\n" );
+		LOG_ERR( "UART device not found\n" );
 		return;
   }
 
@@ -102,7 +106,7 @@ void main(void) {
 
   isu_dte_config_t isu_dte_config = {
     .at_uart = {
-      .echo = true,
+      .echo = false,
       .verbose = true,
       // .zuart = ZUART_CONF_POLL( uart_slave_device ),
       .zuart = ZUART_CONF_IRQ( uart_slave_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
@@ -111,11 +115,13 @@ void main(void) {
     }
   };
 
+  LOG_DBG( "%s", "Setting up ISU DTE ..." );
+
   if ( isu_dte_setup( &g_isu_dte, &isu_dte_config ) == ISU_DTE_OK ) {
-    printk( "Modem OK\n" );
+    LOG_INF( "%s", "Modem OK" );
     set_info_led();
   } else {
-    printk( "Could not talk to modem, probably busy ...\n" );
+    LOG_ERR( "%s", "Could not talk to modem, probably busy ...\n" );
     set_warning_led();
     return;
   }
@@ -129,9 +135,9 @@ void main(void) {
 
   isbd_setup( &isbd_config );
 
-  const char *msg = "MIoT";
-  // isbd_enqueue_mo_msg( msg, strlen( msg ), MO_MSG_RETRIES );
-  
+  const char *msg = "I";
+  isbd_enqueue_mo_msg( msg, strlen( msg ), MO_MSG_RETRIES );
+
   DO_FOREVER {
 
     isbd_evt_t isbd_evt;

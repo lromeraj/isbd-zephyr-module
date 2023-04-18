@@ -20,7 +20,7 @@ isu_dte_err_t isu_dte_send_tiny_cmd( isu_dte_t *isbd, const char *at_cmd_tmpl, .
   va_start( args, at_cmd_tmpl );
 
   AT_DEFINE_CMD_BUFF( at_buf );
-
+  
   at_uart_err_t err = at_uart_send_vcmd( 
     &isbd->at_uart, at_buf, sizeof( at_buf ), at_cmd_tmpl, args );
 
