@@ -314,7 +314,7 @@ void isbd_destroy_evt( isbd_evt_t *evt ) {
  * @param msg_len Message buffer length
  */
 void _enqueue_mo_msg( struct isbd_mo_msg *mo_msg ) {
-  if ( k_msgq_put( ISBD_MO_Q, &mo_msg, K_NO_WAIT ) == 0 ) {
+  if ( k_msgq_put( ISBD_MO_Q, mo_msg, K_NO_WAIT ) == 0 ) {
     LOG_DBG( "MO message enqueued, len=%hu", mo_msg->len );
   }
 }
@@ -326,7 +326,7 @@ void isbd_send_mo_msg( const uint8_t *msg, uint16_t msg_len, uint8_t retries ) {
   mo_msg.len = msg_len;
   mo_msg.alert = false;
   mo_msg.retries = retries;
-  
+
   // TODO: check malloc
   mo_msg.data = (uint8_t*)k_malloc( sizeof(uint8_t) * msg_len );
   
