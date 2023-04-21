@@ -7,6 +7,11 @@ get_filename_component(
 
 list( APPEND ZEPHYR_EXTRA_MODULES ${IRIDIUM_MODULE_PATH} )
 
+
+	set(
+  	ENV{QEMU_EXTRA_FLAGS}
+  	"-chardev serial,id=con1,path=$ENV{QEMU_TTY_PATH} -serial chardev:con1" )
+
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 project(isu_sbd_cmds)
 

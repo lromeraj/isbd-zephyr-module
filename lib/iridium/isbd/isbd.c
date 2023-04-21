@@ -260,27 +260,32 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
 
 static void _wait_for_dte_events( uint32_t timeout_ms ) {
     
-    isu_dte_err_t dte_err;
-    isu_dte_evt_t dte_evt;
+  isu_dte_err_t dte_err;
+  isu_dte_evt_t dte_evt;
 
-    dte_err = isu_dte_evt_wait(
-      ISBD_DTE, &dte_evt, timeout_ms );
+  dte_err = isu_dte_evt_wait(
+    ISBD_DTE, &dte_evt, timeout_ms );
 
-    if ( dte_err == ISU_DTE_OK ) {
-      
-      if ( dte_evt.id == ISU_DTE_EVT_SVCA ) {
-        g_isbd.svca = dte_evt.svca;
-      }
+  if ( dte_err == ISU_DTE_OK ) {
 
-      isbd_evt_t isbd_evt;
+    isbd_evt_t isbd_evt = {
+      .id = ISBD_EVT_UNK,
+    };
 
-      isbd_evt.id = ISBD_EVT_DTE;
-      isbd_evt.dte = dte_evt;
-
-      k_msgq_put( ISBD_EVT_Q, &isbd_evt, K_NO_WAIT );
-    } else {
-      // No event detected
+    if ( dte_evt.id == ISU_DTE_EVT_SVCA ) {
+      g_isbd.svca = dte_evt.svca;
+      isbd_evt.id = ISBD_EVT_SVCA;
+      isbd_evt.svca = dte_evt.svca;
+    } else if ( dte_evt.id == ISU_DTE_EVT_SIGQ  ) {
+      isbd_evt.id = ISBD_EVT_SIGQ;
+      isbd_evt.sigq = dte_evt.sigq;
+    } else if ( dte_evt.id == ISU_DTE_EVT_RING ) {
+      isbd_evt.id = ISBD_EVT_RING;
     }
+
+    k_msgq_put( ISBD_EVT_Q, &isbd_evt, K_NO_WAIT );
+
+  }
 
 } 
 

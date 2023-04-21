@@ -10,8 +10,12 @@ list( APPEND ZEPHYR_EXTRA_MODULES ${IRIDIUM_MODULE_PATH} )
 
 if( "${DEBUG}" STREQUAL "yes" )
 	#message( WARN "Logging mode has been enabled" )
-	list(APPEND OVERLAY_CONFIG "dbg.conf")
+	list( APPEND OVERLAY_CONFIG "dbg.conf" )
 endif()
+
+	set(
+  	ENV{QEMU_EXTRA_FLAGS}
+  	"-chardev serial,id=con1,path=$ENV{QEMU_TTY_PATH} -serial chardev:con1" )
 
 # Look up Zephyr package using ZEPHYR_BASE
 # environment variable as reference

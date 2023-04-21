@@ -32,8 +32,11 @@
   typedef enum isbd_evt_id {
     ISBD_EVT_MT,
     ISBD_EVT_MO,
-    ISBD_EVT_DTE,
+    ISBD_EVT_RING,
+    ISBD_EVT_SVCA,
+    ISBD_EVT_SIGQ,
     ISBD_EVT_ERR,
+    ISBD_EVT_UNK,
   } isbd_evt_id_t;
 
   typedef struct isbd_evt {
@@ -41,8 +44,9 @@
     isbd_evt_id_t id;
 
     union {
+      uint8_t svca;
+      uint8_t sigq;
       isbd_err_t err;
-      isu_dte_evt_t dte;
       struct isbd_mt_msg mt;
       struct isbd_mo_msg mo;
     };
