@@ -12,7 +12,7 @@
 
 LOG_MODULE_REGISTER( isbd );
 
-#define DTE_EVT_WAIT_TIMEOUT    5000
+#define DTE_EVT_WAIT_TIMEOUT    CONFIG_ISBD_DTE_EVT_WAIT_TIMEOUT
 
 #define DO_FOREVER while( 1 )
 
@@ -259,7 +259,7 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
 }
 
 static void _wait_for_dte_events( uint32_t timeout_ms ) {
-    
+
   isu_dte_err_t dte_err;
   isu_dte_evt_t dte_evt;
 
@@ -286,6 +286,7 @@ static void _wait_for_dte_events( uint32_t timeout_ms ) {
     k_msgq_put( ISBD_EVT_Q, &isbd_evt, K_NO_WAIT );
 
   }
+
 
 } 
 
@@ -363,9 +364,9 @@ void isbd_request_mt_msg( bool alert ) {
 }
 
 void isbd_setup( isbd_config_t *isbd_conf ) {
-
-  g_isbd.svca = 0;
-  g_isbd.cnf = *isbd_conf;
+  
+  g_isbd.cnf      = *isbd_conf;
+  g_isbd.svca     = 0;
 
   g_isbd.mo_msgq_buf = 
     (char*) k_malloc( sizeof( struct isbd_mo_msg ) * g_isbd.cnf.mo_queue_len );
@@ -398,8 +399,6 @@ void isbd_setup( isbd_config_t *isbd_conf ) {
 bool isbd_wait_evt( isbd_evt_t *isbd_evt, uint32_t timeout_ms ) {
   return k_msgq_get( ISBD_EVT_Q, isbd_evt, K_MSEC( timeout_ms ) ) == 0;
 }
-
-
 
 #define ISBD_ERR_CASE_RET_NAME( err ) \
   case err: \

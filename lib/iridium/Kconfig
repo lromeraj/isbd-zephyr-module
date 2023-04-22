@@ -1,17 +1,25 @@
 menu "Iridium"
 	
-	config IRIDIUM
-		bool "Build Iridium library"
-		select AT_UART
-		select STR_UTILS
+config IRIDIUM
+  bool "Build Iridium library"
+  select AT_UART
+  select STR_UTILS
 
-	if IRIDIUM
-		config ISBD_THREAD_STACK_SIZE
-		int "Iridium SBD service thread stack size"
-		default 4096
-		help 
-			"Configures the thread stack size for Iridium SBD service"
+if IRIDIUM
+  
+  config ISBD_THREAD_STACK_SIZE
+    int "Iridium SBD service thread stack size"
+    default 4096
+    help 
+      "Configures the thread stack size for Iridium SBD service"
 
-	endif
+  config ISBD_DTE_EVT_WAIT_TIMEOUT
+    int "DTE event wait timeout"
+    default 1000
+    help 
+      Configures how many time the thread will be blocked until a event is
+      received from the ISU
+
+endif
 
 endmenu

@@ -13,9 +13,11 @@ if( "${DEBUG}" STREQUAL "yes" )
 	list( APPEND OVERLAY_CONFIG "dbg.conf" )
 endif()
 
-	set(
-  	ENV{QEMU_EXTRA_FLAGS}
-  	"-chardev serial,id=con1,path=$ENV{QEMU_TTY_PATH} -serial chardev:con1" )
+if(DEFINED QEMU_TTY_PATH)
+  set(
+    ENV{QEMU_EXTRA_FLAGS}
+    "-chardev serial,id=con1,path=${QEMU_TTY_PATH} -serial chardev:con1" )
+endif()
 
 # Look up Zephyr package using ZEPHYR_BASE
 # environment variable as reference

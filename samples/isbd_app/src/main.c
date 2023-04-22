@@ -31,8 +31,6 @@ LOG_MODULE_REGISTER( app );
 
 #define MO_MSG_RETRIES 4
 
-
-
 #ifdef CONFIG_BOARD_FRDM_K64F
 
   /* change this to any other UART peripheral if desired */
@@ -155,7 +153,7 @@ int main(void) {
 
   isbd_setup( &isbd_config );
 
-  const char *msg = "I";
+  const char *msg = "MIoT";
   isbd_send_mo_msg( msg, strlen( msg ), MO_MSG_RETRIES );
 
   DO_FOREVER {
