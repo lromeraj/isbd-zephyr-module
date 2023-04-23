@@ -17,7 +17,7 @@ test:
     - source ~/zephyrproject/zephyr/zephyr-env.sh
     - twister -vv -T tests/
   tags:
-    - isbd-library
+    - zephyr
   only:
     - dev
     - main
