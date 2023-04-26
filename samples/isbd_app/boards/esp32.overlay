@@ -1,0 +1,9 @@
+/ {
+	aliases {
+		960x = &uart2;
+	};
+};
+
+&uart2 {
+	status = "okay";
+};

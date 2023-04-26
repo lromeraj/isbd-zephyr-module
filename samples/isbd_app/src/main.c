@@ -55,19 +55,18 @@ LOG_MODULE_REGISTER( app );
   #define TURN_OFF_LED( led ) \
     gpio_pin_configure_dt( led, GPIO_OUTPUT_INACTIVE );
 
-#elif CONFIG_BOARD_QEMU_CORTEX_M3
+#else
 
-  #define UART_DTE_NODE DT_NODELABEL( uart1 )
+  // #define UART_DTE_NODE DT_NODELABEL( uart1 )
+  #define UART_DTE_NODE DT_ALIAS( 960x )
 
-  #define RED_LED &red_led
-  #define BLUE_LED &blue_led
-  #define GREEN_LED &green_led
+  #define RED_LED
+  #define BLUE_LED
+  #define GREEN_LED
 
   #define TURN_ON_LED( led )
   #define TURN_OFF_LED( led )
 
-#else
-  #pragma error "Board " CONFIG_BOARD " is not supported"
 #endif
 
 
@@ -133,7 +132,7 @@ int main(void) {
     }
   };
 
-  LOG_DBG( "%s", "Setting up ISU DTE ..." );
+  LOG_DBG( "%s", "Setting up iridium subscriber unit ..." );
 
   if ( isu_dte_setup( &g_isu_dte, &isu_dte_config ) == ISU_DTE_OK ) {
     LOG_INF( "%s", "Modem OK" );
