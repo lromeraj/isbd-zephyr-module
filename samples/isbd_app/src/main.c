@@ -170,7 +170,7 @@ static void _isbd_evt_handler( isbd_evt_t *evt ) {
 
     case ISBD_EVT_RING:
       LOG_INF( "Ring alert received" );
-      isbd_request_mt_msg( true );
+      isbd_request_session( true );
       break;
 
     case ISBD_EVT_SIGQ:

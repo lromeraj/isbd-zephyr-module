@@ -74,16 +74,15 @@
   void isbd_send_mo_msg( const uint8_t *msg, uint16_t msg_len, uint8_t retries );
 
   /**
-   * @brief Requests a mobile terminated message
+   * @brief Request a session
    * 
-   * @note If there is currently any message in the mobile originated queue
-   * no request will be enqueued, this is because when a session is completed
-   * the MO buffer will be sent and the MT buffer will be received. 
+   * @note If there is currently any message in the mobile originated queue 
+   * (or any session request) no session request will be enqueued. 
    * 
-   * 
-   * @param alert The MT request was initiated due to a previously received ring alert
+   * @param alert Flag to indicate if the session was requested 
+   * due to a previously received ring alert
    */
-  void isbd_request_mt_msg( bool alert );
+  void isbd_request_session( bool alert );
 
   void isbd_destroy_evt( isbd_evt_t *evt );
   

@@ -74,7 +74,7 @@ isu_dte_err_t isu_get_rtc( isu_dte_t *dte, char *rtc_buf, size_t rtc_buf_len ) {
   return dte->err == AT_UART_OK ? ISU_DTE_OK : ISU_DTE_ERR_AT;
 }
 
-// TODO: this hould be named isbd_init_session_ext()
+// TODO: this should be named isbd_init_session_ext()
 isu_dte_err_t isu_init_session( isu_dte_t *dte, isu_session_ext_t *session, bool alert ) {
   
   SEND_TINY_CMD_OR_RET( 

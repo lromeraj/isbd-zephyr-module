@@ -138,6 +138,7 @@ static inline void _handle_session_mo_msg(
 static inline void _handle_session_mt_msg(
   isu_session_ext_t *session
 ) {
+  
 
   if ( session->mt_sts == 1 ) {
 
@@ -156,13 +157,19 @@ static inline void _handle_session_mt_msg(
 
       if ( msg_read ) {
         _notify_mt_msg( &mt_msg );
+
+        if ( session->mt_queued > 0 ) {
+          isbd_request_session( false );
+        }
+
       } else {
         _notify_err( ISBD_ERR_MT );
         isbd_destroy_mt_msg( &mt_msg );
       }
 
     } else {
-      // TODO: notify error
+      LOG_ERR( "Could not alloc memory for MT message" );
+      // TODO: the message still remains in the ISU memory, try again later ?
     }
 
   }
@@ -199,6 +206,8 @@ void _init_session( struct isbd_mo_msg *mo_msg ) {
     if ( ret == ISU_DTE_OK ) {
       _handle_session_mo_msg( &session, mo_msg );
       _handle_session_mt_msg( &session );
+    } else {
+      LOG_ERR( "Could not init session %d\n", ret );
     }
 
   }
@@ -223,14 +232,10 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
   isu_dte_err_t dte_err;
 
   dte_err = isu_set_evt_report(
-    ISBD_DTE, &evt_report, NULL, &g_isbd.svca );
+    ISBD_DTE, &evt_report, &g_isbd.sigq, &g_isbd.svca );
 
   if ( dte_err == ISU_DTE_OK ) {
-    if ( g_isbd.svca ) {
-      LOG_INF( "Service currently available" );
-    } else {
-      LOG_INF( "Service currently not available" );
-    }
+    LOG_DBG( "svca=%hhu, sigq=%hhu", g_isbd.svca, g_isbd.sigq );
   } else {
     LOG_ERR( "Could not set event reporting" );
   }
@@ -353,7 +358,7 @@ void isbd_send_mo_msg( const uint8_t *msg, uint16_t msg_len, uint8_t retries ) {
 
 }
 
-void isbd_request_mt_msg( bool alert ) {
+void isbd_request_session( bool alert ) {
 
   struct isbd_mo_msg mo_msg;
   
