@@ -30,6 +30,7 @@ LOG_MODULE_REGISTER( isbd );
 
 typedef struct isbd {
   uint8_t svca; // service availability
+  uint8_t sigq;
   char *mo_msgq_buf;
   char *mt_msgq_buf;
   char *evt_msgq_buf;
@@ -247,7 +248,7 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
     struct isbd_mo_msg mo_msg;
     
     // sessions will be sent only if the service is currently available
-    if ( g_isbd.svca ) {
+    if ( g_isbd.svca && g_isbd.sigq >= g_isbd.cnf.sigq_threshold ) {
       if ( k_msgq_get( ISBD_MO_Q, &mo_msg, K_NO_WAIT ) == 0 ) {
         _init_session( &mo_msg );
       }
@@ -276,7 +277,8 @@ static void _wait_for_dte_events( uint32_t timeout_ms ) {
       g_isbd.svca = dte_evt.svca;
       isbd_evt.id = ISBD_EVT_SVCA;
       isbd_evt.svca = dte_evt.svca;
-    } else if ( dte_evt.id == ISU_DTE_EVT_SIGQ  ) {
+    } else if ( dte_evt.id == ISU_DTE_EVT_SIGQ ) {
+      g_isbd.sigq = dte_evt.sigq;
       isbd_evt.id = ISBD_EVT_SIGQ;
       isbd_evt.sigq = dte_evt.sigq;
     } else if ( dte_evt.id == ISU_DTE_EVT_RING ) {

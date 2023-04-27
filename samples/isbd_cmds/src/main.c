@@ -25,16 +25,12 @@ LOG_MODULE_REGISTER(isu_sbd_cmds, LOG_LEVEL_DBG );
 #include "isu/dte.h"
 #include "isbd/util.h"
 
+#include "shared.h"
+
 #define MSG_SIZE 32
 
-/* change this to any other UART peripheral if desired */
-// #define UART_MASTER_DEVICE_NODE DT_NODELABEL(uart0)
-#define UART_SLAVE_DEVICE_NODE DT_NODELABEL( uart1 )
-
-static struct device *uart_slave_device = 
-  (struct device*)DEVICE_DT_GET( UART_SLAVE_DEVICE_NODE );
-
 static isu_dte_t g_isu_dte;
+static struct device *uart_960x_device = UART_960X_DEVICE;
 
 static void isbd_print_error( isu_dte_t *dte, isu_dte_err_t err ) {
 
@@ -75,25 +71,25 @@ int main(void) {
   //   return;
   // }
 
-	if ( !device_is_ready( uart_slave_device ) ) {
+	if ( !device_is_ready( uart_960x_device ) ) {
 		printk( "UART device not found\n" );
 		return 1;
   }
 
   struct uart_config uart_config;
 
-	uart_config_get( uart_slave_device, &uart_config );
+	uart_config_get( uart_960x_device, &uart_config );
 	uart_config.baudrate = 19200;
-	uart_configure( uart_slave_device, &uart_config );
+	uart_configure( uart_960x_device, &uart_config );
 
   isu_dte_config_t isu_dte_config = {
     .at_uart = {
       .echo = true,
       .verbose = true,
-      // .zuart = ZUART_CONF_POLL( uart_slave_device ),
-      .zuart = ZUART_CONF_IRQ( uart_slave_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
-      // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( uart_slave_device, rx_buf, sizeof( rx_buf ) ),
-      // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( uart_slave_device, tx_buf, sizeof( tx_buf ) ),
+      // .zuart = ZUART_CONF_POLL( 960x_device ),
+      .zuart = ZUART_CONF_IRQ( uart_960x_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
+      // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( 960x_device, rx_buf, sizeof( rx_buf ) ),
+      // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( 960x_device, tx_buf, sizeof( tx_buf ) ),
     }
   };
 

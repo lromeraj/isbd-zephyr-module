@@ -6,6 +6,15 @@
   #include "isu/dte.h"
   #include "isu/evt.h"
 
+  #define ISBD_DEFAULT_CONF( _dte ) \
+    { \
+      .dte = _dte, \
+      .priority = 0, \
+      .mo_queue_len = 4, \
+      .evt_queue_len = 4, \
+      .sigq_threshold = 2, \
+    }
+
   struct isbd_mo_msg {
     bool alert; 
     uint16_t sn;
@@ -55,6 +64,7 @@
 
   typedef struct isbd_config {
     int priority;
+    uint8_t sigq_threshold;
     uint8_t mo_queue_len;
     uint8_t evt_queue_len;
     isu_dte_t *dte;

@@ -21,6 +21,8 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 
+#include "shared.h"
+
 LOG_MODULE_REGISTER( app );
 
 // LOG_MODULE_REGISTER( isu_sbd_cmds, LOG_LEVEL_DBG );
@@ -29,13 +31,9 @@ LOG_MODULE_REGISTER( app );
 
 #define DO_FOREVER while (1)
 
-#define MO_MSG_RETRIES 4
+#define MO_MSG_RETRIES 8
 
 #ifdef CONFIG_BOARD_FRDM_K64F
-
-  /* change this to any other UART peripheral if desired */
-  // #define UART_MASTER_DEVICE_NODE DT_NODELABEL(uart0)
-  #define UART_DTE_NODE DT_NODELABEL( uart3 )
 
   #define LED0_NODE DT_ALIAS( led0 )
   #define LED1_NODE DT_ALIAS( led1 )
@@ -57,9 +55,6 @@ LOG_MODULE_REGISTER( app );
 
 #else
 
-  // #define UART_DTE_NODE DT_NODELABEL( uart1 )
-  #define UART_DTE_NODE DT_ALIAS( 960x )
-
   #define RED_LED
   #define BLUE_LED
   #define GREEN_LED
@@ -69,12 +64,8 @@ LOG_MODULE_REGISTER( app );
 
 #endif
 
-
 static isu_dte_t g_isu_dte;
-
-static struct device *uart_slave_device =
-  (struct device*)DEVICE_DT_GET( UART_DTE_NODE );
-
+static struct device *uart_960x_device = UART_960X_DEVICE;
 
 void clear_leds() {
   TURN_OFF_LED( BLUE_LED );
@@ -110,25 +101,25 @@ static uint8_t tx_buf[ 512 ];
 
 int main(void) {
 
-	if ( !device_is_ready( uart_slave_device ) ) {
+	if ( !device_is_ready( uart_960x_device ) ) {
 		LOG_ERR( "UART device not found" );
 		return 1;
   }
 
   struct uart_config uart_config;
 
-	uart_config_get( uart_slave_device, &uart_config );
+	uart_config_get( uart_960x_device, &uart_config );
 	uart_config.baudrate = 19200;
-	uart_configure( uart_slave_device, &uart_config );
+	uart_configure( uart_960x_device, &uart_config );
 
   isu_dte_config_t isu_dte_config = {
     .at_uart = {
       .echo = true,
       .verbose = true,
-      // .zuart = ZUART_CONF_POLL( uart_slave_device ),
-      .zuart = ZUART_CONF_IRQ( uart_slave_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
-      // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( uart_slave_device, rx_buf, sizeof( rx_buf ) ),
-      // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( uart_slave_device, tx_buf, sizeof( tx_buf ) ),
+      // .zuart = ZUART_CONF_POLL( uart_960x_device ),
+      .zuart = ZUART_CONF_IRQ( uart_960x_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
+      // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( uart_960x_device, rx_buf, sizeof( rx_buf ) ),
+      // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( uart_960x_device, tx_buf, sizeof( tx_buf ) ),
     }
   };
 
@@ -143,16 +134,12 @@ int main(void) {
     return 1;
   }
 
-  isbd_config_t isbd_config = {
-    .dte            = &g_isu_dte,
-    .priority       = 0,
-    .mo_queue_len   = 4,
-    .evt_queue_len  = 8,
-  };
+  isbd_config_t isbd_config = 
+    ISBD_DEFAULT_CONF( &g_isu_dte );
 
   isbd_setup( &isbd_config );
 
-  const char *msg = "MIoT";
+  const char *msg = "UCM - MIoT";
   isbd_send_mo_msg( msg, strlen( msg ), MO_MSG_RETRIES );
 
   DO_FOREVER {
