@@ -287,6 +287,10 @@ static void _wait_for_dte_events( uint32_t timeout_ms ) {
 
     k_msgq_put( ISBD_EVT_Q, &isbd_evt, K_NO_WAIT );
 
+    // ! If there is more than one event in the reception buffer
+    // ! we have to wait a little for it to avoid a possible event loss
+    _wait_for_dte_events( 10 );
+
   }
 
 
