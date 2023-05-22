@@ -1,4 +1,4 @@
-# Iridium SBD Library for Zephyr OS
+# Iridium SBD module for Zephyr OS
 This library has been implemented in order to give support to the *Iridium 9602 SBD Transceiver* in Zephyr projects. 
 This implementation should work too for modern transceivers like *9603*, and also for different Iridium modems which share similar AT commands.
 
@@ -17,7 +17,7 @@ This repository also includes a [recently implemented Iridium SBD emulator](http
 Remember to clone this repository using the `--recursive` flag to fill the directories of submodule dependencies automatically:
 
 ``` bash
-git clone git@glab.lromeraj.net:ucm/miot/tfm/iridium-sbd-library.git --recursive
+git clone https://github.com/lromeraj/isbd-zephyr-module.git --recursive
 ```
 
 In case you have cloned it without `--recursive` flag, use the following command:
