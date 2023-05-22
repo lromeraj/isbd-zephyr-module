@@ -1,17 +1,6 @@
 {
-    "cmake.configureOnOpen": true,
-    "files.associations": {
-      "*.ejs": "html",
-      "devicetree.h": "c",
-      "kernel.h": "c",
-      "uart.h": "c",
-      "random": "c",
-      "byteswap.h": "c",
-      "typeinfo": "c",
-      "system_error": "c",
-      "defs.h": "c",
-      "at.h": "c",
-      "type_traits": "c",
-      "printk.h": "c"
-    }
+  "files.associations": {
+    "*.ejs": "html",
+    "evt.h": "c"
+  }
 }

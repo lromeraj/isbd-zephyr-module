@@ -1,0 +1,4 @@
+menu "STR Utils"
+	config STR_UTILS
+		bool "Build STR Utils library"
+endmenu

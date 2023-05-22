@@ -43,8 +43,12 @@ uint16_t zuart_read_irq_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byte
       if ( sem_ret < 0 ) break;
     }
 
+    uint8_t *out_buf_offset = out_buf
+      ? out_buf + total_bytes_read
+      : NULL;
+
     total_bytes_read += ring_buf_get(
-      &zuart->rx_rbuf, out_buf + total_bytes_read, n_bytes - total_bytes_read );
+      &zuart->rx_rbuf, out_buf_offset, n_bytes - total_bytes_read );
 
   }
 
@@ -77,21 +81,25 @@ uint16_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byt
   uint8_t byte;
   uint16_t total_bytes_read = 0;
 
+  
   if ( timeout_ms == 0 ) {
 
     while ( total_bytes_read < n_bytes 
       && uart_poll_in( zuart->dev, &byte ) == 0 ) {
 
-      out_buf[ total_bytes_read ] = byte;
+      if ( out_buf ) {
+        out_buf[ total_bytes_read ] = byte;
+      }
+      
       total_bytes_read++;
     }
 
   } else {
-
+    
     uint64_t ts_old = k_uptime_get();
 
     while ( total_bytes_read < n_bytes ) {
-      
+
       uint64_t ts_now = k_uptime_get();
 
       if ( ts_now - ts_old >= timeout_ms ) {
@@ -100,9 +108,11 @@ uint16_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byt
       }
 
       int ret = uart_poll_in( zuart->dev, &byte );
-
+      
       if ( ret == 0 ) {
-        out_buf[ total_bytes_read ] = byte;
+        if ( out_buf ) {
+          out_buf[ total_bytes_read ] = byte;
+        }
         total_bytes_read++;
       } else if ( ret == -1 ) {
         k_yield();
@@ -184,7 +194,9 @@ uint16_t zuart_write_poll_proto(
     }
 
     uint8_t byte = src_buf[ bytes_written ];
+
     uart_poll_out( zuart->dev, byte );
+
     bytes_written++;
   }
 
@@ -205,13 +217,22 @@ uint16_t zuart_write(
 
 }
 
+uint16_t zuart_available( zuart_t *zuart ) {
+  if ( zuart->config.read_proto == zuart_read_irq_proto ) {
+    return ring_buf_size_get( &zuart->rx_rbuf );
+  }
+  return 0;
+}
+
 // TODO: https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/10
-void zuart_drain( zuart_t *zuart ) {
+uint32_t zuart_drain( zuart_t *zuart ) {
 
   uint32_t size = ring_buf_size_get( &zuart->rx_rbuf );
   
   // purge ring buffer
   ring_buf_get( &zuart->rx_rbuf, NULL, size );
+
+  return size;
 }
 
 zuart_err_t zuart_setup( zuart_t *zuart, const zuart_config_t *zuart_config ) {
@@ -223,19 +244,20 @@ zuart_err_t zuart_setup( zuart_t *zuart, const zuart_config_t *zuart_config ) {
   zuart->config = *zuart_config;
 
   if ( zuart_config->mode == ZUART_MODE_IRQ ) {
-
+    
     zuart->config.read_proto = zuart_read_irq_proto;
     zuart->config.write_proto = zuart_write_irq_proto;
-
+  
   } else if ( zuart_config->mode == ZUART_MODE_POLL ) {
 
     zuart->config.read_proto = zuart_read_poll_proto;
     zuart->config.write_proto = zuart_write_poll_proto;
+
   }
 
   if ( zuart->config.read_proto == zuart_read_irq_proto 
       || zuart->config.write_proto == zuart_write_irq_proto ) {
-    
+
     uart_irq_callback_user_data_set( zuart->dev, _uart_isr, zuart );
   }
 
@@ -244,7 +266,7 @@ zuart_err_t zuart_setup( zuart_t *zuart, const zuart_config_t *zuart_config ) {
     if ( zuart->config.rx_buf == NULL || zuart->config.rx_buf_size == 0 ) {
       return ZUART_ERR_SETUP;
     }
-
+    
     k_sem_init(
       &zuart->rx_sem, 0, 1 );
 
@@ -270,12 +292,21 @@ zuart_err_t zuart_setup( zuart_t *zuart, const zuart_config_t *zuart_config ) {
   return ZUART_OK;
 }
 
-static inline void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
+// TODO: think about polling, update zuart struct flag ???
+void zuart_force_read_timeout( zuart_t *zuart ) {
+  if ( zuart->config.read_proto == zuart_read_irq_proto ) {
+    k_sem_reset( &zuart->rx_sem );
+  }
+}
 
-  // uint8_t *tx_buff = zuart->buf.tx;
-  // size_t *tx_buff_len = &zuart->buf.tx_len;
-  // size_t *tx_buff_idx = &zuart->buf.tx_idx;
-  
+// TODO: think about polling, update zuart struct flag ???
+void zuart_force_write_timeout( zuart_t *zuart ) {
+  if ( zuart->config.write_proto == zuart_write_irq_proto ) {
+    k_sem_reset( &zuart->tx_sem );
+  }
+}
+
+static inline void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
 
   if ( ring_buf_size_get( &zuart->tx_rbuf ) > 0 ) {
     
@@ -296,7 +327,7 @@ static inline void _uart_tx_isr( const struct device *dev, zuart_t *zuart ) {
     
     // TODO: we could add extra logic here and give semaphore only if
     // TODO: there are at least N bytes of free space in the ring buffer
-    // the semaphore will be given anyway to allow writing bytes
+    // the semaphore will be given anyway to allow writing
     k_sem_give( &zuart->tx_sem );
 
   } else {
@@ -335,7 +366,7 @@ static inline void _uart_rx_isr( const struct device *dev, zuart_t *zuart ) {
     // TODO: we could give semaphore depending on some additional logic
     k_sem_give( &zuart->rx_sem );
   }
-  
+
 }
 
 static void _uart_isr( const struct device *dev, void *user_data ) {

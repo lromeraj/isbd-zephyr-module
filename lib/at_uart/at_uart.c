@@ -4,11 +4,14 @@
 #include <zephyr/kernel.h>
 #include <zephyr/device.h>
 #include <zephyr/drivers/uart.h>
+#include <zephyr/logging/log.h>
 
 #include "stru.h"
 
 #include "at.h"
 #include "at_uart.h"
+
+LOG_MODULE_REGISTER( at_uart );
 
 // For reference: https://www.etsi.org/deliver/etsi_ts/127000_127099/127007/10.03.00_60/ts_127007v100300p.pdf
 
@@ -19,7 +22,8 @@
 // Default AT short response timeout
 #define AT_SHORT_TIMEOUT          1000 // ms
 
-// ------------- Private AT basic command methods ---------------
+// ------------- Private AT basic commands ---------------
+
 /**
  * @brief Enables or disables AT quiet mode. If enabled there will not be
  * AT command responses. 
@@ -66,10 +70,9 @@ static at_uart_err_t _at_uart_set_verbose( at_uart_t *at_uart, bool enable );
  */
 static at_uart_err_t _at_uart_enable_echo( at_uart_t *at_uart, bool enable );
 
-
 static at_uart_err_t _at_uart_three_wire_connection( at_uart_t *at_uart, bool using );
 
-// --------- End of private AT basic command methods ------------
+// --------- End of private AT basic commands ------------
 
 
 at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
@@ -79,7 +82,7 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
   }
 
   uint8_t byte;
-  uint16_t byte_i = 0;
+  // uint16_t byte_i = 0;
 
   // This flag is used to avoid rechecking echo for segmented responses
   at_uart->_echoed = true;
@@ -88,7 +91,7 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
 
   while( zuart_read( &at_uart->zuart, &byte, 1, AT_SHORT_TIMEOUT ) == 1 ) {
 
-    if ( byte_i == 0 && byte == '\n' ) continue;
+    // if ( byte_i == 0 && byte == '\n' ) continue;
 
     // ! When a mismatch is detected we have to drop all remaining chars
     // ! In case of electrical noise, the trailing char may be different
@@ -98,14 +101,14 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
     // TODO: Illegal private access, create a function inside zuart module
     // TODO: to retrieve specific transmission byte
 
-    // ! If we want to check echo like this we have an additional buffer
+    // ! If we want to check echo like this we need an additional buffer
     // ! to store the transmitted command, otherwise we can skip the command completely
     // if ( at_uart->zuart.buf.tx[ byte_i ] != byte ) {
     //   // Echoed command do not matches previously transmitted command
     //   at_code = AT_UART_ERR;
     // }
 
-    byte_i++;
+    // byte_i++;
 
     if ( byte == '\r' ) {
       return at_code;
@@ -116,81 +119,96 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
   return AT_UART_TIMEOUT;
 }
 
+// TODO: https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/24
 at_uart_err_t at_uart_pack_txt_resp(
-  at_uart_t *at_uart, char *buf, size_t buf_size, uint8_t lines, uint16_t timeout_ms 
+  at_uart_t *at_uart, 
+  char *buf, uint16_t buf_size, 
+  uint8_t lines, uint16_t timeout_ms
 ) {
   
-  uint8_t line_n = 1;
-  unsigned char byte;
+  uint8_t line_n = 1; // current line number
 
-  uint16_t buf_i = 0;
-  uint16_t at_buf_i = 0;
-
-  at_uart_err_t at_code;
+  uint16_t buf_i = 0; // buffer current index
+  uint16_t buf_li = 0; // buffer last line end index
+  uint16_t at_buf_i = 0; // auxiliary buffer index
 
   // this little buffer is used to parse AT status codes like ERROR, OK, ...
   char at_buf[ AT_MIN_BUFF_SIZE ] = "";
 
+  unsigned char byte;
+
   while ( zuart_read( &at_uart->zuart, &byte, 1, timeout_ms ) == 1 ) {
+    
+    // Used to add or not the current byte to the output buffer
+    unsigned char add_char = byte;
 
+    // Used to know if the current char is a trailing char or not
+    // Also known as EOL (end of line) 
     unsigned char trail_char = 0;
-
+    
     if ( byte == '\r' || byte == '\n' ) {
+      add_char = 0;
       trail_char = byte;
     }
 
-    if ( at_buf_i > 0 && trail_char == at_uart->eol ) {
+    if ( at_buf_i > 0 && trail_char == at_uart->eol ) { // new line detected
       
-      // TODO: AT code should be checked only in the first and last line
-      at_code = at_uart_get_str_code( at_uart, at_buf );
+      if ( lines == AT_UNK_LINE_RESP 
+          || line_n == lines
+          || line_n == 1 ) {
+        
+        at_uart_err_t at_code = at_uart_get_str_code( at_uart, at_buf );
 
-      if ( at_code != AT_UART_UNK ) {
-        return at_code;
+        if ( at_code != AT_UART_UNK ) {
+          
+          if ( buf ) {
+
+            if ( buf_li >= buf_size ) {
+              return AT_UART_OVERFLOW;
+            } else {
+              buf[ buf_li ] = '\0';
+            }
+          }
+
+          return at_code;
+        }
       }
 
       line_n++;
+      
+       // TODO: recheck this
+      if ( lines > 0 && line_n > lines ) {
 
-      if ( line_n > lines ) {
-        return AT_UART_UNK;
+        if ( buf && buf_i > buf_size ) {
+          return AT_UART_OVERFLOW;
+        } else {
+          return AT_UART_UNK;
+        }
+
       }
+
+      buf_li = buf_i;
 
       at_buf_i = 0;
       at_buf[ 0 ] = '\0';
 
+      // this char is used to split multiline responses
+      add_char = '\n';
     }
 
-    if ( !trail_char ) {
-      
-      if ( buf && ( lines == AT_1_LINE_RESP || line_n < lines) ) {
-
-          if ( buf_i >= buf_size - 1 ) {
-
-            // ! We are leaving all pending chars in the ring buffer
-            // ! so is very importante to clear reception buffer before
-            // ! sending a new command 
-            return AT_UART_OVERFLOW;
-
-          } else {
-
-            // TODO: We should append trailing chars to source buf 
-            // TODO: if response string has multiple lines
-            buf[ buf_i ] = byte;
-
-            // TODO: Put this char only when buffer is terminated
-            buf[ buf_i + 1 ] = '\0';
-          }
-
+    if ( buf && add_char ) {
+      if ( buf_i < buf_size - 1 ) {
+        buf[ buf_i ] = add_char;
+        buf[ buf_i + 1 ] = '\0';
       }
-
-      // at buff is only used for AT command responses
-      if ( at_buf_i < sizeof( at_buf ) - 1 ) {
-        at_buf[ at_buf_i ] = byte;
-        at_buf[ at_buf_i + 1 ] = '\0';
-      }
-
       buf_i++;
-      at_buf_i++;
+    }
 
+    // at buff is only used for AT command responses
+    if ( !trail_char && at_buf_i < sizeof( at_buf ) - 1 ) {
+      at_buf[ at_buf_i ] = byte;
+      at_buf[ at_buf_i + 1 ] = '\0';
+      at_buf_i++;
     }
 
   }
@@ -267,13 +285,13 @@ at_uart_err_t at_uart_read(
 }
 
 at_uart_err_t at_uart_write_cmd( 
-  at_uart_t *at_uart, char *cmd_buf, size_t cmd_len
+  at_uart_t *at_uart, char *cmd_buf, uint16_t cmd_len
 ) {
 
   at_uart->_echoed = false;
   
-  // ! Clear reception buffer to clear data remnants
-  zuart_drain( &at_uart->zuart );
+  uint32_t purged = zuart_drain( &at_uart->zuart );
+  LOG_DBG( "%u ~ %s", purged, cmd_buf );
 
   at_uart_err_t err = at_uart_write(
     at_uart, cmd_buf, cmd_len, AT_SHORT_TIMEOUT );
@@ -295,9 +313,10 @@ at_uart_err_t at_uart_send_cmd(
   va_list args;
   va_start( args, at_cmd_tmpl );
 
-  at_uart_err_t ret = 
+  at_uart_err_t ret =
     at_uart_send_vcmd( at_uart, at_cmd_buf, at_cmd_buf_len, at_cmd_tmpl, args ); 
-  
+
+
   va_end( args );
   
   return ret;
@@ -353,7 +372,7 @@ at_uart_err_t at_uart_setup(
   } else {
     at_uart->eol = '\r';
   }
-
+  
   // setup underlying uart
   zuart_setup( &at_uart->zuart, &at_uart_config->zuart );
 

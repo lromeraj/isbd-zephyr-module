@@ -1,0 +1,6 @@
+menu "Libraries"
+	rsource "iridium/Kconfig"
+	rsource "zuart/Kconfig"
+	rsource "stru/Kconfig"
+	rsource "at_uart/Kconfig"
+endmenu

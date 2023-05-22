@@ -1,0 +1,8 @@
+menu "Z-UART"
+	
+	menuconfig Z_UART
+		bool "Build Z-UART library"
+		select RING_BUFFER 
+		select UART_INTERRUPT_DRIVEN
+
+endmenu
