@@ -86,10 +86,10 @@ int main(void) {
     .at_uart = {
       .echo = true,
       .verbose = true,
-      // .zuart = ZUART_CONF_POLL( 960x_device ),
-      .zuart = ZUART_CONF_IRQ( uart_960x_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
-      // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( 960x_device, rx_buf, sizeof( rx_buf ) ),
-      // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( 960x_device, tx_buf, sizeof( tx_buf ) ),
+      .zuart = ZUART_CONF_POLL( uart_960x_device ),
+      // .zuart = ZUART_CONF_IRQ( uart_960x_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
+      // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( uart_960x_device, rx_buf, sizeof( rx_buf ) ),
+      // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( uart_960x_device, tx_buf, sizeof( tx_buf ) ),
     }
   };
 
@@ -136,7 +136,7 @@ int main(void) {
     for ( int i=0; i < len; i++ ) {
       printk( "%c", buf[ i ] );
     }
-    printk( "\", len=%d, csum=%04X == %04X", 
+    printk( "\", len=%d, csum=0x%04X, hcsum=0x%04X", 
       len, csum, isbd_util_compute_checksum( buf, len ) );
   }, {}, isu_get_mt, buf, &len, &csum );
 

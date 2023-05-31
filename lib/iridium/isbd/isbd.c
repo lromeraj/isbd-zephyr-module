@@ -230,6 +230,7 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
   };
 
   isu_dte_err_t dte_err;
+  
 
   dte_err = isu_set_evt_report(
     ISBD_DTE, &evt_report, &g_isbd.sigq, &g_isbd.svca );
@@ -251,7 +252,7 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
   DO_FOREVER {
 
     struct isbd_mo_msg mo_msg;
-    
+
     // sessions will be sent only if the service is currently available
     if ( g_isbd.svca && g_isbd.sigq >= g_isbd.cnf.sigq_threshold ) {
       if ( k_msgq_get( ISBD_MO_Q, &mo_msg, K_NO_WAIT ) == 0 ) {

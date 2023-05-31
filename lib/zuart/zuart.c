@@ -81,7 +81,6 @@ uint16_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byt
   uint8_t byte;
   uint16_t total_bytes_read = 0;
 
-  
   if ( timeout_ms == 0 ) {
 
     while ( total_bytes_read < n_bytes 
@@ -106,16 +105,37 @@ uint16_t zuart_read_poll_proto( zuart_t *zuart, uint8_t *out_buf, uint16_t n_byt
         zuart->err = ZUART_ERR_TIMEOUT;
         break;
       }
-
-      int ret = uart_poll_in( zuart->dev, &byte );
       
+      int ret = uart_poll_in( zuart->dev, &byte );      
+
       if ( ret == 0 ) {
+
         if ( out_buf ) {
           out_buf[ total_bytes_read ] = byte;
         }
         total_bytes_read++;
+
       } else if ( ret == -1 ) {
+
+        // ! When using polling mode, uart_poll_in() is
+        // ! non blocking and returns -1 when there are no bytes
+        // ! available, so in such situation (current code block)
+        // ! we call k_yield() in order to jump to another threads, but
+        // ! the problem appears when the thread which calls this function
+        // ! has a higher priority than other threads (for example, the logging thread)
+        // ! so after calling k_yield() the kernel immediately resumes this thread
+        // ! so it does not allow other threads with lower priority to be executed
+        // ! 
+        // ! With this, I want to say that it is very important to configure priorities
+        // ! correctly in order to avoid such situations, whenever possible use interrupt
+        // ! mode instead
         k_yield();
+
+        // ! Another option could consist by adding a little sleep in order to avoid the kernel
+        // ! to return immediately to the calling thread, but in that case data loss may occur
+        // ! more easily 
+        // k_msleep( 100 );
+
       } else {
         zuart->err = ZUART_ERR;
         break;
@@ -183,15 +203,18 @@ uint16_t zuart_write_poll_proto(
 ) {
 
   uint16_t bytes_written = 0;
-  uint64_t ts_old = k_uptime_get();
+
+  // uint64_t ts_old = k_uptime_get();
 
   while ( bytes_written < n_bytes ) {
     
-    uint64_t ts_now = k_uptime_get();
+    // uint64_t ts_now = k_uptime_get();
 
+    /*
     if ( timeout_ms > 0 && ts_now - ts_old >= timeout_ms ) {
       return ZUART_ERR_TIMEOUT;
     }
+    */
 
     uint8_t byte = src_buf[ bytes_written ];
 

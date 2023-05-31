@@ -169,7 +169,7 @@ at_uart_err_t at_uart_pack_txt_resp(
               buf[ buf_li ] = '\0';
             }
           }
-
+          
           return at_code;
         }
       }
@@ -248,7 +248,7 @@ inline at_uart_err_t at_uart_skip_txt_resp(
 at_uart_err_t at_uart_write( 
   at_uart_t *at_uart, const uint8_t *src_buf, uint16_t n_bytes, uint32_t timeout_ms
 ) {
-
+  
   uint16_t bytes_written = zuart_write( 
     &at_uart->zuart, src_buf, n_bytes, timeout_ms );
 
