@@ -86,8 +86,8 @@ int main(void) {
     .at_uart = {
       .echo = true,
       .verbose = true,
-      .zuart = ZUART_CONF_POLL( uart_960x_device ),
-      // .zuart = ZUART_CONF_IRQ( uart_960x_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
+      // .zuart = ZUART_CONF_POLL( uart_960x_device ),
+      .zuart = ZUART_CONF_IRQ( uart_960x_device, rx_buf, sizeof( rx_buf ), tx_buf, sizeof( tx_buf ) ),
       // .zuart = ZUART_CONF_MIX_RX_IRQ_TX_POLL( uart_960x_device, rx_buf, sizeof( rx_buf ) ),
       // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( uart_960x_device, tx_buf, sizeof( tx_buf ) ),
     }
@@ -115,6 +115,7 @@ int main(void) {
   TEST_ISU_CMD({
     printk( "MT Alert: %d", alert );
   }, {}, isu_get_mt_alert, &alert );  
+
 
   TEST_ISU_CMD({
     printk( "IMEI: %s", buf );
