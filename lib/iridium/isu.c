@@ -402,15 +402,25 @@ isu_dte_err_t isu_set_mt_alert( isu_dte_t *dte, isu_mt_alert_t alert ) {
 isu_dte_err_t isu_get_mt_alert( isu_dte_t *dte, isu_mt_alert_t *alert ) {
 
   SEND_TINY_CMD_OR_RET( 
-    dte, AT_CMD_TMPL_READ, "+SBDMTA" );
+    dte, AT_CMD_TMPL_READ, "+SBDMTA" ); 
+
 
   char buf[ 32 ];
   dte->err = at_uart_pack_txt_resp( 
     &dte->at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   if ( dte->err == AT_UART_OK ) {
-    int read = sscanf( buf, "+SBDMTA:%hhu", (uint8_t*)alert );
-    return read == 1 ? ISU_DTE_OK : ISU_DTE_ERR_UNK;
+
+    uint8_t val;
+    int read = sscanf( buf, "+SBDMTA:%hhu", &val );
+    
+    if ( read == 1 ) {
+      *alert = val;
+      return ISU_DTE_OK;
+    }
+
+    return ISU_DTE_ERR_UNK;
+
   } else {
     return ISU_DTE_ERR_AT;
   }

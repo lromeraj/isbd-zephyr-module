@@ -23,6 +23,7 @@ static void* zuart_suite_setup(void) {
   zassume_not_null( fixture );
 
   // zuart_config_t zuart_config = ZUART_CONF_POLL( (struct device*)ISBD_UART_DEVICE );
+
   zuart_config_t zuart_config = ZUART_CONF_IRQ( 
     (struct device*)ISBD_UART_DEVICE, 
     fixture->rx_buf, sizeof( fixture->rx_buf ), 
@@ -71,7 +72,6 @@ ZTEST_F( zuart_suite, test_overrun ) {
   
   do {
 
-    // printk("Waiting for host ... %d\n", ret );
     zuart_write( &fixture->zuart, write_buf, write_buf_len, 0 );
     
     // accept any byte as response

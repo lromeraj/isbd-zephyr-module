@@ -123,7 +123,7 @@ int main(void) {
     }
   };
 
-  LOG_DBG( "%s", "Setting up iridium subscriber unit ..." );
+  LOG_INF( "%s", "Setting up DTE ..." );
 
   if ( isu_dte_setup( &g_isu_dte, &isu_dte_config ) == ISU_DTE_OK ) {
     LOG_INF( "%s", "Modem OK" );
@@ -137,10 +137,13 @@ int main(void) {
   isbd_config_t isbd_config = 
     ISBD_DEFAULT_CONF( &g_isu_dte );
 
+  LOG_INF( "%s", "Setting up Iridium SBD service ..." );
+
   isbd_setup( &isbd_config );
 
   const char *msg = "UCM - MIoT";
   isbd_send_mo_msg( msg, strlen( msg ), MO_MSG_RETRIES );
+
 
   DO_FOREVER {
 
