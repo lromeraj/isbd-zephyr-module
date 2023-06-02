@@ -204,22 +204,9 @@ uint16_t zuart_write_poll_proto(
 
   uint16_t bytes_written = 0;
 
-  // uint64_t ts_old = k_uptime_get();
-
   while ( bytes_written < n_bytes ) {
-    
-    // uint64_t ts_now = k_uptime_get();
-
-    /*
-    if ( timeout_ms > 0 && ts_now - ts_old >= timeout_ms ) {
-      return ZUART_ERR_TIMEOUT;
-    }
-    */
-
     uint8_t byte = src_buf[ bytes_written ];
-
     uart_poll_out( zuart->dev, byte );
-
     bytes_written++;
   }
 
