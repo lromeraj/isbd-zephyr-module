@@ -40,7 +40,7 @@ LOG_MODULE_REGISTER( isu );
     if ( M_err != ISU_DTE_OK ) { return M_err; } \
   } while( 0 );
 
-static at_uart_err_t _pack_bin_resp(
+static at_uart_err_t _unpack_bin_resp(
   isu_dte_t *dte, uint8_t *msg_buf, uint16_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms 
 );
 
@@ -222,9 +222,15 @@ isu_dte_err_t isu_get_mt( isu_dte_t *dte, uint8_t *msg, uint16_t *msg_len, uint1
   SEND_TINY_CMD_OR_RET( 
     dte, AT_CMD_TMPL_EXEC, "+SBDRB" );
 
-  dte->err = _pack_bin_resp(
+  dte->err = _unpack_bin_resp(
     dte, msg, msg_len, csum, SHORT_TIMEOUT_RESPONSE );
   
+  if ( dte->err == AT_UART_OK ) {
+    
+    dte->err = at_uart_skip_txt_resp( 
+      &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
+  }
+
   return dte->err == AT_UART_OK 
     ? ISU_DTE_OK 
     : ISU_DTE_ERR_AT;
@@ -483,8 +489,10 @@ isu_dte_err_t isu_get_ring_sts( isu_dte_t *dte, isu_ring_sts_t *ring_sts ) {
   }
 }
 
-static at_uart_err_t _pack_bin_resp(
-  isu_dte_t *dte, uint8_t *msg_buf, uint16_t *msg_buf_len, uint16_t *csum, uint16_t timeout_ms
+static at_uart_err_t _unpack_bin_resp(
+  isu_dte_t *dte, 
+  uint8_t *msg_buf, uint16_t *msg_buf_len, 
+  uint16_t *csum, uint16_t timeout_ms
 ) {
 
   uint16_t msg_len;
@@ -518,17 +526,8 @@ static at_uart_err_t _pack_bin_resp(
   if ( ret == AT_UART_OK ) {
     ret = at_uart_read(
       &dte->at_uart, (uint8_t*)csum, 2, timeout_ms );
-  }
-
-  if ( ret == AT_UART_OK ) {
 
     *csum = ntohs( *csum );
-    
-    ret = at_uart_skip_txt_resp( 
-      &dte->at_uart, AT_1_LINE_RESP, timeout_ms );
-
-    // LOG_DBG( "MT message len=%hu, checksum=%hu", msg_len, *csum );
-
   }
 
   return overflowed ? AT_UART_OVERFLOW : ret;
