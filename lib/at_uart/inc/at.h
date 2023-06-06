@@ -22,7 +22,7 @@
   #define AT_CMD_TMPL_EXEC_STR  GEN_AT_CMD_TMPL( "%s" )
   #define AT_CMD_TMPL_TEST      GEN_AT_CMD_TMPL( "=?" )
   #define AT_CMD_TMPL_READ      GEN_AT_CMD_TMPL( "?" )
-  #define AT_CMD_TMPL_SET_INT   GEN_AT_CMD_TMPL( "=%u" )
+  #define AT_CMD_TMPL_SET_INT   GEN_AT_CMD_TMPL( "=%d" )
   #define AT_CMD_TMPL_SET_STR   GEN_AT_CMD_TMPL( "=%s" )
 
 #endif

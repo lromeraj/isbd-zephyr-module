@@ -70,8 +70,8 @@
     isu_dte_t *dte;
   } isbd_config_t;
 
-  void isbd_setup( isbd_config_t *isbd_conf );
-  void isbd_send_mo_msg( const uint8_t *msg, uint16_t msg_len, uint8_t retries );
+  isbd_err_t isbd_setup( isbd_config_t *isbd_conf );
+  isbd_err_t isbd_send_mo_msg( const uint8_t *msg, uint16_t msg_len, uint8_t retries );
 
   /**
    * @brief Request a session
@@ -82,12 +82,12 @@
    * @param alert Flag to indicate if the session was requested 
    * due to a previously received ring alert
    */
-  void isbd_request_session( bool alert );
+  isbd_err_t isbd_request_session( bool alert );
 
-  void isbd_destroy_evt( isbd_evt_t *evt );
+  isbd_err_t isbd_destroy_evt( isbd_evt_t *evt );
   
-  void isbd_destroy_mo_msg( struct isbd_mo_msg *mo_msg );
-  void isbd_destroy_mt_msg( struct isbd_mt_msg *mt_msg );
+  isbd_err_t isbd_destroy_mo_msg( struct isbd_mo_msg *mo_msg );
+  isbd_err_t isbd_destroy_mt_msg( struct isbd_mt_msg *mt_msg );
   
   bool isbd_wait_evt( isbd_evt_t *isbd_evt, uint32_t timeout_ms );
 

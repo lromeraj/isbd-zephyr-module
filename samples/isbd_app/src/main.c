@@ -122,6 +122,8 @@ int main(void) {
       // .zuart = ZUART_CONF_MIX_RX_POLL_TX_IRQ( uart_960x_device, tx_buf, sizeof( tx_buf ) ),
     }
   };
+  
+  
 
   LOG_INF( "%s", "Setting up DTE ..." );
 
@@ -142,17 +144,14 @@ int main(void) {
   isbd_setup( &isbd_config );
 
   const char *msg = "UCM - MIoT";
+
   isbd_send_mo_msg( msg, strlen( msg ), MO_MSG_RETRIES );
 
-
   DO_FOREVER {
-
     isbd_evt_t isbd_evt;
-
-    if ( isbd_wait_evt( &isbd_evt, 5000 ) ) {
+    if ( isbd_wait_evt( &isbd_evt, 1000 ) ) {
       _isbd_evt_handler( &isbd_evt );
     }
-
   }
 
   return 0;

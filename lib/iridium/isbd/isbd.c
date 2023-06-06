@@ -42,7 +42,7 @@ typedef struct isbd {
 
 extern void _entry_point( void *, void *, void * );
 static void _wait_for_dte_events( uint32_t timeout_ms );
-void _enqueue_mo_msg( struct isbd_mo_msg *mo_msg );
+isbd_err_t _enqueue_mo_msg( struct isbd_mo_msg *mo_msg );
 
 K_THREAD_STACK_DEFINE(
   g_thread_stack_area, CONFIG_ISBD_THREAD_STACK_SIZE );
@@ -139,7 +139,6 @@ static inline void _handle_session_mt_msg(
   isu_session_ext_t *session
 ) {
   
-
   if ( session->mt_sts == 1 ) {
 
     struct isbd_mt_msg mt_msg;
@@ -168,7 +167,7 @@ static inline void _handle_session_mt_msg(
       }
 
     } else {
-      LOG_ERR( "Could not alloc memory for MT message" );
+      LOG_ERR( "%s", "Could not alloc memory for MT message" );
       // TODO: the message still remains in the ISU memory, try again later ?
     }
 
@@ -187,7 +186,7 @@ void _init_session( struct isbd_mo_msg *mo_msg ) {
 
     if ( ret != ISU_DTE_OK ) {
       isbd_destroy_mo_msg( mo_msg );
-      LOG_ERR( "Could not set MO buffer" );
+      LOG_ERR( "%s", "Could not set MO buffer" );
     }
 
   } else {
@@ -214,11 +213,14 @@ void _init_session( struct isbd_mo_msg *mo_msg ) {
 
 }
 
-void isbd_destroy_mt_msg( struct isbd_mt_msg *mt_msg ) {
+isbd_err_t isbd_destroy_mt_msg( struct isbd_mt_msg *mt_msg ) {
+
   if ( mt_msg->data ) {
     k_free( mt_msg->data );
   }
   mt_msg->len = 0;
+
+  return ISBD_OK;
 }
 
 void _entry_point( void *v1, void *v2, void *v3 ) {
@@ -238,15 +240,15 @@ void _entry_point( void *v1, void *v2, void *v3 ) {
   if ( dte_err == ISU_DTE_OK ) {
     LOG_DBG( "svca=%hhu, sigq=%hhu", g_isbd.svca, g_isbd.sigq );
   } else {
-    LOG_ERR( "Could not set event reporting" );
+    LOG_ERR( "%s", "Could not set event reporting" );
   }
 
   dte_err = isu_set_mt_alert( ISBD_DTE, ISU_MT_ALERT_ENABLED );
 
   if ( dte_err == ISU_DTE_OK ) {
-    LOG_INF( "Ring alerts enabled" );
+    LOG_INF( "%s", "Ring alerts enabled" );
   } else {
-    LOG_ERR( "Could not enable ring alerts" );
+    LOG_ERR( "%s", "Could not enable ring alerts" );
   }
 
   DO_FOREVER {
@@ -302,7 +304,7 @@ static void _wait_for_dte_events( uint32_t timeout_ms ) {
 
 } 
 
-void isbd_destroy_mo_msg( struct isbd_mo_msg *mo_msg ) {
+isbd_err_t isbd_destroy_mo_msg( struct isbd_mo_msg *mo_msg ) {
 
   if ( mo_msg->data ) {
     k_free( mo_msg->data );
@@ -310,24 +312,25 @@ void isbd_destroy_mo_msg( struct isbd_mo_msg *mo_msg ) {
 
   mo_msg->len = 0;
   mo_msg->data = NULL;
+
+  return ISBD_OK;
 }
 
-void isbd_destroy_evt( isbd_evt_t *evt ) {
+isbd_err_t isbd_destroy_evt( isbd_evt_t *evt ) {
 
   switch ( evt->id ) {
 
     case ISBD_EVT_MO:
-      isbd_destroy_mo_msg( &evt->mo );
-      break;
+      return isbd_destroy_mo_msg( &evt->mo );
 
     case ISBD_EVT_MT:
-      isbd_destroy_mt_msg( &evt->mt );
-      break;
+      return isbd_destroy_mt_msg( &evt->mt );
   
     default:
       break;
   }
 
+  return ISBD_OK;
 }
 
 /**
@@ -336,13 +339,17 @@ void isbd_destroy_evt( isbd_evt_t *evt ) {
  * @param msg Message buffer
  * @param msg_len Message buffer length
  */
-void _enqueue_mo_msg( struct isbd_mo_msg *mo_msg ) {
+isbd_err_t _enqueue_mo_msg( struct isbd_mo_msg *mo_msg ) {
   if ( k_msgq_put( ISBD_MO_Q, mo_msg, K_NO_WAIT ) == 0 ) {
     LOG_DBG( "MO message enqueued, len=%hu", mo_msg->len );
+    return ISBD_OK; 
   }
+  return ISBD_ERR_SPACE;
 }
 
-void isbd_send_mo_msg( const uint8_t *msg, uint16_t msg_len, uint8_t retries ) {
+isbd_err_t isbd_send_mo_msg( 
+  const uint8_t *msg, uint16_t msg_len, uint8_t retries 
+) {
 
   struct isbd_mo_msg mo_msg;
   
@@ -350,16 +357,43 @@ void isbd_send_mo_msg( const uint8_t *msg, uint16_t msg_len, uint8_t retries ) {
   mo_msg.alert = false;
   mo_msg.retries = retries;
 
-  // TODO: check malloc
   mo_msg.data = (uint8_t*)k_malloc( sizeof(uint8_t) * msg_len );
   
-  memcpy( mo_msg.data, msg, msg_len );
+  if ( mo_msg.data == NULL ) {
+    return ISBD_ERR_MEM;
+  } else {
+    memcpy( mo_msg.data, msg, msg_len );
+  }
 
-  _enqueue_mo_msg( &mo_msg );
+  // TODO: instead of doing this we could use a global flag
+  // TODO: but we'll need extra synchronization mechanism 
+  if ( k_msgq_num_used_get( ISBD_MO_Q ) == 1 ) {
 
+    struct isbd_mo_msg _mo_msg;
+    if ( k_msgq_get( ISBD_MO_Q, &_mo_msg, K_NO_WAIT ) == 0 ) {
+
+      if ( _mo_msg.data == NULL ) { 
+        // empty payload, so it's a simple session request
+        
+        // copy alert flag from the queued message to the current message
+        mo_msg.alert = _mo_msg.alert;
+
+        // ar there is no payload this is not mandatory, but recommended
+        isbd_destroy_mo_msg( &_mo_msg );
+
+      } else {
+        // put message back again in the queue
+        _enqueue_mo_msg( &_mo_msg );
+      }
+
+    }
+
+  }
+
+  return _enqueue_mo_msg( &mo_msg );
 }
 
-void isbd_request_session( bool alert ) {
+isbd_err_t isbd_request_session( bool alert ) {
 
   struct isbd_mo_msg mo_msg;
   
@@ -370,12 +404,13 @@ void isbd_request_session( bool alert ) {
   // if the queue already has pending session requests
   // there is no need to push a new one
   if ( k_msgq_num_used_get( ISBD_MO_Q ) == 0 ) {
-    _enqueue_mo_msg( &mo_msg );
+    return _enqueue_mo_msg( &mo_msg );
   }
 
+  return ISBD_OK;
 }
 
-void isbd_setup( isbd_config_t *isbd_conf ) {
+isbd_err_t isbd_setup( isbd_config_t *isbd_conf ) {
   
   g_isbd.cnf      = *isbd_conf;
   g_isbd.svca     = 0;
@@ -385,6 +420,15 @@ void isbd_setup( isbd_config_t *isbd_conf ) {
 
   g_isbd.evt_msgq_buf = 
     (char*) k_malloc( sizeof( struct isbd_evt ) * g_isbd.cnf.evt_queue_len );
+
+  if ( g_isbd.mo_msgq_buf == NULL ) {
+    return ISBD_ERR_MEM;
+  }
+
+  if ( g_isbd.evt_msgq_buf == NULL ) {
+    k_free( g_isbd.mo_msgq_buf );
+    return ISBD_ERR_MEM;
+  }
 
   k_msgq_init( 
     ISBD_MO_Q,
@@ -406,6 +450,7 @@ void isbd_setup( isbd_config_t *isbd_conf ) {
     NULL, NULL, NULL,
     g_isbd.cnf.priority, 0, K_NO_WAIT );
 
+  return ISBD_OK;
 }
 
 bool isbd_wait_evt( isbd_evt_t *isbd_evt, uint32_t timeout_ms ) {
