@@ -8,8 +8,8 @@ get_filename_component(
 # Append module path to the extra modules list
 list( APPEND ZEPHYR_EXTRA_MODULES ${IRIDIUM_MODULE_PATH} )
 
-if( "${DEBUG}" STREQUAL "yes" )
-	#message( WARN "Logging mode has been enabled" )
+if("${DEBUG}" STREQUAL "y")
+	message( INFO "Debug mode has been enabled" )
 	list( APPEND OVERLAY_CONFIG "dbg.conf" )
 endif()
 
@@ -22,7 +22,7 @@ endif()
 # Look up Zephyr package using ZEPHYR_BASE
 # environment variable as reference
 find_package( Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE} )
-project( isu_sbd_cmds )
+project( isu_sbd_app )
 
 FILE( GLOB app_sources
   src/*.c )
