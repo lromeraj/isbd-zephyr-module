@@ -200,7 +200,7 @@ void _init_session( struct isbd_mo_msg *mo_msg ) {
     ret = isu_init_session( ISBD_DTE, &session, mo_msg->alert );
 
     // Fixes: https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/27
-    _wait_for_dte_events( 100 );
+    _wait_for_dte_events( 10 );
 
     if ( ret == ISU_DTE_OK ) {
       _handle_session_mo_msg( &session, mo_msg );
