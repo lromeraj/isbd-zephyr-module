@@ -24,10 +24,11 @@ endif()
 find_package( Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE} )
 project( isu_sbd_app )
 
-FILE( GLOB app_sources
-  src/*.c )
+# FILE( GLOB app_sources src/*.c )
 
-target_sources( app PRIVATE ${app_sources} )
+target_sources( app PRIVATE 
+  src/main.c 
+  src/rgb.c )
 
 # Link libraries to the target
 target_link_libraries( app PRIVATE iridium )

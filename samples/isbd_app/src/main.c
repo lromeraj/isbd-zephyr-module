@@ -21,6 +21,7 @@
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/logging/log.h>
 
+#include "rgb.h"
 #include "shared.h"
 
 LOG_MODULE_REGISTER( app );
@@ -123,7 +124,6 @@ int main(void) {
     }
   };
   
-  
 
   LOG_INF( "%s", "Setting up DTE ..." );
 
@@ -138,6 +138,8 @@ int main(void) {
 
   isbd_config_t isbd_config = 
     ISBD_DEFAULT_CONF( &g_isu_dte );
+
+  isbd_config.sigq_threshold = 3;
 
   LOG_INF( "%s", "Setting up Iridium SBD service ..." );
 

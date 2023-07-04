@@ -48,7 +48,7 @@ isu_dte_err_t isu_get_imei( isu_dte_t *dte, char *imei_buf, size_t imei_buf_len 
   
   SEND_TINY_CMD_OR_RET( dte, AT_CMD_TMPL_EXEC, "+CGSN" );
 
-  dte->err = at_uart_pack_txt_resp(
+  dte->err = at_uart_parse_resp(
     &dte->at_uart, imei_buf, imei_buf_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   return dte->err == AT_UART_OK ? ISU_DTE_OK : ISU_DTE_ERR_AT; 
@@ -58,7 +58,7 @@ isu_dte_err_t isu_get_revision( isu_dte_t *dte, char *rev_buf, size_t rev_buf_le
   
   SEND_TINY_CMD_OR_RET( dte,  AT_CMD_TMPL_EXEC, "+CGMR" );
 
-  dte->err = at_uart_pack_txt_resp( 
+  dte->err = at_uart_parse_resp( 
     &dte->at_uart, rev_buf, rev_buf_len, AT_UNK_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   return dte->err == AT_UART_OK ? ISU_DTE_OK : ISU_DTE_ERR_AT;
@@ -68,7 +68,7 @@ isu_dte_err_t isu_get_rtc( isu_dte_t *dte, char *rtc_buf, size_t rtc_buf_len ) {
   
   SEND_TINY_CMD_OR_RET( dte, AT_CMD_TMPL_EXEC, "+CCLK" );
 
-  dte->err = at_uart_pack_txt_resp( 
+  dte->err = at_uart_parse_resp( 
     &dte->at_uart, rtc_buf, rtc_buf_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   return dte->err == AT_UART_OK ? ISU_DTE_OK : ISU_DTE_ERR_AT;
@@ -81,7 +81,7 @@ isu_dte_err_t isu_init_session( isu_dte_t *dte, isu_session_ext_t *session, bool
     dte, AT_CMD_TMPL_EXEC_STR, "+SBDIX", alert ? "A" : "" );
 
   char buf[ 64 ];
-  dte->err = at_uart_pack_txt_resp(
+  dte->err = at_uart_parse_resp(
     &dte->at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, LONG_TIMEOUT_RESPONSE );
   
   LOG_DBG( "%s", buf );
@@ -119,7 +119,7 @@ isu_dte_err_t isu_clear_buffer( isu_dte_t *dte, isu_clear_buffer_t buffer ) {
     &dte->at_uart, str_code, sizeof( str_code ), &code, SHORT_TIMEOUT_RESPONSE );
 
   if ( err == AT_UART_OK ) {
-    err = at_uart_skip_txt_resp( 
+    err = at_uart_skip_resp( 
       &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
   }
 
@@ -156,7 +156,7 @@ isu_dte_err_t isu_set_mo_txt( isu_dte_t *dte, const char *txt ) {
   SEND_TINY_CMD_OR_RET( 
     dte, AT_CMD_TMPL_SET_STR, "+SBDWT", txt );
 
-  dte->err = at_uart_skip_txt_resp( 
+  dte->err = at_uart_skip_resp( 
     &dte->at_uart, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   return dte->err == AT_UART_OK ? ISU_DTE_OK : ISU_DTE_ERR_AT;
@@ -197,14 +197,14 @@ isu_dte_err_t isu_set_mo( isu_dte_t *dte, const uint8_t *msg_buf, uint16_t msg_b
       &dte->at_uart, csum_buf, sizeof( csum_buf ), SHORT_TIMEOUT_RESPONSE );
 
     // Due to AT nature it is not strictly necessary to check this result.
-    // This is will be done in the last call of at_uart_skip_txt_resp()
+    // This is will be done in the last call of at_uart_skip_resp()
     at_uart_get_resp_code(
       &dte->at_uart, str_code, sizeof( str_code ), &code, SHORT_TIMEOUT_RESPONSE );
 
   }
 
   // fetch last AT code ( OK / ERR )
-  at_err = at_uart_skip_txt_resp(
+  at_err = at_uart_skip_resp(
     &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   if ( at_err == AT_UART_OK ) {
@@ -227,7 +227,7 @@ isu_dte_err_t isu_get_mt( isu_dte_t *dte, uint8_t *msg, uint16_t *msg_len, uint1
   
   if ( dte->err == AT_UART_OK ) {
     
-    dte->err = at_uart_skip_txt_resp( 
+    dte->err = at_uart_skip_resp( 
       &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
   }
 
@@ -243,7 +243,7 @@ int8_t isbd_set_mo_txt_l( char *__txt ) {
 
   int8_t cmd_code;
   isbd_at_code_t at_code = 
-    at_uart_pack_txt_resp_code( &cmd_code, 100 );
+    at_uart_parse_resp_code( &cmd_code, 100 );
   
   printk("AT CODE: %d\n", at_code );
 
@@ -254,7 +254,7 @@ int8_t isbd_set_mo_txt_l( char *__txt ) {
     uint16_t txt_len = strlen( __txt );
     _uart_write( (uint8_t*)__txt, txt_len );
 
-    at_code = at_uart_pack_txt_resp( NULL, AT_2_LINE_RESP, 100 );
+    at_code = at_uart_parse_resp( NULL, AT_2_LINE_RESP, 100 );
   }
 
   return cmd_code;
@@ -266,7 +266,7 @@ isu_dte_err_t isu_mo_to_mt( isu_dte_t *dte, char *out, uint16_t out_len ) {
   SEND_TINY_CMD_OR_RET( 
     dte, AT_CMD_TMPL_EXEC, "+SBDTC" );
   
-  dte->err = at_uart_pack_txt_resp(
+  dte->err = at_uart_parse_resp(
     &dte->at_uart, out, out_len, AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
   
   return dte->err == AT_UART_OK ? ISU_DTE_OK : ISU_DTE_ERR_AT;
@@ -277,15 +277,15 @@ isu_dte_err_t isu_get_mt_txt( isu_dte_t *dte, char *mt_buf, size_t mt_buf_len ) 
   SEND_TINY_CMD_OR_RET( 
     dte, AT_CMD_TMPL_EXEC, "+SBDRT" );
 
-  at_uart_skip_txt_resp(
+  at_uart_skip_resp(
     &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
-  dte->err = at_uart_pack_txt_resp( 
+  dte->err = at_uart_parse_resp( 
     &dte->at_uart, mt_buf, mt_buf_len, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   if ( dte->config.at_uart.verbose ) {  
     
-    dte->err = at_uart_skip_txt_resp( 
+    dte->err = at_uart_skip_resp( 
       &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   } else if ( dte->err == AT_UART_UNK ) { 
@@ -327,7 +327,7 @@ isu_dte_err_t isu_get_sig_q( isu_dte_t *dte, uint8_t *signal_q ) {
   
   char buf[ 16 ];
   
-  dte->err = at_uart_pack_txt_resp(
+  dte->err = at_uart_parse_resp(
     &dte->at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, LONG_TIMEOUT_RESPONSE );
 
   if ( dte->err == AT_UART_OK ) {
@@ -351,7 +351,7 @@ isu_dte_err_t isu_set_evt_report(
   SEND_TINY_CMD_OR_RET( 
     dte, AT_CMD_TMPL_SET_STR, "+CIER", buf );
 
-  at_uart_err_t at_err = at_uart_skip_txt_resp( 
+  at_uart_err_t at_err = at_uart_skip_resp( 
     &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   // ! This command has a peculiarity,
@@ -399,7 +399,7 @@ isu_dte_err_t isu_set_mt_alert( isu_dte_t *dte, isu_mt_alert_t alert ) {
   SEND_TINY_CMD_OR_RET( 
     dte, AT_CMD_TMPL_SET_INT, "+SBDMTA", alert );
   
-  dte->err = at_uart_skip_txt_resp( 
+  dte->err = at_uart_skip_resp( 
     &dte->at_uart, AT_1_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   return dte->err == AT_UART_OK ? ISU_DTE_OK : ISU_DTE_ERR_AT;
@@ -412,7 +412,7 @@ isu_dte_err_t isu_get_mt_alert( isu_dte_t *dte, isu_mt_alert_t *alert ) {
 
 
   char buf[ 32 ];
-  dte->err = at_uart_pack_txt_resp( 
+  dte->err = at_uart_parse_resp( 
     &dte->at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   if ( dte->err == AT_UART_OK ) {
@@ -440,7 +440,7 @@ isu_dte_err_t isu_net_reg( isu_dte_t *dte, isu_net_reg_sts_t *out_sts ) {
 
   char buf[ 32 ];
 
-  dte->err = at_uart_pack_txt_resp( 
+  dte->err = at_uart_parse_resp( 
     &dte->at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   if ( dte->err == AT_UART_OK ) {
@@ -475,7 +475,7 @@ isu_dte_err_t isu_get_ring_sts( isu_dte_t *dte, isu_ring_sts_t *ring_sts ) {
             sri; // indicates the SBD ring indication status
 
   char buf[ 32 ];
-  dte->err = at_uart_pack_txt_resp( 
+  dte->err = at_uart_parse_resp( 
     &dte->at_uart, buf, sizeof( buf ), AT_2_LINE_RESP, SHORT_TIMEOUT_RESPONSE );
 
   if ( dte->err == AT_UART_OK ) {
