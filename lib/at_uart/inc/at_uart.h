@@ -122,7 +122,7 @@
 
   at_uart_err_t at_uart_check_echo( at_uart_t *at_uart );
 
-  at_uart_err_t at_uart_pack_txt_resp( 
+  at_uart_err_t at_uart_parse_resp( 
     at_uart_t *at_uart, 
     char *str_resp, uint16_t str_resp_len, 
     uint8_t lines, uint16_t timeout_ms );
@@ -132,7 +132,7 @@
     char *str_buf, uint16_t str_buf_len, 
     int8_t *cmd_code, uint16_t timeout_ms );
   
-  at_uart_err_t at_uart_skip_txt_resp( 
+  at_uart_err_t at_uart_skip_resp( 
     at_uart_t *at_uart, uint8_t lines, uint16_t timeout_ms );
 
   /**

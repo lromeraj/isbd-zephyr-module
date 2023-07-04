@@ -120,7 +120,7 @@ at_uart_err_t at_uart_check_echo( at_uart_t *at_uart ) {
 }
 
 // TODO: https://glab.lromeraj.net/ucm/miot/tfm/iridium-sbd-library/-/issues/24
-at_uart_err_t at_uart_pack_txt_resp(
+at_uart_err_t at_uart_parse_resp(
   at_uart_t *at_uart, 
   char *buf, uint16_t buf_size, 
   uint8_t lines, uint16_t timeout_ms
@@ -162,7 +162,6 @@ at_uart_err_t at_uart_pack_txt_resp(
         if ( at_code != AT_UART_UNK ) {
           
           if ( buf ) {
-
             if ( buf_li >= buf_size ) {
               return AT_UART_OVERFLOW;
             } else {
@@ -222,7 +221,7 @@ at_uart_err_t at_uart_get_resp_code(
   int8_t *cmd_code, uint16_t timeout_ms 
 ) {
 
-  at_uart_err_t at_code = at_uart_pack_txt_resp( 
+  at_uart_err_t at_code = at_uart_parse_resp( 
     at_uart, str_buf, str_buf_len, AT_1_LINE_RESP, timeout_ms );
   
   unsigned char first_char = str_buf[ 0 ];
@@ -239,10 +238,10 @@ at_uart_err_t at_uart_get_resp_code(
   return at_code;
 }
 
-inline at_uart_err_t at_uart_skip_txt_resp(
+inline at_uart_err_t at_uart_skip_resp(
   at_uart_t *at_uart, uint8_t lines, uint16_t timeout_ms 
 ) {
-  return at_uart_pack_txt_resp( at_uart, NULL, 0, lines, timeout_ms );
+  return at_uart_parse_resp( at_uart, NULL, 0, lines, timeout_ms );
 }
 
 at_uart_err_t at_uart_write( 
@@ -430,7 +429,7 @@ at_uart_err_t at_uart_set_flow_control( at_uart_t *at_uart, uint8_t option ) {
   AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "&k", option );
 
-  return at_uart_skip_txt_resp( 
+  return at_uart_skip_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
@@ -440,7 +439,7 @@ at_uart_err_t at_uart_set_dtr( at_uart_t *at_uart, uint8_t option ) {
   AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "&d", option );
 
-  return at_uart_skip_txt_resp( 
+  return at_uart_skip_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
@@ -450,7 +449,7 @@ at_uart_err_t at_uart_store_active_config( at_uart_t *at_uart, uint8_t profile )
   AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "&w", profile );
 
-  return at_uart_skip_txt_resp( 
+  return at_uart_skip_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
@@ -460,7 +459,7 @@ at_uart_err_t at_uart_set_reset_profile( at_uart_t *at_uart, uint8_t profile ) {
   AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "&y", profile );
 
-  return at_uart_skip_txt_resp( 
+  return at_uart_skip_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
@@ -470,7 +469,7 @@ at_uart_err_t at_uart_flush_to_eeprom( at_uart_t *at_uart ) {
   AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC, "*f" );
 
-  return at_uart_skip_txt_resp( 
+  return at_uart_skip_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 // ---- End of proprietary AT basic commands implementation -----
@@ -484,7 +483,7 @@ static at_uart_err_t _at_uart_set_quiet( at_uart_t *at_uart, bool enable ) {
   AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "q", enable );
 
-  return at_uart_skip_txt_resp( 
+  return at_uart_skip_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
@@ -496,7 +495,7 @@ static at_uart_err_t _at_uart_enable_echo( at_uart_t *at_uart, bool enable ) {
   AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "e", enable );
   
-  return at_uart_skip_txt_resp( 
+  return at_uart_skip_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 
@@ -508,7 +507,7 @@ static at_uart_err_t _at_uart_set_verbose( at_uart_t *at_uart, bool enable ) {
   AT_UART_SEND_TINY_CMD_OR_RET( 
     ret, at_uart, AT_CMD_TMPL_EXEC_INT, "v", enable );
   
-  return at_uart_skip_txt_resp( 
+  return at_uart_skip_resp( 
     at_uart, AT_1_LINE_RESP, AT_SHORT_TIMEOUT );
 }
 

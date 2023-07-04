@@ -15,7 +15,7 @@ isu_dte_err_t isu_dte_evt_wait( isu_dte_t *dte, isu_dte_evt_t *event, uint32_t t
   char buf[ 32 ];
   event->id = ISU_DTE_EVT_UNK;
 
-  dte->err = at_uart_pack_txt_resp(
+  dte->err = at_uart_parse_resp(
     &dte->at_uart, buf, sizeof( buf ), AT_1_LINE_RESP, timeout_ms );
 
   bool verbose = dte->at_uart.config.verbose;
